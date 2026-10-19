@@ -1,0 +1,44 @@
+/* Global design tokens and page-wide defaults. */
+:root {
+  --green: #174D3A;
+  --lime: #C7F36B;
+  --cream: #F7F5EC;
+  --slate: #26382E;
+  --white: #FFFFFF;
+  --muted: #65736A;
+  --line: #DDE2D7;
+  --soft-green: #E9EFE4;
+  --font-body: "DM Sans", sans-serif;
+  --font-display: "Manrope", sans-serif;
+  --container: 1160px;
+  color-scheme: light;
+}
+
+/* Reset browser defaults and establish consistent sizing. */
+*, *::before, *::after { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 88px; }
+body { margin: 0; background: var(--cream); color: var(--slate); font-family: var(--font-body); font-size: 16px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+body.modal-open { overflow: hidden; }
+button, input, select { font: inherit; }
+button, a, input, select { -webkit-tap-highlight-color: transparent; }
+button { color: inherit; }
+a { color: inherit; text-decoration: none; }
+img { display: block; max-width: 100%; }
+::selection { color: var(--green); background: var(--lime); }
+/* Keyboard focus, skip navigation, and screen-reader utilities. */
+:focus-visible { outline: 3px solid #79A83B; outline-offset: 3px; }
+.container { width: min(var(--container), calc(100% - 48px)); margin-inline: auto; }
+.section-pad { padding-block: 104px; }
+.skip-link { position: fixed; z-index: 1000; top: 8px; left: 8px; padding: 10px 16px; transform: translateY(-150%); background: var(--white); color: var(--green); }
+.skip-link:focus { transform: translateY(0); }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+/* Shared content width, section rhythm, and typography. */
+.eyebrow { display: flex; align-items: center; gap: 9px; margin: 0 0 20px; color: var(--green); font-size: 11px; font-weight: 700; letter-spacing: .11em; text-transform: uppercase; }
+.eyebrow-dot { width: 7px; height: 7px; border-radius: 50%; background: #76A13C; }
+h1, h2, h3, p { margin-top: 0; }
+h1, h2, h3 { font-family: var(--font-display); }
+.serif-accent { color: var(--green); font-family: Georgia, "Times New Roman", serif; font-weight: 400; font-style: italic; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}
