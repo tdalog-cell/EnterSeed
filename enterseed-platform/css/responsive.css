@@ -145,3 +145,95 @@
   .preview-actions { flex-direction: column; }
   .preview-actions .button { width: 100%; }
 }
+
+/* Keep supporting copy and controls readable across every page and viewport. */
+body p:not(.eyebrow):not(.lead-copy) { font-size: max(16px, 1em); }
+body .page-intro > .container > p:not(.eyebrow):not(.notice-banner) { font-size: max(16px, 1em); }
+body .onboarding-aside > p:not(.eyebrow):not(.step-count) { font-size: max(16px, 1em); }
+body .notice-banner { font-size: max(16px, 1em); }
+body li:not(.sr-only) { font-size: max(16px, 1em); }
+body a:not(.brand) { font-size: max(16px, 1em); }
+body label:not(.honeypot-field):not(.sr-only) { font-size: max(16px, 1em); }
+body small:not(.sr-only) { font-size: max(15px, 1em); }
+body input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+body select:not(.sr-only),
+body textarea:not(.sr-only) { font-size: max(16px, 1em); }
+body legend { font-size: max(16px, 1em); }
+body button:not(.icon-button):not(.send-button):not(.billing-toggle) { font-size: max(15px, 1em); }
+body td, body th { font-size: max(15px, 1em); }
+body .rate-table th,
+body .rate-table td,
+body .rate-table thead th { font-size: max(16px, 1em); }
+body .rate-table,
+body .plan-features { font-size: max(16px, 1em); }
+body .overview-index,
+body .trust-row,
+body .demo-label,
+body .verified-badge,
+body .supplier-category,
+body .supplier-location,
+body .supplier-product,
+body .directory-note,
+body .supplier-contact-detail,
+body .verification-checklist,
+body .map-label,
+body .map-pin-legend,
+body .billing-label,
+body .save-tag,
+body .plan-kicker,
+body .includes-label,
+body .listing-footnote,
+body .shipping-limit,
+body .slider-label,
+body .shipping-math,
+body .addon-price,
+body .price-period,
+body .pricing-disclaimer,
+body .preview-label,
+body .review-console-label,
+body .map-status,
+body .supplier-results-line,
+body .intro-strip-inner,
+body .hero-bottom,
+body .step-count { font-size: max(14px, 1em); }
+body .hero-copy .eyebrow,
+body .wizard-step .eyebrow { font-size: 15px; }
+body .trust-check { font-size: 14px; }
+body .supplier-map .leaflet-control-container { font-size: 16px; }
+body .supplier-map .leaflet-control-zoom a { width: 34px; height: 34px; font-size: 18px; line-height: 34px; }
+body .supplier-map .leaflet-control-attribution { font-size: 14px; }
+body .leaflet-popup-content { font: 16px/1.5 var(--font-body); }
+body .growth-note { font-size: 14px; }
+body .footer-links strong,
+body .footer-links span,
+body .footer-bottom > span { font-size: 16px; }
+body .footer-bottom { font-size: 14px; }
+body .modal-top { font-size: 16px; }
+body .review-checklist legend { font-size: max(16px, 1em); }
+body .assistant-identity strong,
+body .photo-caption strong,
+body .addon-toggle-row strong,
+body .choice-card strong,
+body .shipping-math strong,
+body .price-line .currency,
+body .source-panel > h3 { font-size: 16px; }
+body .verified-badge span { font-size: 14px; }
+body .feature-point h3,
+body .overview-card h3,
+body .step-card h3,
+body .supplier-card h3 { font-size: max(18px, 1em); }
+body .header-cta { font-size: 14px; }
+body .header-cta-label { white-space: nowrap; }
+body .button { min-height: 48px; }
+
+@media (max-width: 700px) {
+  body .header-cta { min-height: 44px; padding-inline: 10px; font-size: 13px; }
+  body a.header-cta { font-size: 14px; }
+  body .hero-actions .button { font-size: 14px; }
+  body .supplier-grid,
+  body .supplier-layout > .supplier-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 390px) {
+  body .header-cta { width: auto; font-size: 13px; }
+}
