@@ -13,11 +13,20 @@ const localSources = [
   { label: "Koronadal City Government", url: "https://koronadal.gov.ph/", lastLinkChecked: "2026-10-19", reviewNote: "Official city website; permit-specific details were not independently confirmed." }
 ];
 const offlineAnswers = [
-  { match: /dti|business name|registration|bnrs/i, text: "I can help you get oriented, but I cannot confirm current DTI requirements from this demo. Use the official BNRS portal below to check current requirements and fees. Local permits are separate; ask your city or municipal office which rules apply to your business." },
-  { match: /permit|lgu|barangay|municipal|city/i, text: "Permit requirements depend on your business activity and location. Contact your city or municipal business-permit office for its current checklist. The links below are starting points, not confirmation that specific permit rules were reviewed." },
-  { match: /feasibility|land bank|loan|business plan/i, text: "A feasibility-study draft can organize the market, operations, startup costs, financial assumptions, and risks. Treat projections as your own assumptions, and ask your Land Bank lending officer for the current loan product checklist. This is not lending advice or a loan approval." },
-  { match: /supplier|raw material|packaging|local/i, text: "The public supplier directory includes only businesses that opted in and passed Enterseed’s documented review. If no results are available, submit a listing application or contact Enterseed support for help." }
+  { match: /dti|business name|registration|bnrs|rehistro|pagpaparehistro/i, text: "I can help you get oriented, but I cannot confirm current DTI requirements from this demo. Use the official BNRS portal below to check current requirements and fees. Local permits are separate; ask your city or municipal office which rules apply to your business.", fil: "Makakatulong ako sa paunang gabay, pero hindi ko makukumpirma rito ang kasalukuyang mga kinakailangan ng DTI. Tingnan ang opisyal na BNRS portal sa ibaba para sa pinakabagong mga kinakailangan at bayarin. Hiwalay ang mga lokal na permit; magtanong sa tanggapan ng inyong lungsod o munisipalidad kung ano ang naaangkop sa negosyo mo." },
+  { match: /permit|lgu|barangay|municipal|city|pahintulot|munisipalidad|lungsod/i, text: "Permit requirements depend on your business activity and location. Contact your city or municipal business-permit office for its current checklist. The links below are starting points, not confirmation that specific permit rules were reviewed.", fil: "Nakadepende sa uri at lokasyon ng negosyo ang mga kinakailangang permit. Makipag-ugnayan sa tanggapan ng permit sa negosyo ng inyong lungsod o munisipalidad para sa kasalukuyang checklist. Panimulang sanggunian lamang ang mga link sa ibaba at hindi kumpirmasyon ng partikular na patakaran." },
+  { match: /feasibility|land bank|loan|business plan|pag-aaral|pautang|plano ng negosyo/i, text: "A feasibility-study draft can organize the market, operations, startup costs, financial assumptions, and risks. Treat projections as your own assumptions, and ask your Land Bank lending officer for the current loan product checklist. This is not lending advice or a loan approval.", fil: "Makakatulong ang burador ng feasibility study sa pag-aayos ng impormasyon tungkol sa merkado, operasyon, panimulang gastos, palagay sa pananalapi, at mga panganib. Ituring na sarili mong palagay ang mga proyeksiyon at hingin sa opisyal ng Land Bank ang kasalukuyang checklist ng pautang. Hindi ito pag-apruba ng pautang o payo sa pagpapautang." },
+  { match: /supplier|raw material|packaging|local|tagapagtustos|materyales/i, text: "The public supplier directory includes only businesses that opted in and passed Enterseed’s documented review. If no results are available, submit a listing application or contact Enterseed support for help.", fil: "Kasama lamang sa pampublikong direktoryo ng supplier ang mga negosyong kusang sumali at pumasa sa pagsusuri ng Enterseed. Kung walang resulta, magsumite ng aplikasyon sa listahan o makipag-ugnayan sa suporta ng Enterseed." }
 ];
+function getOfflineAnswer(question, language) {
+  const answer = offlineAnswers.find((entry) => entry.match.test(question));
+  if (language === "fil") {
+    return answer?.fil
+      ?? "Hindi ko makukumpirma ang sagot gamit ang mga sangguniang mayroon ako. Tingnan ang mga opisyal na link sa ibaba o makipag-ugnayan sa suporta ng Enterseed.";
+  }
+  return answer?.text
+    ?? "I can’t verify that answer right now. Check the official links below or contact Enterseed support for a human response.";
+}
 
 /** Append text as a message and scroll the conversation viewport. */
 function appendMessage(text, sender) {
@@ -67,11 +76,11 @@ function renderSources(sources = localSources) {
 }
 
 /** Ask the same-origin API; browser code never contains or transmits a provider key. */
-async function requestAnswer(question) {
+async function requestAnswer(question, language) {
   const response = await fetch("/api/assistant", {
     method: "POST",
     headers: { "Content-Type": "application/json", Accept: "application/json" },
-    body: JSON.stringify({ question, history: conversation.slice(-8) }),
+    body: JSON.stringify({ question, history: conversation.slice(-8), language }),
     signal: AbortSignal.timeout(15000)
   });
   if (!response.ok) throw new Error("The assistant service is not available right now.");
@@ -80,18 +89,18 @@ async function requestAnswer(question) {
 
 /** Ask Gemini through the server or give a clearly labeled local fallback. */
 async function answerQuestion(question) {
+  const language = window.EnterseedLanguage?.current === "fil" ? "fil" : "en";
   const typing = document.createElement("div");
   typing.className = "chat-message assistant-message";
   typing.setAttribute("role", "status");
-  typing.textContent = "Checking the available references…";
+  typing.textContent = language === "fil" ? "Sinusuri ang mga sanggunian…" : "Checking the available references…";
   chatMessages.append(typing);
   let result;
   try {
-    result = await requestAnswer(question);
+    result = await requestAnswer(question, language);
   } catch {
     result = {
-      answer: offlineAnswers.find((entry) => entry.match.test(question))?.text
-        ?? "I can’t verify that answer right now. Check the official links below or contact Enterseed support for a human response.",
+      answer: getOfflineAnswer(question, language),
       mode: "offline-local",
       sources: localSources
     };
@@ -100,9 +109,13 @@ async function answerQuestion(question) {
   renderSources(result.sources);
   const bubble = appendMessage("", "assistant");
   await streamText(bubble, result.answer);
-  const modeLabel = result.mode === "gemini" ? "Gemini via Enterseed server" : "Offline source-guided fallback";
+  const modeLabel = language === "fil"
+    ? (result.mode === "gemini" ? "Gemini sa server ng Enterseed" : "Offline na gabay mula sa mga sanggunian")
+    : (result.mode === "gemini" ? "Gemini via Enterseed server" : "Offline source-guided fallback");
   if (aiMode) aiMode.textContent = modeLabel;
-  if (aiStatus) aiStatus.textContent = "Official-source links and review notes are shown below. AI suggestions are not official determinations; contact Enterseed support if you need a person.";
+  if (aiStatus) aiStatus.textContent = language === "fil"
+    ? "Nasa ibaba ang mga link sa opisyal na sanggunian at tala ng pagsusuri. Hindi opisyal na pasya ang mga mungkahi ng AI; makipag-ugnayan sa suporta ng Enterseed kung kailangan mo ng kausap."
+    : "Official-source links and review notes are shown below. AI suggestions are not official determinations; contact Enterseed support if you need a person.";
   conversation.push({ role: "user", text: question }, { role: "model", text: result.answer });
   if (conversation.length > 8) conversation.splice(0, conversation.length - 8);
 }

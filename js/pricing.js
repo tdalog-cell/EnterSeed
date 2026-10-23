@@ -6,7 +6,10 @@ const yearlyLabels = document.querySelectorAll('[data-billing-label="yearly"]');
 /** Switch displayed subscription prices and the selected billing cadence. */
 function setBilling(yearly) {
   billingToggle.setAttribute("aria-checked", String(yearly));
-  billingToggle.setAttribute("aria-label", yearly ? "Switch to monthly billing" : "Switch to yearly billing");
+  const language = window.EnterseedLanguage?.current;
+  billingToggle.setAttribute("aria-label", language === "fil"
+    ? (yearly ? "Lumipat sa buwanang bayad" : "Lumipat sa taunang bayad")
+    : (yearly ? "Switch to monthly billing" : "Switch to yearly billing"));
   monthlyLabels.forEach((label) => label.classList.toggle("is-selected", !yearly));
   yearlyLabels.forEach((label) => label.classList.toggle("is-selected", yearly));
   document.querySelectorAll("[data-monthly][data-yearly]").forEach((price) => {
@@ -23,6 +26,9 @@ function setBilling(yearly) {
 /** Toggle the billing state and refresh monthly/yearly labels. */
 billingToggle?.addEventListener("click", () => {
   setBilling(billingToggle.getAttribute("aria-checked") !== "true");
+});
+document.addEventListener("enterseed:languagechange", () => {
+  if (billingToggle) setBilling(billingToggle.getAttribute("aria-checked") === "true");
 });
 
 const shippingToggle = document.querySelector("#shipping-toggle");

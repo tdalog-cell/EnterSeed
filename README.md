@@ -105,6 +105,8 @@ Supplier applications similarly enter the private queue and notify the support m
 
 The browser calls `/api/assistant`; the Gemini key stays on the server. Configure `GEMINI_API_KEY` using Google AI Studio and review the provider’s current model availability, free-tier quota, privacy, and terms. If the key is unset or the request fails, the server returns conservative local fallback guidance.
 
+The floating Seedling chat is a standalone browser module in `js/seedling-widget.js`; it uses the same-origin assistant endpoint and does not persist chat history. Requests accept `question`, optional `history`, and optional `language` (`en` or `fil`); omitting `language` keeps existing clients on English. The shared language selector and Filipino translations are in `js/language.js`, with the preference stored in the visitor’s browser.
+
 Each answer includes relevant source links and a **last link checked** date. Link-check date does not mean the source’s policy content was fully reviewed. As of 2026-10-19, the official South Cotabato and Koronadal sites were reachable. DTI’s BNRS portal rate-limited automated access, and the DTI FAQ content could not be independently fetched; those limitations are shown in the UI. Recheck source content periodically and update the date and review note only after a person verifies it. The fallback is a prompt/reference snippet, not a full searchable legal knowledge base or production RAG system.
 
 ## Maps

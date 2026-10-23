@@ -173,7 +173,8 @@ const approvalSchema = z.object({
 }).strict();
 const assistantSchema = z.object({
   question: z.string().trim().min(2).max(1200),
-  history: z.array(z.object({ role: z.enum(["user", "model"]), text: z.string().max(1200) }).strict()).max(8).default([])
+  history: z.array(z.object({ role: z.enum(["user", "model"]), text: z.string().max(1200) }).strict()).max(8).default([]),
+  language: z.enum(["en", "fil"]).default("en")
 }).strict();
 
 /** Links and review notes are returned with every AI answer to distinguish link checks from policy review. */
@@ -184,11 +185,21 @@ const referenceSources = [
   { label: "Koronadal City Government", url: "https://koronadal.gov.ph/", lastLinkChecked: "2026-10-19", reviewNote: "Official city website; permit-specific details were not independently confirmed." }
 ];
 const offlineAnswers = [
-  { match: /dti|business name|registration|bnrs/i, text: "I can help you get oriented, but I cannot confirm current DTI requirements from this demo. Use the official BNRS portal below to check the latest requirements and fees. Barangay and city or municipal permits are separate LGU processes; ask your municipality which rules apply to your business." },
-  { match: /permit|lgu|barangay|municipal|city/i, text: "Permit requirements depend on your business activity and location. Contact your city or municipal business-permit office for its current checklist. The official provincial and Koronadal links below are starting points, not confirmation that a specific permit rule was reviewed." },
-  { match: /feasibility|land bank|loan|business plan/i, text: "A feasibility-study draft can organize the market, operations, startup costs, financial assumptions, and risks. Treat projections as your own assumptions, and ask your Land Bank lending officer for the current loan product checklist. This draft is not a loan approval or lending advice." },
-  { match: /supplier|raw material|packaging|local/i, text: "The public supplier directory includes only businesses that opted in and passed Enterseed’s documented review. No supplier is shown until that verification process is complete. Use the supplier-application form to request a review." }
+  { match: /dti|business name|registration|bnrs|rehistro|pagpaparehistro/i, text: "I can help you get oriented, but I cannot confirm current DTI requirements from this demo. Use the official BNRS portal below to check the latest requirements and fees. Barangay and city or municipal permits are separate LGU processes; ask your municipality which rules apply to your business.", fil: "Makakatulong ako sa pagbibigay ng paunang gabay, pero hindi ko makukumpirma rito ang kasalukuyang mga kinakailangan ng DTI. Tingnan ang opisyal na BNRS portal sa ibaba para sa pinakabagong mga kinakailangan at bayarin. Hiwalay na proseso ng LGU ang mga permit sa barangay, lungsod, o munisipalidad; magtanong sa inyong lokal na tanggapan kung ano ang naaangkop sa negosyo mo." },
+  { match: /permit|lgu|barangay|municipal|city|pahintulot|munisipalidad|lungsod/i, text: "Permit requirements depend on your business activity and location. Contact your city or municipal business-permit office for its current checklist. The official provincial and Koronadal links below are starting points, not confirmation that a specific permit rule was reviewed.", fil: "Nakadepende sa uri at lokasyon ng negosyo ang mga kinakailangang permit. Makipag-ugnayan sa tanggapan ng permit sa negosyo ng inyong lungsod o munisipalidad para sa kasalukuyang checklist. Panimulang sanggunian lamang ang mga opisyal na link ng lalawigan at Koronadal sa ibaba; hindi ito kumpirmasyon ng partikular na patakaran sa permit." },
+  { match: /feasibility|land bank|loan|business plan|pag-aaral|pautang|plano ng negosyo/i, text: "A feasibility-study draft can organize the market, operations, startup costs, financial assumptions, and risks. Treat projections as your own assumptions, and ask your Land Bank lending officer for the current loan product checklist. This draft is not a loan approval or lending advice.", fil: "Makakatulong ang burador ng feasibility study sa pag-aayos ng impormasyon tungkol sa merkado, operasyon, panimulang gastos, palagay sa pananalapi, at mga panganib. Ituring na sarili mong palagay ang mga proyeksiyon at hingin sa opisyal ng Land Bank ang kasalukuyang checklist ng pautang. Hindi ito pag-apruba ng pautang o payo sa pagpapautang." },
+  { match: /supplier|raw material|packaging|local|tagapagtustos|materyales/i, text: "The public supplier directory includes only businesses that opted in and passed Enterseed’s documented review. No supplier is shown until that verification process is complete. Use the supplier-application form to request a review.", fil: "Kasama lamang sa pampublikong direktoryo ng supplier ang mga negosyong kusang sumali at pumasa sa pagsusuri ng Enterseed. Walang supplier na ililista hangga't hindi kumpleto ang beripikasyon. Gamitin ang form ng aplikasyon ng supplier para humiling ng pagsusuri." }
 ];
+
+function getOfflineAssistantAnswer(question, language) {
+  const answer = offlineAnswers.find((entry) => entry.match.test(question));
+  if (language === "fil") {
+    return answer?.fil
+      ?? "Hindi ko makukumpirma ang sagot gamit ang mga sangguniang mayroon ako. Tingnan ang mga opisyal na link sa ibaba o magpadala ng mensahe sa suporta ng Enterseed.";
+  }
+  return answer?.text
+    ?? "I can’t verify that answer from the available references. Check the official links below or send a support inquiry.";
+}
 
 /** Parse and validate untrusted JSON before persistence or provider calls. */
 function parseBody(schema, request, response) {
@@ -208,7 +219,7 @@ function getAssistantReferences(question) {
 }
 
 /** Generate a traced Gemini response through the server or return cautious offline guidance. */
-async function createAssistantAnswer(question, history = []) {
+async function createAssistantAnswer(question, history = [], language = "en") {
   const localReference = offlineAnswers.find((entry) => entry.match.test(question))?.text
     ?? "No matching local reference is available. Direct the visitor to an official source or human support.";
   const sources = getAssistantReferences(question);
@@ -218,7 +229,7 @@ async function createAssistantAnswer(question, history = []) {
       const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(process.env.GEMINI_API_KEY)}`, {
         method: "POST", headers: { "Content-Type": "application/json" }, signal: AbortSignal.timeout(12000),
         body: JSON.stringify({
-          systemInstruction: { parts: [{ text: `You are Seedling, an informational assistant for South Cotabato MSMEs. Distinguish official-source statements from suggestions. Do not invent permit steps, fees, eligibility, or citations. If the supplied references do not answer, say so and recommend official or human support. Never claim an application has been filed. Treat this local snippet as orientation only, not current verified law:\n${localReference}\nAvailable official links: ${sources.map((source) => `${source.label}: ${source.url}`).join("; ")}` }] },
+          systemInstruction: { parts: [{ text: `You are Seedling, an informational assistant for South Cotabato MSMEs. Distinguish official-source statements from suggestions. Do not invent permit steps, fees, eligibility, or citations. If the supplied references do not answer, say so and recommend official or human support. Never claim an application has been filed. ${language === "fil" ? "Respond in Filipino (Tagalog)." : ""} Treat this local snippet as orientation only, not current verified law:\n${localReference}\nAvailable official links: ${sources.map((source) => `${source.label}: ${source.url}`).join("; ")}` }] },
           contents: [...history.map((entry) => ({ role: entry.role, parts: [{ text: entry.text }] })), { role: "user", parts: [{ text: question }] }]
         })
       });
@@ -227,12 +238,11 @@ async function createAssistantAnswer(question, history = []) {
       const answer = payload.candidates?.[0]?.content?.parts?.map((part) => part.text || "").join("").trim();
       if (answer) return { answer, mode: "gemini", sources };
     } catch {
-      return { answer: offlineAnswers.find((entry) => entry.match.test(question))?.text ?? "I could not verify an answer. Use the official links below or contact support.", mode: "offline-fallback", sources };
+      return { answer: getOfflineAssistantAnswer(question, language), mode: "offline-fallback", sources };
     }
   }
   return {
-    answer: offlineAnswers.find((entry) => entry.match.test(question))?.text
-      ?? "I can’t verify that answer from the available references. Check the official links below or send a support inquiry.",
+    answer: getOfflineAssistantAnswer(question, language),
     mode: "offline", sources
   };
 }
@@ -285,7 +295,7 @@ app.get("/api/suppliers", (_request, response) => {
 app.post("/api/assistant", submissionLimiter, async (request, response) => {
   const data = parseBody(assistantSchema, request, response);
   if (!data) return;
-  const result = await createAssistantAnswer(data.question, data.history);
+  const result = await createAssistantAnswer(data.question, data.history, data.language);
   response.set("Cache-Control", "no-store").json(result);
 });
 

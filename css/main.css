@@ -9,7 +9,7 @@
   --line: #DDE2D7;
   --soft-green: #E9EFE4;
   --font-body: "DM Sans", sans-serif;
-  --font-display: "Manrope", sans-serif;
+  --font-display: "Google Sans", "DM Sans", sans-serif;
   --container: 1160px;
   color-scheme: light;
 }
@@ -37,7 +37,7 @@ img { display: block; max-width: 100%; }
 .eyebrow-dot { width: 7px; height: 7px; border-radius: 50%; background: #76A13C; }
 h1, h2, h3, p { margin-top: 0; }
 h1, h2, h3 { font-family: var(--font-display); }
-.serif-accent { color: var(--green); font-family: Georgia, "Times New Roman", serif; font-weight: 400; font-style: italic; }
+.serif-accent { color: var(--green); font-family: var(--font-display); font-weight: 400; font-style: italic; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }

@@ -7,7 +7,10 @@ const primaryNav = document.querySelector("#primary-nav");
 menuToggle?.addEventListener("click", () => {
   const isOpen = menuToggle.getAttribute("aria-expanded") === "true";
   menuToggle.setAttribute("aria-expanded", String(!isOpen));
-  menuToggle.setAttribute("aria-label", isOpen ? "Open navigation" : "Close navigation");
+  const language = window.EnterseedLanguage?.current;
+  menuToggle.setAttribute("aria-label", language === "fil"
+    ? (isOpen ? "Buksan ang nabigasyon" : "Isara ang nabigasyon")
+    : (isOpen ? "Open navigation" : "Close navigation"));
   primaryNav.classList.toggle("is-open", !isOpen);
 });
 
@@ -16,7 +19,7 @@ menuToggle?.addEventListener("click", () => {
 primaryNav?.querySelectorAll("a").forEach((link) => link.addEventListener("click", () => {
   primaryNav.classList.remove("is-open");
   menuToggle?.setAttribute("aria-expanded", "false");
-  menuToggle?.setAttribute("aria-label", "Open navigation");
+  menuToggle?.setAttribute("aria-label", window.EnterseedLanguage?.current === "fil" ? "Buksan ang nabigasyon" : "Open navigation");
 }));
 
 /** Mark the link for the current HTML page as the active page. */
@@ -49,9 +52,19 @@ if (recommendationBanner) {
   if (parameters.has("recommendation")) {
     const recommendation = parameters.get("recommendation").split(",").filter(Boolean);
     const locationName = parameters.get("location");
-    const labels = { efiling: "registration guidance", feasibility: "a feasibility-study draft", suppliers: "local supplier discovery" };
-    const focus = recommendation.map((item) => labels[item]).filter(Boolean).join(" and ") || "your next business step";
-    recommendationBanner.textContent = `Your assessment suggested ${focus}${locationName ? ` near ${locationName}` : ""}. Your answers remain in this browser demo.`;
+    const renderRecommendation = (language) => {
+      if (language === "fil") {
+        const labels = { efiling: "gabay sa pagpaparehistro", feasibility: "burador ng feasibility study", suppliers: "paghahanap ng lokal na supplier" };
+        const focus = recommendation.map((item) => labels[item]).filter(Boolean).join(" at ") || "susunod mong hakbang sa negosyo";
+        recommendationBanner.textContent = `Batay sa pagsusuri mo, inirerekomenda ang ${focus}${locationName ? ` malapit sa ${locationName}` : ""}. Nananatili sa browser demo na ito ang mga sagot mo.`;
+        return;
+      }
+      const labels = { efiling: "registration guidance", feasibility: "a feasibility-study draft", suppliers: "local supplier discovery" };
+      const focus = recommendation.map((item) => labels[item]).filter(Boolean).join(" and ") || "your next business step";
+      recommendationBanner.textContent = `Your assessment suggested ${focus}${locationName ? ` near ${locationName}` : ""}. Your answers remain in this browser demo.`;
+    };
+    renderRecommendation(window.EnterseedLanguage?.current ?? "en");
+    document.addEventListener("enterseed:languagechange", (event) => renderRecommendation(event.detail.language));
     recommendationBanner.hidden = false;
   }
 }
