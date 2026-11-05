@@ -23,7 +23,14 @@
       "assistantBreadcrumb": "Assistant",
       "askBossNana": "Ask Boss Narra",
       "logout": "Log out",
-      "logoutError": "Could not log out. Please try again."
+      "logoutError": "Could not log out. Please try again.",
+      "resources": "Resources",
+      "efiling": "E-Filing",
+      "pricing": "Pricing",
+      "about": "About & support",
+      "staff": "Staff console",
+      "openMenu": "Open menu",
+      "closeMenu": "Close menu"
     },
     "bossNana": {
       "eyebrow": "Boss Narra workspace",
@@ -103,7 +110,14 @@
       "reportBalanceSheet": "Balance sheet (estimated snapshot)",
       "reportCashFlow": "Cash flow after reported debt payment",
       "cashFlowAfterDebt": "Estimated operating cash after debt payment",
-      "accountPrivacy": "Financial inputs are private to your account and used only to show this planning estimate. This prototype does not encrypt SQLite data at rest."
+      "accountPrivacy": "Financial inputs are private to your account and used only to show this planning estimate. This prototype does not encrypt SQLite data at rest.",
+      "groupMonthly": "Each month",
+      "groupBalances": "Balances today",
+      "recommendations": "Recommendations",
+      "saving": "Saving…",
+      "confirmDelete": "Delete for good?",
+      "confirmYes": "Delete",
+      "confirmNo": "Keep"
     },
     "chatbot": {
       "name": "Boss Narra",
@@ -117,6 +131,36 @@
       "waiting": "Checking the available references…",
       "disclaimer": "Informational support only. No official source pages are fetched for this chat; verify rules directly with DTI, DOST, or BIR.",
       "unavailable": "Boss Narra could not reach the service. Please try again."
+    },
+    "auth": {
+      "headline": "Grow smarter with Enterseed and Boss Narra.",
+      "lead": "Cash flow checkups, reviewed suppliers across South Cotabato, and a grounded advisor that points you to the official source every time.",
+      "signInTitle": "Sign in to your workspace",
+      "registerTitle": "Create your account",
+      "welcomeBack": "Welcome back.",
+      "registerLead": "Free for MSMEs in South Cotabato and SOCCSKSARGEN.",
+      "signIn": "Sign in",
+      "createAccount": "Create account",
+      "firstName": "First name",
+      "lastName": "Last name",
+      "businessName": "Business name",
+      "email": "Email",
+      "password": "Password",
+      "passwordHint": "At least 12 characters.",
+      "agree": "I agree to the terms of service and to Enterseed storing my financial figures for workspace tools.",
+      "agreeRequired": "Agree to the terms to create your account.",
+      "remember": "Keep me signed in",
+      "signingIn": "Signing in…",
+      "creating": "Creating account…",
+      "signInFailed": "Sign-in failed. Check your email and password.",
+      "registerFailed": "Registration failed. Try again.",
+      "demo": "Explore with a demo profile",
+      "demoNote": "Opens a sample Koronadal business profile.",
+      "about": "About",
+      "efiling": "E-Filing",
+      "pricing": "Pricing",
+      "staffDesk": "Staff review desk",
+      "footer": "Enterseed · South Cotabato and SOCCSKSARGEN"
     }
   },
   "legacy": {}

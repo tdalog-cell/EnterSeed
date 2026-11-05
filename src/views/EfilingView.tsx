@@ -1,50 +1,94 @@
 import React, { useState } from 'react';
-import { useLanguage } from '../context/LanguageContext';
 import { apiFetch } from '../services/apiClient';
-import {
-  FileCheck2,
-  Trash2,
-  ExternalLink,
-  ShieldCheck,
-  CheckCircle,
-  AlertCircle,
-  Building,
-  Sparkles
-} from 'lucide-react';
+import { ArrowUpRight, Trash2 } from 'lucide-react';
+import { Button, CheckField, Field, Notice, PageHeader, Panel, PanelHeader, Segmented, inputClass } from '../components/ui';
+
+const NEEDS = [
+  { id: 'efiling', label: 'Government e-filing and permits checklist' },
+  { id: 'feasibility', label: 'Feasibility study and loan outline' },
+  { id: 'suppliers', label: 'Local supplier and packaging directory' }
+];
+
+const PORTALS = [
+  {
+    agency: 'DTI',
+    title: 'Business Name Registration System',
+    desc: 'Register and renew sole proprietorship business names and download the certificate.',
+    url: 'https://bnrs.dti.gov.ph/'
+  },
+  {
+    agency: 'BIR',
+    title: 'ORUS and eServices',
+    desc: 'Apply for a TIN, register books of accounts, and file with eBIRForms.',
+    url: 'https://www.bir.gov.ph/'
+  },
+  {
+    agency: 'SSS',
+    title: 'My.SSS employer portal',
+    desc: 'Submit monthly contribution lists (R-3) and manage employer compliance.',
+    url: 'https://www.sss.gov.ph/'
+  },
+  {
+    agency: 'PhilHealth',
+    title: 'Electronic Premium Remittance System',
+    desc: 'Generate your Statement of Premium Account and track premium payments.',
+    url: 'https://www.philhealth.gov.ph/'
+  },
+  {
+    agency: 'Pag-IBIG Fund',
+    title: 'Virtual Pag-IBIG for employers',
+    desc: 'Remit housing fund contributions and verify employee MID numbers.',
+    url: 'https://www.pagibigfund.gov.ph/'
+  },
+  {
+    agency: 'South Cotabato LGU',
+    title: 'Provincial e-services',
+    desc: 'Provincial business permits, agricultural clearances, and tourism accreditation.',
+    url: 'https://southcotabato.gov.ph/services/'
+  }
+];
+
+const TOKEN_KEY = 'enterseed_readiness_token';
 
 export const EfilingView: React.FC = () => {
-  const { t } = useLanguage();
-
   const [stage, setStage] = useState<'unregistered' | 'registered'>('unregistered');
   const [needs, setNeeds] = useState<string[]>(['efiling', 'suppliers']);
   const [location, setLocation] = useState('City of Koronadal');
   const [consent, setConsent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [deleteToken, setDeleteToken] = useState<string | null>(() => sessionStorage.getItem('enterseed_readiness_token'));
-  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [deleteToken, setDeleteToken] = useState<string | null>(() => {
+    try {
+      return sessionStorage.getItem(TOKEN_KEY);
+    } catch {
+      return null;
+    }
+  });
+  const [status, setStatus] = useState<{ tone: 'success' | 'error'; text: string } | null>(null);
 
-  const toggleNeed = (id: string) => {
-    setNeeds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
-  };
+  const toggleNeed = (id: string) => setNeeds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!consent || needs.length === 0) return;
     setSubmitting(true);
-    setStatusMessage(null);
+    setStatus(null);
     try {
       const res = await apiFetch('/api/readiness', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
         body: JSON.stringify({ stage, needs, location, consent: true })
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to save readiness assessment.');
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'The checkup could not be saved. Try again.');
       setDeleteToken(data.deleteToken);
-      sessionStorage.setItem('enterseed_readiness_token', data.deleteToken);
-      setStatusMessage('Readiness assessment recorded! Stored for 30 days without collecting personal name or email.');
+      try {
+        sessionStorage.setItem(TOKEN_KEY, data.deleteToken);
+      } catch {
+        // token stays in memory for this visit
+      }
+      setStatus({ tone: 'success', text: 'Checkup saved for 30 days, with no name, email, or phone number.' });
     } catch (err: any) {
-      setStatusMessage(`Error: ${err.message}`);
+      setStatus({ tone: 'error', text: err.message });
     } finally {
       setSubmitting(false);
     }
@@ -54,228 +98,113 @@ export const EfilingView: React.FC = () => {
     if (!deleteToken) return;
     try {
       const res = await apiFetch(`/api/readiness/${deleteToken}`, { method: 'DELETE' });
-      if (res.ok) {
-        setDeleteToken(null);
-        sessionStorage.removeItem('enterseed_readiness_token');
-        setStatusMessage('Your assessment has been deleted from the database.');
+      if (!res.ok) throw new Error();
+      setDeleteToken(null);
+      try {
+        sessionStorage.removeItem(TOKEN_KEY);
+      } catch {
+        /* ignore */
       }
+      setStatus({ tone: 'success', text: 'Your checkup has been deleted.' });
     } catch {
-      setStatusMessage('Failed to delete assessment.');
+      setStatus({ tone: 'error', text: 'The checkup could not be deleted. Try again.' });
     }
   };
 
-  const portalDirectory = [
-    {
-      agency: 'Department of Trade and Industry (DTI)',
-      title: 'Business Name Registration System (BNRS Next Gen)',
-      desc: 'Register and renew sole proprietorship business names online with digital certificate download.',
-      url: 'https://bnrs.dti.gov.ph/'
-    },
-    {
-      agency: 'Bureau of Internal Revenue (BIR)',
-      title: 'Online Registration and Update System (ORUS) & eServices',
-      desc: 'Apply for TIN, register books of accounts, and download electronic BIR forms (eBIRForms).',
-      url: 'https://www.bir.gov.ph/'
-    },
-    {
-      agency: 'Social Security System (SSS)',
-      title: 'My.SSS Employer Portal',
-      desc: 'Submit employee monthly contribution lists (R-3) and manage employer compliance.',
-      url: 'https://www.sss.gov.ph/'
-    },
-    {
-      agency: 'PhilHealth',
-      title: 'Electronic Premium Remittance System (EPRS)',
-      desc: 'Online generation of Statement of Premium Accounts (SPA) and premium payment tracking.',
-      url: 'https://www.philhealth.gov.ph/'
-    },
-    {
-      agency: 'Pag-IBIG Fund',
-      title: 'Virtual Pag-IBIG for Employers',
-      desc: 'Remit mandatory housing fund contributions and verify employee MID numbers.',
-      url: 'https://www.pagibigfund.gov.ph/'
-    },
-    {
-      agency: 'South Cotabato LGU',
-      title: 'Provincial Government E-Services',
-      desc: 'Checklist of provincial business permits, veterinary/agricultural clearances, and tourism accreditations.',
-      url: 'https://southcotabato.gov.ph/services/'
-    }
-  ];
-
   return (
-    <div className="space-y-8 animate-in fade-in duration-300">
-      {/* Header */}
-      <div>
-        <div className="flex items-center gap-2 text-[#4A1D8F] font-bold text-xs uppercase tracking-wider mb-2">
-          <FileCheck2 className="w-4 h-4 text-[#FF8A3D]" />
-          <span>Compliance & Registration Hub</span>
-        </div>
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-[#2B1C33] tracking-tight">
-          MSME Readiness & Government E-Filing
-        </h1>
-        <p className="text-sm text-[#6F5B77] mt-1 max-w-3xl leading-relaxed">
-          Take a privacy-safe readiness assessment to map your required filings, and route directly to official Philippine government regulatory portals.
-        </p>
-      </div>
+    <div className="space-y-6 sm:space-y-8">
+      <PageHeader
+        title="Readiness and e-filing"
+        lead="Take an anonymous readiness checkup, then go straight to the official government portals you need."
+      />
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        {/* Readiness Assessment Form */}
-        <div className="lg:col-span-5 bg-white rounded-3xl p-6 sm:p-8 border border-[#E9D9EF] shadow-sm">
-          <h2 className="text-lg font-bold text-[#2B1C33] mb-2">
-            30-Day Anonymous Readiness Checkup
-          </h2>
-          <p className="text-xs text-[#6F5B77] mb-5 leading-relaxed">
-            We collect stage, municipality, and selected business needs only. No name, email, or telephone is recorded.
-          </p>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] items-start">
+        <Panel>
+          <PanelHeader
+            title="Anonymous readiness checkup"
+            description="We record your stage, municipality, and needs only. No name, email, or phone number. Deleted after 30 days."
+          />
 
-          {statusMessage && (
-            <div className="p-3 mb-4 rounded-xl text-xs font-semibold bg-[#E1EBD4] text-[#4A1D8F] border border-[#76A13C]/30 flex items-center justify-between">
-              <span>{statusMessage}</span>
-            </div>
+          {status && (
+            <Notice tone={status.tone} className="mb-4">
+              {status.text}
+            </Notice>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="block text-xs font-semibold text-[#2B1C33] mb-2">Business Stage</label>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setStage('unregistered')}
-                  className={`p-3 rounded-xl border text-xs font-bold text-left ${
-                    stage === 'unregistered'
-                      ? 'bg-[#4A1D8F] text-white border-[#4A1D8F]'
-                      : 'bg-[#FFF7F1] text-[#6F5B77] border-[#E9D9EF]'
-                  }`}
-                >
-                  🌱 Planning / Unregistered
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setStage('registered')}
-                  className={`p-3 rounded-xl border text-xs font-bold text-left ${
-                    stage === 'registered'
-                      ? 'bg-[#4A1D8F] text-white border-[#4A1D8F]'
-                      : 'bg-[#FFF7F1] text-[#6F5B77] border-[#E9D9EF]'
-                  }`}
-                >
-                  🏢 Already Registered
-                </button>
-              </div>
+              <p className="text-[13px] font-semibold text-ink mb-1.5">Business stage</p>
+              <Segmented
+                label="Business stage"
+                className="w-full"
+                value={stage}
+                onChange={setStage}
+                options={[
+                  { value: 'unregistered', label: 'Planning or unregistered' },
+                  { value: 'registered', label: 'Already registered' }
+                ]}
+              />
             </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-[#2B1C33] mb-2">
-                Current Support Needs (Select all that apply)
-              </label>
-              <div className="space-y-2">
-                {[
-                  { id: 'efiling', label: 'Government E-Filing & Permits Checklist' },
-                  { id: 'feasibility', label: 'Feasibility Study & Loan Outline' },
-                  { id: 'suppliers', label: 'Local Supplier & Packaging Directory' },
-                ].map((item) => (
-                  <label
-                    key={item.id}
-                    className="flex items-center gap-3 p-3 rounded-xl bg-[#FFF7F1] border border-[#E9D9EF] text-xs font-medium cursor-pointer"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={needs.includes(item.id)}
-                      onChange={() => toggleNeed(item.id)}
-                      className="rounded text-[#4A1D8F]"
-                    />
-                    <span className="text-[#2B1C33]">{item.label}</span>
+            <fieldset className="min-w-0">
+              <legend className="text-[13px] font-semibold text-ink mb-2">What do you need help with?</legend>
+              <div className="space-y-2.5">
+                {NEEDS.map((item) => (
+                  <label key={item.id} className="flex items-center gap-3 rounded-xl border border-line-strong px-3.5 py-3 cursor-pointer hover:bg-sunken has-[:checked]:border-brand has-[:checked]:bg-brand-soft/50">
+                    <input type="checkbox" checked={needs.includes(item.id)} onChange={() => toggleNeed(item.id)} className="w-4 h-4 shrink-0" />
+                    <span className="text-sm text-ink">{item.label}</span>
                   </label>
                 ))}
               </div>
-            </div>
+              {needs.length === 0 && <p className="mt-2 text-xs text-danger">Choose at least one.</p>}
+            </fieldset>
 
-            <div>
-              <label className="block text-xs font-semibold text-[#2B1C33] mb-1.5">Municipality</label>
-              <input
-                type="text"
-                required
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                placeholder="e.g. City of Koronadal"
-                className="w-full bg-[#FFF7F1] border border-[#E9D9EF] rounded-xl px-3.5 py-2.5 text-xs text-[#2B1C33]"
-              />
-            </div>
+            <Field label="Municipality">
+              {(id) => <input id={id} type="text" required value={location} onChange={(e) => setLocation(e.target.value)} className={inputClass} />}
+            </Field>
 
-            <label className="flex items-start gap-2.5 cursor-pointer pt-1">
-              <input
-                type="checkbox"
-                checked={consent}
-                onChange={(e) => setConsent(e.target.checked)}
-                className="mt-0.5 rounded text-[#4A1D8F]"
-              />
-              <span className="text-xs text-[#6F5B77] leading-relaxed">
-                I agree to store this anonymous assessment for up to 30 days to receive localized guidance.
-              </span>
-            </label>
+            <CheckField checked={consent} onChange={setConsent}>
+              Store this anonymous checkup for up to 30 days so I can get local guidance.
+            </CheckField>
 
-            <button
-              type="submit"
-              disabled={submitting || !consent || needs.length === 0}
-              className="w-full bg-gradient-to-r from-[#4A1D8F] to-[#2C154F] hover:from-[#2C154F] hover:to-[#4A1D8F] text-white font-bold py-3 rounded-2xl shadow transition-all text-xs"
-            >
-              {submitting ? 'Recording…' : 'Record Anonymous Assessment'}
-            </button>
+            <Button type="submit" size="lg" className="w-full" disabled={submitting || !consent || needs.length === 0}>
+              {submitting ? 'Saving…' : 'Save checkup'}
+            </Button>
           </form>
 
           {deleteToken && (
-            <div className="mt-5 pt-4 border-t border-[#E9D9EF] flex items-center justify-between text-xs">
-              <span className="text-[#6F5B77]">Token held in session</span>
-              <button
-                type="button"
-                onClick={handleDelete}
-                className="text-rose-600 hover:text-rose-700 font-semibold flex items-center gap-1"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>Delete my assessment now</span>
-              </button>
+            <div className="mt-5 pt-4 border-t border-line flex flex-wrap items-center justify-between gap-2">
+              <span className="text-[13px] text-muted">You saved a checkup this visit.</span>
+              <Button variant="danger" size="sm" onClick={handleDelete}>
+                <Trash2 />
+                Delete it now
+              </Button>
             </div>
           )}
-        </div>
+        </Panel>
 
-        {/* Official E-Filing Portals Directory */}
-        <div className="lg:col-span-7 space-y-4">
-          <div className="bg-white rounded-3xl p-6 sm:p-8 border border-[#E9D9EF] shadow-sm">
-            <h2 className="text-lg font-bold text-[#2B1C33] mb-1">
-              Direct Government E-Filing Portals
-            </h2>
-            <p className="text-xs text-[#6F5B77] mb-6">
-              Official online services for sole proprietors, partnerships, and cooperatives in Region 12.
-            </p>
-
-            <div className="space-y-3.5">
-              {portalDirectory.map((portal, idx) => (
-                <div
-                  key={idx}
-                  className="p-4 rounded-2xl bg-[#FFF7F1] border border-[#E9D9EF] hover:border-[#4A1D8F] transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+        <Panel>
+          <PanelHeader title="Government e-filing portals" description="Official online services for sole proprietors, partnerships, and cooperatives in Region 12." />
+          <ul className="divide-y divide-line -my-1">
+            {PORTALS.map((portal) => (
+              <li key={portal.url}>
+                <a
+                  href={portal.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group flex items-start justify-between gap-4 py-4 -mx-2 px-2 rounded-lg hover:bg-sunken transition-colors"
                 >
-                  <div className="max-w-md">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#FF8A3D] block mb-0.5">
-                      {portal.agency}
-                    </span>
-                    <h3 className="font-bold text-sm text-[#2B1C33] mb-1">{portal.title}</h3>
-                    <p className="text-xs text-[#6F5B77] leading-relaxed">{portal.desc}</p>
-                  </div>
-
-                  <a
-                    href={portal.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white text-[#4A1D8F] hover:bg-[#4A1D8F] hover:text-white border border-[#D8C6F0] rounded-xl text-xs font-bold transition-all shadow-2xs self-start sm:self-center whitespace-nowrap"
-                  >
-                    <span>Open Portal</span>
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </a>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+                  <span>
+                    <span className="block text-[13px] font-semibold text-accent-ink">{portal.agency}</span>
+                    <span className="block mt-0.5 font-semibold text-ink group-hover:text-brand">{portal.title}</span>
+                    <span className="block mt-1 text-sm leading-relaxed text-muted">{portal.desc}</span>
+                  </span>
+                  <ArrowUpRight className="w-5 h-5 mt-1 shrink-0 text-muted group-hover:text-brand transition-colors" aria-label="Opens in a new tab" />
+                </a>
+              </li>
+            ))}
+          </ul>
+        </Panel>
       </div>
     </div>
   );

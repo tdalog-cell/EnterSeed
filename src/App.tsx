@@ -13,7 +13,8 @@ import { PricingView } from './views/PricingView';
 import { AboutView } from './views/AboutView';
 import { AdminView } from './views/AdminView';
 import { AuthView } from './views/AuthView';
-import { ArrowLeft, Sparkles } from 'lucide-react';
+import { LanguageMenu } from './components/LanguageMenu';
+import { Button, Logo } from './components/ui';
 
 const protectedPages: ActivePage[] = [
   'dashboard',
@@ -67,11 +68,9 @@ const MainRouter: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#FFF7F1] flex flex-col items-center justify-center p-4">
-        <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-[#4A1D8F] to-[#FF8A3D] p-3 shadow-lg flex items-center justify-center animate-pulse mb-4">
-          <img src="./logos/Icon White.png" alt="Enterseed" className="w-8 h-8 object-contain" />
-        </div>
-        <p className="text-xs font-bold text-[#4A1D8F] tracking-wider uppercase">Loading Enterseed…</p>
+      <div className="min-h-screen bg-canvas flex flex-col items-center justify-center gap-3" role="status">
+        <img src="./logos/Icon.png" alt="" className="w-10 h-10 object-contain" />
+        <p className="text-sm text-muted">Loading Enterseed…</p>
       </div>
     );
   }
@@ -84,41 +83,31 @@ const MainRouter: React.FC = () => {
   // 2. Unauthenticated views of public pages (e.g. About, Pricing, E-Filing, Admin) with a clean public header
   if (!user) {
     return (
-      <div className="min-h-screen bg-[#FFF7F1] flex flex-col">
-        {/* Simple Public Header */}
-        <header className="bg-white/95 backdrop-blur-md border-b border-[#E9D9EF] px-6 py-4 flex items-center justify-between sticky top-0 z-30">
-          <button
-            onClick={() => setActivePage('login')}
-            className="flex items-center gap-2.5"
-          >
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#4A1D8F] to-[#FF8A3D] p-1.5 flex items-center justify-center shadow-xs">
-              <img src="./logos/Icon White.png" alt="Enterseed" className="w-5 h-5 object-contain" />
+      <div className="min-h-screen bg-canvas flex flex-col">
+        <header className="sticky top-0 z-30 bg-canvas/95 backdrop-blur-sm border-b border-line">
+          <div className="max-w-6xl mx-auto h-16 px-4 sm:px-8 flex items-center justify-between gap-3">
+            <Logo onClick={() => setActivePage('login')} />
+            <div className="flex items-center gap-1 sm:gap-2">
+              <LanguageMenu />
+              <Button variant="ghost" size="sm" onClick={() => setActivePage('login')}>
+                Sign in
+              </Button>
+              <span className="hidden sm:block">
+                <Button size="sm" onClick={() => setActivePage('register')}>
+                  Create account
+                </Button>
+              </span>
             </div>
-            <span className="font-extrabold text-lg text-[#4A1D8F]">Enterseed</span>
-          </button>
-
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setActivePage('login')}
-              className="flex items-center gap-1.5 text-xs font-bold text-[#4A1D8F] hover:bg-[#F1EAF8] px-3 py-1.5 rounded-xl transition-colors"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              <span>Back to Sign In</span>
-            </button>
-            <button
-              onClick={() => setActivePage('register')}
-              className="text-xs font-bold text-white bg-[#4A1D8F] hover:bg-[#2C154F] px-3.5 py-1.5 rounded-xl transition-colors shadow-xs"
-            >
-              Create Account
-            </button>
           </div>
         </header>
 
-        <main className="flex-1 p-4 sm:p-8 max-w-6xl mx-auto w-full">
-          {activePage === 'pricing' && <PricingView />}
-          {activePage === 'about' && <AboutView />}
-          {activePage === 'efiling' && <EfilingView />}
-          {activePage === 'admin' && <AdminView />}
+        <main className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-8 py-8 sm:py-10">
+          <div key={activePage} className="view-enter">
+            {activePage === 'pricing' && <PricingView />}
+            {activePage === 'about' && <AboutView />}
+            {activePage === 'efiling' && <EfilingView />}
+            {activePage === 'admin' && <AdminView />}
+          </div>
         </main>
       </div>
     );

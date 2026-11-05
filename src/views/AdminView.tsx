@@ -1,21 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { apiFetch } from '../services/apiClient';
+import { Mail, RefreshCw } from 'lucide-react';
 import {
-  ShieldCheck,
-  Key,
-  CheckCircle,
-  XCircle,
-  AlertTriangle,
-  Trash2,
-  Mail,
-  Building,
-  MapPin,
-  Lock,
-  Unlock,
-  RefreshCw,
-  Eye,
-  FileCheck2
-} from 'lucide-react';
+  Button,
+  CheckField,
+  Field,
+  Modal,
+  Notice,
+  PageHeader,
+  Panel,
+  cx,
+  inputClass,
+  textareaClass
+} from '../components/ui';
 
 interface SupplierApplication {
   id: number;
@@ -52,67 +49,89 @@ interface AdminInquiry {
   createdAt: string;
 }
 
+type Tab = 'applications' | 'suppliers' | 'inquiries';
+type PendingAction = { kind: 'withdraw' | 'delete-supplier' | 'delete-inquiry'; id: number } | null;
+
+const CHECKS = [
+  { key: 'identityConfirmed', label: 'Applicant identity confirmed' },
+  { key: 'businessEvidenceReviewed', label: 'Business registration or commercial evidence reviewed' },
+  { key: 'contactConfirmed', label: 'Contact details confirmed' },
+  { key: 'locationConfirmed', label: 'Municipality or location verified' },
+  { key: 'listingConsentConfirmed', label: 'Explicit consent to publish verified' }
+] as const;
+
+type CheckKey = (typeof CHECKS)[number]['key'];
+
+const freshChecks = (): Record<CheckKey, boolean> & { reviewNotes: string } => ({
+  identityConfirmed: false,
+  businessEvidenceReviewed: false,
+  contactConfirmed: false,
+  locationConfirmed: false,
+  listingConsentConfirmed: false,
+  reviewNotes: 'Identity, commercial documents, and publication consent reviewed and confirmed valid.'
+});
+
+const KEY_STORAGE = 'enterseed_admin_key';
+
 export const AdminView: React.FC = () => {
-  const [apiKey, setApiKey] = useState(() => localStorage.getItem('enterseed_admin_key') || '');
+  const [apiKey, setApiKey] = useState(() => {
+    try {
+      return localStorage.getItem(KEY_STORAGE) || '';
+    } catch {
+      return '';
+    }
+  });
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [activeTab, setActiveTab] = useState<'applications' | 'suppliers' | 'inquiries'>('applications');
+  const [activeTab, setActiveTab] = useState<Tab>('applications');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const [applications, setApplications] = useState<SupplierApplication[]>([]);
   const [suppliers, setSuppliers] = useState<AdminSupplier[]>([]);
   const [inquiries, setInquiries] = useState<AdminInquiry[]>([]);
 
-  // Approval Modal State
   const [approvingApp, setApprovingApp] = useState<SupplierApplication | null>(null);
-  const [approvalChecks, setApprovalChecks] = useState({
-    identityConfirmed: false,
-    businessEvidenceReviewed: false,
-    contactConfirmed: false,
-    locationConfirmed: false,
-    listingConsentConfirmed: false,
-    reviewNotes: 'Identity, commercial documents, and publication consent reviewed and confirmed valid.'
-  });
+  const [approvalChecks, setApprovalChecks] = useState(freshChecks);
+  const [approvalError, setApprovalError] = useState<string | null>(null);
 
-  // Reject Modal State
   const [rejectingApp, setRejectingApp] = useState<SupplierApplication | null>(null);
   const [rejectReason, setRejectReason] = useState('Insufficient commercial proof of business registration in Region 12.');
+  const [rejectError, setRejectError] = useState<string | null>(null);
+
+  const [pending, setPending] = useState<PendingAction>(null);
+
+  const authHeaders = (extra: Record<string, string> = {}) => ({ Authorization: `Bearer ${apiKey}`, ...extra });
 
   const fetchData = async (keyToUse = apiKey) => {
     if (!keyToUse) return;
     setLoading(true);
     setErrorMsg(null);
     try {
-      const headers = {
-        Authorization: `Bearer ${keyToUse}`,
-        Accept: 'application/json'
-      };
-
+      const headers = { Authorization: `Bearer ${keyToUse}`, Accept: 'application/json' };
       const [appsRes, supsRes, inqsRes] = await Promise.all([
         apiFetch('/api/admin/supplier-applications', { headers }),
         apiFetch('/api/admin/suppliers', { headers }),
         apiFetch('/api/admin/inquiries', { headers })
       ]);
-
-      if (appsRes.status === 401 || supsRes.status === 401 || inqsRes.status === 401) {
-        throw new Error('Invalid Admin API Key. Please verify your secret key.');
+      if ([appsRes, supsRes, inqsRes].some((r) => r.status === 401)) {
+        throw new Error('That admin key was not accepted. Check it and try again.');
       }
       if (appsRes.status === 503 || supsRes.status === 503) {
-        // ADMIN_API_KEY might not be configured on server yet, but we allow demo inspection
-        throw new Error('Admin review key is not configured in .env on server. Check ADMIN_API_KEY.');
+        throw new Error('The admin key is not configured on the server. Set ADMIN_API_KEY in .env.');
       }
-
-      const appsData = await appsRes.json();
-      const supsData = await supsRes.json();
-      const inqsData = await inqsRes.json();
-
+      const [appsData, supsData, inqsData] = await Promise.all([appsRes.json(), supsRes.json(), inqsRes.json()]);
       setApplications(appsData.applications || []);
       setSuppliers(supsData.suppliers || []);
       setInquiries(inqsData.inquiries || []);
       setIsAuthenticated(true);
-      localStorage.setItem('enterseed_admin_key', keyToUse);
+      try {
+        localStorage.setItem(KEY_STORAGE, keyToUse);
+      } catch {
+        /* session only */
+      }
     } catch (err: any) {
-      setErrorMsg(err.message || 'Authentication error.');
+      setErrorMsg(err.message || 'Could not reach the server.');
       setIsAuthenticated(false);
     } finally {
       setLoading(false);
@@ -120,33 +139,22 @@ export const AdminView: React.FC = () => {
   };
 
   useEffect(() => {
-    if (apiKey) {
-      fetchData(apiKey);
-    }
-  }, []);
+    if (apiKey) fetchData(apiKey);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const allChecked = CHECKS.every((c) => approvalChecks[c.key]);
+  const notesOk = approvalChecks.reviewNotes.trim().length >= 20;
 
   const handleApprove = async () => {
     if (!approvingApp) return;
-    if (
-      !approvalChecks.identityConfirmed ||
-      !approvalChecks.businessEvidenceReviewed ||
-      !approvalChecks.contactConfirmed ||
-      !approvalChecks.locationConfirmed ||
-      !approvalChecks.listingConsentConfirmed ||
-      approvalChecks.reviewNotes.trim().length < 20
-    ) {
-      alert('All 5 checkboxes and a review note of at least 20 characters are required for approval.');
+    if (!allChecked || !notesOk) {
+      setApprovalError('Confirm all five checks and write a review note of at least 20 characters.');
       return;
     }
-
     try {
       const res = await apiFetch(`/api/admin/supplier-applications/${approvingApp.id}/approve`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${apiKey}`,
-          Accept: 'application/json'
-        },
+        headers: authHeaders({ 'Content-Type': 'application/json', Accept: 'application/json' }),
         body: JSON.stringify({
           identityConfirmed: true,
           businessEvidenceReviewed: true,
@@ -156,123 +164,124 @@ export const AdminView: React.FC = () => {
           reviewNotes: approvalChecks.reviewNotes.trim()
         })
       });
-
       if (!res.ok) {
-        const d = await res.json();
-        throw new Error(d.error || 'Approval failed');
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.error || 'Approval failed.');
       }
-
       setApprovingApp(null);
       fetchData();
     } catch (err: any) {
-      alert(err.message);
+      setApprovalError(err.message);
     }
   };
 
   const handleReject = async () => {
     if (!rejectingApp) return;
     if (rejectReason.trim().length < 10) {
-      alert('A rejection reason of at least 10 characters is required.');
+      setRejectError('Write a reason of at least 10 characters.');
       return;
     }
-
     try {
       const res = await apiFetch(`/api/admin/supplier-applications/${rejectingApp.id}/reject`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${apiKey}`,
-          Accept: 'application/json'
-        },
+        headers: authHeaders({ 'Content-Type': 'application/json', Accept: 'application/json' }),
         body: JSON.stringify({ reason: rejectReason.trim() })
       });
-
       if (!res.ok) {
-        const d = await res.json();
-        throw new Error(d.error || 'Rejection failed');
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.error || 'Rejection failed.');
       }
-
       setRejectingApp(null);
       fetchData();
     } catch (err: any) {
-      alert(err.message);
+      setRejectError(err.message);
     }
   };
 
-  const handleWithdrawSupplier = async (id: number) => {
-    if (!confirm('Are you sure you want to withdraw this supplier from the public directory?')) return;
+  const runPending = async () => {
+    if (!pending) return;
+    const { kind, id } = pending;
+    setPending(null);
+    setActionError(null);
+    const req =
+      kind === 'withdraw'
+        ? { url: `/api/admin/suppliers/${id}/withdraw`, method: 'POST', fail: 'The supplier could not be withdrawn.' }
+        : kind === 'delete-supplier'
+        ? { url: `/api/admin/suppliers/${id}`, method: 'DELETE', fail: 'The supplier could not be deleted.' }
+        : { url: `/api/admin/inquiries/${id}`, method: 'DELETE', fail: 'The inquiry could not be deleted.' };
     try {
-      const res = await apiFetch(`/api/admin/suppliers/${id}/withdraw`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${apiKey}` }
-      });
-      if (res.ok) fetchData();
+      const res = await apiFetch(req.url, { method: req.method, headers: authHeaders() });
+      if (!res.ok) throw new Error();
+      fetchData();
     } catch {
-      alert('Failed to withdraw supplier.');
+      setActionError(req.fail);
     }
   };
 
-  const handleDeleteSupplier = async (id: number) => {
-    if (!confirm('Permanently erase this supplier record?')) return;
-    try {
-      const res = await apiFetch(`/api/admin/suppliers/${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${apiKey}` }
-      });
-      if (res.ok) fetchData();
-    } catch {
-      alert('Failed to delete supplier.');
-    }
-  };
+  const confirmInline = (kind: NonNullable<PendingAction>['kind'], id: number, label: string, prompt: string) =>
+    pending?.kind === kind && pending.id === id ? (
+      <span className="inline-flex items-center gap-1.5" role="group" aria-label={prompt}>
+        <span className="text-[13px] text-muted">{prompt}</span>
+        <Button variant="danger" size="sm" onClick={runPending}>
+          Yes
+        </Button>
+        <Button variant="ghost" size="sm" onClick={() => setPending(null)}>
+          No
+        </Button>
+      </span>
+    ) : (
+      <Button variant="danger" size="sm" onClick={() => setPending({ kind, id })}>
+        {label}
+      </Button>
+    );
 
-  const handleDeleteInquiry = async (id: number) => {
-    if (!confirm('Delete this inquiry from staff records?')) return;
-    try {
-      const res = await apiFetch(`/api/admin/inquiries/${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${apiKey}` }
-      });
-      if (res.ok) fetchData();
-    } catch {
-      alert('Failed to delete inquiry.');
-    }
-  };
+  const tabs: Array<{ id: Tab; label: string; count: number }> = [
+    { id: 'applications', label: 'Applications', count: applications.length },
+    { id: 'suppliers', label: 'Suppliers', count: suppliers.length },
+    { id: 'inquiries', label: 'Inquiries', count: inquiries.length }
+  ];
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-300">
-      {/* Header */}
-      <div>
-        <div className="flex items-center gap-2 text-[#4A1D8F] font-bold text-xs uppercase tracking-wider mb-2">
-          <ShieldCheck className="w-4 h-4 text-[#FF8A3D]" />
-          <span>Restricted Staff Operations</span>
-        </div>
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-[#2B1C33] tracking-tight">
-          Staff Review Console
-        </h1>
-        <p className="text-sm text-[#6F5B77] mt-1 max-w-3xl leading-relaxed">
-          Internal administrative desk to review pending supplier applications, manage verified directory listings, and respond to incoming inquiries.
-        </p>
-      </div>
+    <div className="space-y-6 sm:space-y-8">
+      <PageHeader
+        title="Staff review console"
+        lead="Review supplier applications, manage directory listings, and answer inquiries."
+        actions={
+          isAuthenticated && (
+            <>
+              <Button variant="secondary" size="sm" onClick={() => fetchData()} disabled={loading}>
+                <RefreshCw className={loading ? 'animate-spin' : undefined} />
+                Refresh
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setIsAuthenticated(false);
+                  setApiKey('');
+                  try {
+                    localStorage.removeItem(KEY_STORAGE);
+                  } catch {
+                    /* ignore */
+                  }
+                }}
+              >
+                Lock console
+              </Button>
+            </>
+          )
+        }
+      />
 
-      {/* Authentication Card */}
       {!isAuthenticated ? (
-        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-[#E9D9EF] shadow-sm max-w-md mx-auto">
-          <div className="w-12 h-12 rounded-2xl bg-[#FFF0E4] text-[#F26430] flex items-center justify-center mx-auto mb-4">
-            <Lock className="w-6 h-6" />
-          </div>
-          <h2 className="text-center font-bold text-lg text-[#2B1C33] mb-1">
-            Admin Authentication Required
-          </h2>
-          <p className="text-center text-xs text-[#6F5B77] mb-6">
-            Enter your secret <code className="font-mono text-[#4A1D8F]">ADMIN_API_KEY</code> to open the review queue.
-          </p>
-
+        <Panel className="max-w-md">
+          <h2 className="text-lg font-bold text-ink">Staff access</h2>
+          <p className="mt-1 mb-5 text-sm text-muted">Enter the server’s admin key to open the review queue.</p>
           {errorMsg && (
-            <div className="p-3 mb-4 rounded-xl text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200">
+            <Notice tone="error" className="mb-4">
               {errorMsg}
-            </div>
+            </Notice>
           )}
-
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -280,379 +289,211 @@ export const AdminView: React.FC = () => {
             }}
             className="space-y-4"
           >
-            <div>
-              <label className="block text-xs font-semibold text-[#2B1C33] mb-1">Admin API Key</label>
-              <input
-                type="password"
-                required
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                placeholder="Enter ADMIN_API_KEY secret…"
-                className="w-full bg-[#FFF7F1] border border-[#E9D9EF] rounded-xl px-3.5 py-2.5 text-xs text-[#2B1C33] font-mono"
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading || !apiKey.trim()}
-              className="w-full bg-[#4A1D8F] hover:bg-[#2C154F] text-white font-bold py-2.5 rounded-xl shadow transition-all text-xs"
-            >
-              {loading ? 'Authenticating…' : 'Access Staff Console'}
-            </button>
+            <Field label="Admin key">
+              {(id) => (
+                <input id={id} type="password" required autoComplete="off" value={apiKey} onChange={(e) => setApiKey(e.target.value)} className={inputClass} />
+              )}
+            </Field>
+            <Button type="submit" className="w-full" disabled={loading || !apiKey.trim()}>
+              {loading ? 'Checking…' : 'Open console'}
+            </Button>
           </form>
-        </div>
+        </Panel>
       ) : (
-        <div className="space-y-6">
-          {/* Top Bar with Status and Refresh */}
-          <div className="bg-white p-4 rounded-2xl border border-[#E9D9EF] shadow-xs flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#76A13C]" />
-              <span className="text-xs font-bold text-[#2B1C33]">Authenticated as Staff Reviewer</span>
-            </div>
+        <div className="space-y-5">
+          {actionError && <Notice tone="error">{actionError}</Notice>}
 
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => fetchData()}
-                className="p-2 bg-[#FFF7F1] hover:bg-[#E9D9EF] text-[#4A1D8F] rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors"
-              >
-                <RefreshCw className="w-3.5 h-3.5" />
-                <span>Refresh Data</span>
-              </button>
-              <button
-                onClick={() => {
-                  setIsAuthenticated(false);
-                  localStorage.removeItem('enterseed_admin_key');
-                  setApiKey('');
-                }}
-                className="p-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl text-xs font-semibold transition-colors"
-              >
-                Sign Out Admin
-              </button>
-            </div>
+          <div role="tablist" aria-label="Review queues" className="flex gap-1 border-b border-line overflow-x-auto">
+            {tabs.map((t) => {
+              const active = activeTab === t.id;
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => setActiveTab(t.id)}
+                  className={cx(
+                    'relative h-11 px-3.5 text-sm font-semibold whitespace-nowrap transition-colors',
+                    active ? 'text-brand' : 'text-muted hover:text-ink'
+                  )}
+                >
+                  {t.label}
+                  <span className={cx('ml-1.5 rounded-full px-1.5 py-0.5 text-xs tnum', active ? 'bg-brand-soft' : 'bg-sunken')}>{t.count}</span>
+                  {active && <span className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-brand" />}
+                </button>
+              );
+            })}
           </div>
 
-          {/* Navigation Tabs */}
-          <div className="flex border-b border-[#E9D9EF] gap-2">
-            <button
-              onClick={() => setActiveTab('applications')}
-              className={`pb-3 px-4 text-xs font-bold transition-all relative ${
-                activeTab === 'applications'
-                  ? 'text-[#4A1D8F]'
-                  : 'text-[#6F5B77] hover:text-[#2B1C33]'
-              }`}
-            >
-              <span>Pending Applications ({applications.length})</span>
-              {activeTab === 'applications' && (
-                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#4A1D8F]" />
-              )}
-            </button>
-
-            <button
-              onClick={() => setActiveTab('suppliers')}
-              className={`pb-3 px-4 text-xs font-bold transition-all relative ${
-                activeTab === 'suppliers'
-                  ? 'text-[#4A1D8F]'
-                  : 'text-[#6F5B77] hover:text-[#2B1C33]'
-              }`}
-            >
-              <span>All Suppliers ({suppliers.length})</span>
-              {activeTab === 'suppliers' && (
-                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#4A1D8F]" />
-              )}
-            </button>
-
-            <button
-              onClick={() => setActiveTab('inquiries')}
-              className={`pb-3 px-4 text-xs font-bold transition-all relative ${
-                activeTab === 'inquiries'
-                  ? 'text-[#4A1D8F]'
-                  : 'text-[#6F5B77] hover:text-[#2B1C33]'
-              }`}
-            >
-              <span>Inquiries Queue ({inquiries.length})</span>
-              {activeTab === 'inquiries' && (
-                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#4A1D8F]" />
-              )}
-            </button>
-          </div>
-
-          {/* Tab 1: Pending Supplier Applications */}
-          {activeTab === 'applications' && (
-            <div className="bg-white rounded-3xl p-6 border border-[#E9D9EF] shadow-sm">
-              <h3 className="font-bold text-base text-[#2B1C33] mb-4">
-                Pending Supplier Applications ({applications.length})
-              </h3>
-
-              {applications.length === 0 ? (
-                <p className="text-xs text-[#6F5B77] py-8 text-center">
-                  No pending supplier applications in queue.
-                </p>
-              ) : (
-                <div className="space-y-4">
-                  {applications.map((app) => (
-                    <div
-                      key={app.id}
-                      className="p-5 rounded-2xl bg-[#FFF7F1] border border-[#E9D9EF] flex flex-col md:flex-row md:items-center justify-between gap-4"
-                    >
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-base text-[#2B1C33]">{app.businessName}</span>
-                          <span className="text-[10px] uppercase font-bold text-[#F26430] bg-[#FFF0E4] px-2 py-0.5 rounded-md">
-                            {app.category}
-                          </span>
-                        </div>
-                        <p className="text-xs text-[#4A1D8F] font-semibold">⌖ {app.location}</p>
-                        <p className="text-xs text-[#6F5B77]">
-                          Applicant: {app.contactName} ({app.contactEmail})
-                        </p>
-                        <p className="text-xs text-[#2B1C33] font-medium pt-1">
-                          Products: {app.products}
-                        </p>
-                      </div>
-
-                      <div className="flex items-center gap-2 self-start md:self-auto">
-                        <button
-                          onClick={() => setApprovingApp(app)}
-                          className="px-4 py-2 bg-[#76A13C] hover:bg-[#5E8230] text-white rounded-xl text-xs font-bold transition-all shadow-xs"
-                        >
-                          Review & Approve
-                        </button>
-                        <button
-                          onClick={() => setRejectingApp(app)}
-                          className="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl text-xs font-bold transition-all"
-                        >
-                          Reject
-                        </button>
-                      </div>
+          {activeTab === 'applications' &&
+            (applications.length === 0 ? (
+              <p className="py-12 text-center text-sm text-muted">No applications waiting for review.</p>
+            ) : (
+              <ul className="space-y-3">
+                {applications.map((app) => (
+                  <li key={app.id} className="bg-surface rounded-2xl border border-line p-5 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                    <div className="min-w-0">
+                      <h3 className="font-bold text-ink">{app.businessName}</h3>
+                      <p className="mt-0.5 text-[13px] text-muted capitalize">
+                        {app.category.replace('-', ' ')} · {app.location}
+                      </p>
+                      <p className="mt-3 text-sm text-ink">{app.products}</p>
+                      <p className="mt-2 text-[13px] text-muted break-words">
+                        {app.contactName} · {app.contactEmail}
+                      </p>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
+                    <div className="flex gap-2 shrink-0">
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          setApprovalChecks(freshChecks());
+                          setApprovalError(null);
+                          setApprovingApp(app);
+                        }}
+                      >
+                        Review and approve
+                      </Button>
+                      <Button
+                        variant="danger"
+                        size="sm"
+                        onClick={() => {
+                          setRejectError(null);
+                          setRejectingApp(app);
+                        }}
+                      >
+                        Reject
+                      </Button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            ))}
 
-          {/* Tab 2: All Suppliers */}
-          {activeTab === 'suppliers' && (
-            <div className="bg-white rounded-3xl p-6 border border-[#E9D9EF] shadow-sm">
-              <h3 className="font-bold text-base text-[#2B1C33] mb-4">
-                Directory Suppliers ({suppliers.length})
-              </h3>
-
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead>
-                    <tr className="border-b border-[#E9D9EF] text-[#6F5B77]">
-                      <th className="pb-3 font-semibold">Business</th>
-                      <th className="pb-3 font-semibold">Category</th>
-                      <th className="pb-3 font-semibold">Location</th>
-                      <th className="pb-3 font-semibold">Status</th>
-                      <th className="pb-3 font-semibold">Verified</th>
-                      <th className="pb-3 font-semibold text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[#E9D9EF]">
-                    {suppliers.map((s) => (
-                      <tr key={s.id} className="hover:bg-[#FFF7F1]/50">
-                        <td className="py-3 font-bold text-[#2B1C33]">{s.businessName}</td>
-                        <td className="py-3 text-[#6F5B77]">{s.category}</td>
-                        <td className="py-3 text-[#4A1D8F]">{s.location}</td>
-                        <td className="py-3">
-                          <span
-                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                              s.status === 'active'
-                                ? 'bg-[#E1EBD4] text-[#76A13C]'
-                                : 'bg-stone-100 text-stone-600'
-                            }`}
-                          >
-                            {s.status}
-                          </span>
-                        </td>
-                        <td className="py-3 text-[#6F5B77]">
-                          {new Date(s.verifiedAt).toLocaleDateString()}
-                        </td>
-                        <td className="py-3 text-right space-x-2">
-                          {s.status === 'active' && (
-                            <button
-                              onClick={() => handleWithdrawSupplier(s.id)}
-                              className="text-amber-600 hover:underline font-semibold"
-                            >
-                              Withdraw
-                            </button>
-                          )}
-                          <button
-                            onClick={() => handleDeleteSupplier(s.id)}
-                            className="text-rose-600 hover:underline font-semibold"
-                          >
-                            Delete
-                          </button>
-                        </td>
+          {activeTab === 'suppliers' &&
+            (suppliers.length === 0 ? (
+              <p className="py-12 text-center text-sm text-muted">No suppliers in the directory yet.</p>
+            ) : (
+              <Panel className="p-0 sm:p-0 overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[640px] text-left text-sm">
+                    <thead className="bg-sunken text-[13px] text-muted">
+                      <tr>
+                        <th className="px-5 py-3 font-semibold">Business</th>
+                        <th className="px-3 py-3 font-semibold">Location</th>
+                        <th className="px-3 py-3 font-semibold">Status</th>
+                        <th className="px-3 py-3 font-semibold">Verified</th>
+                        <th className="px-5 py-3 font-semibold text-right">Actions</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          {/* Tab 3: Inquiries Queue */}
-          {activeTab === 'inquiries' && (
-            <div className="bg-white rounded-3xl p-6 border border-[#E9D9EF] shadow-sm">
-              <h3 className="font-bold text-base text-[#2B1C33] mb-4">
-                Support & Supplier Inquiries ({inquiries.length})
-              </h3>
-
-              {inquiries.length === 0 ? (
-                <p className="text-xs text-[#6F5B77] py-8 text-center">No inquiries recorded.</p>
-              ) : (
-                <div className="space-y-3">
-                  {inquiries.map((inq) => (
-                    <div
-                      key={inq.id}
-                      className="p-4 rounded-2xl bg-[#FFF7F1] border border-[#E9D9EF] space-y-2"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-xs text-[#4A1D8F]">{inq.topic}</span>
-                        <span className="text-[10px] text-[#6F5B77]">
-                          {new Date(inq.createdAt).toLocaleString()}
-                        </span>
-                      </div>
-                      <p className="text-xs text-[#2B1C33] font-semibold">
-                        From: {inq.name} ({inq.email})
-                      </p>
-                      <p className="text-xs text-[#6F5B77] bg-white p-3 rounded-xl border border-[#E9D9EF]">
-                        {inq.message}
-                      </p>
-                      <div className="flex items-center justify-end gap-3 pt-1 text-xs">
-                        <a
-                          href={`mailto:${inq.email}?subject=Re: [Enterseed] ${encodeURIComponent(inq.topic)}`}
-                          className="font-bold text-[#4A1D8F] hover:underline flex items-center gap-1"
-                        >
-                          <Mail className="w-3.5 h-3.5" />
-                          <span>Reply via Email</span>
-                        </a>
-                        <button
-                          onClick={() => handleDeleteInquiry(inq.id)}
-                          className="font-semibold text-rose-600 hover:underline flex items-center gap-1"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                          <span>Delete</span>
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                    </thead>
+                    <tbody className="divide-y divide-line">
+                      {suppliers.map((s) => (
+                        <tr key={s.id}>
+                          <td className="px-5 py-3">
+                            <span className="block font-semibold text-ink">{s.businessName}</span>
+                            <span className="block text-[13px] text-muted capitalize">{s.category.replace('-', ' ')}</span>
+                          </td>
+                          <td className="px-3 py-3 text-muted">{s.location}</td>
+                          <td className="px-3 py-3">
+                            <span className={cx('rounded-full px-2 py-0.5 text-xs font-semibold capitalize', s.status === 'active' ? 'bg-good-soft text-good' : 'bg-sunken text-muted')}>
+                              {s.status}
+                            </span>
+                          </td>
+                          <td className="px-3 py-3 text-muted tnum">{new Date(s.verifiedAt).toLocaleDateString('en-PH')}</td>
+                          <td className="px-5 py-3">
+                            <div className="flex justify-end gap-1">
+                              {s.status === 'active' && confirmInline('withdraw', s.id, 'Withdraw', 'Withdraw?')}
+                              {confirmInline('delete-supplier', s.id, 'Delete', 'Erase record?')}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-              )}
-            </div>
-          )}
+              </Panel>
+            ))}
+
+          {activeTab === 'inquiries' &&
+            (inquiries.length === 0 ? (
+              <p className="py-12 text-center text-sm text-muted">No inquiries yet.</p>
+            ) : (
+              <ul className="space-y-3">
+                {inquiries.map((inq) => (
+                  <li key={inq.id} className="bg-surface rounded-2xl border border-line p-5">
+                    <div className="flex flex-wrap items-baseline justify-between gap-2">
+                      <h3 className="font-bold text-ink">{inq.topic}</h3>
+                      <span className="text-xs text-muted tnum">{new Date(inq.createdAt).toLocaleString('en-PH')}</span>
+                    </div>
+                    <p className="mt-0.5 text-[13px] text-muted break-words">
+                      {inq.name} · {inq.email}
+                    </p>
+                    <p className="mt-3 text-sm leading-relaxed text-ink whitespace-pre-wrap">{inq.message}</p>
+                    <div className="mt-4 flex flex-wrap items-center gap-2">
+                      <a
+                        href={`mailto:${inq.email}?subject=${encodeURIComponent(`Re: [Enterseed] ${inq.topic}`)}`}
+                        className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-[13px] font-semibold text-brand hover:bg-brand-soft"
+                      >
+                        <Mail className="w-4 h-4" />
+                        Reply by email
+                      </a>
+                      {confirmInline('delete-inquiry', inq.id, 'Delete', 'Delete inquiry?')}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            ))}
         </div>
       )}
 
-      {/* Approval Modal with the 5 Required Checks */}
-      {approvingApp && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#2B1C33]/60 backdrop-blur-xs">
-          <div className="bg-white w-full max-w-lg rounded-3xl p-6 sm:p-8 shadow-2xl border border-[#D8C6F0] space-y-4 animate-in fade-in duration-200">
-            <h3 className="text-lg font-bold text-[#2B1C33]">
-              Review & Approve: {approvingApp.businessName}
-            </h3>
-            <p className="text-xs text-[#6F5B77]">
-              Enterseed approval requires validating all five compliance controls before publishing.
-            </p>
-
-            <div className="space-y-2.5 pt-2">
-              {[
-                { key: 'identityConfirmed', label: '1. Applicant identity confirmed' },
-                { key: 'businessEvidenceReviewed', label: '2. Business registration / commercial evidence reviewed' },
-                { key: 'contactConfirmed', label: '3. Contact details confirmed' },
-                { key: 'locationConfirmed', label: '4. Municipality / location verified' },
-                { key: 'listingConsentConfirmed', label: '5. Explicit listing publication consent verified' },
-              ].map((c) => (
-                <label key={c.key} className="flex items-center gap-2.5 text-xs text-[#2B1C33] cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={(approvalChecks as any)[c.key]}
-                    onChange={(e) =>
-                      setApprovalChecks({ ...approvalChecks, [c.key]: e.target.checked })
-                    }
-                    className="rounded text-[#4A1D8F]"
-                  />
-                  <span>{c.label}</span>
-                </label>
-              ))}
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-[#2B1C33] mb-1">
-                Review Notes (min 20 characters)
-              </label>
-              <textarea
-                rows={3}
-                value={approvalChecks.reviewNotes}
-                onChange={(e) =>
-                  setApprovalChecks({ ...approvalChecks, reviewNotes: e.target.value })
-                }
-                className="w-full bg-[#FFF7F1] border border-[#E9D9EF] rounded-xl p-3 text-xs"
-              />
-            </div>
-
-            <div className="flex gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setApprovingApp(null)}
-                className="flex-1 py-2.5 bg-stone-100 hover:bg-stone-200 text-[#2B1C33] rounded-xl text-xs font-semibold"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleApprove}
-                className="flex-1 py-2.5 bg-[#76A13C] hover:bg-[#5E8230] text-white rounded-xl text-xs font-bold shadow"
-              >
-                Confirm Approval & Publish
-              </button>
-            </div>
+      <Modal
+        open={!!approvingApp}
+        onClose={() => setApprovingApp(null)}
+        title={approvingApp ? `Approve ${approvingApp.businessName}` : ''}
+        description="Publishing requires all five checks."
+      >
+        <div className="space-y-4">
+          {approvalError && <Notice tone="error">{approvalError}</Notice>}
+          <fieldset className="space-y-3">
+            <legend className="sr-only">Verification checks</legend>
+            {CHECKS.map((c) => (
+              <CheckField key={c.key} checked={approvalChecks[c.key]} onChange={(v) => setApprovalChecks({ ...approvalChecks, [c.key]: v })}>
+                <span className="text-ink">{c.label}</span>
+              </CheckField>
+            ))}
+          </fieldset>
+          <Field label="Review notes" hint={`${approvalChecks.reviewNotes.trim().length} / 20 characters minimum`}>
+            {(id) => (
+              <textarea id={id} rows={3} value={approvalChecks.reviewNotes} onChange={(e) => setApprovalChecks({ ...approvalChecks, reviewNotes: e.target.value })} className={textareaClass} />
+            )}
+          </Field>
+          <div className="flex gap-2 pt-1">
+            <Button variant="secondary" className="flex-1" onClick={() => setApprovingApp(null)}>
+              Cancel
+            </Button>
+            <Button className="flex-1" onClick={handleApprove} disabled={!allChecked || !notesOk}>
+              Approve and publish
+            </Button>
           </div>
         </div>
-      )}
+      </Modal>
 
-      {/* Reject Modal */}
-      {rejectingApp && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#2B1C33]/60 backdrop-blur-xs">
-          <div className="bg-white w-full max-w-md rounded-3xl p-6 sm:p-8 shadow-2xl border border-[#D8C6F0] space-y-4 animate-in fade-in duration-200">
-            <h3 className="text-lg font-bold text-rose-700">
-              Reject Application: {rejectingApp.businessName}
-            </h3>
-
-            <div>
-              <label className="block text-xs font-semibold text-[#2B1C33] mb-1">
-                Rejection Reason (min 10 characters)
-              </label>
-              <textarea
-                rows={3}
-                value={rejectReason}
-                onChange={(e) => setRejectReason(e.target.value)}
-                className="w-full bg-[#FFF7F1] border border-[#E9D9EF] rounded-xl p-3 text-xs"
-              />
-            </div>
-
-            <div className="flex gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setRejectingApp(null)}
-                className="flex-1 py-2.5 bg-stone-100 text-[#2B1C33] rounded-xl text-xs font-semibold"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleReject}
-                className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold shadow"
-              >
-                Confirm Rejection
-              </button>
-            </div>
+      <Modal open={!!rejectingApp} onClose={() => setRejectingApp(null)} title={rejectingApp ? `Reject ${rejectingApp.businessName}` : ''}>
+        <div className="space-y-4">
+          {rejectError && <Notice tone="error">{rejectError}</Notice>}
+          <Field label="Reason" hint="At least 10 characters.">
+            {(id) => <textarea id={id} rows={3} value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} className={textareaClass} />}
+          </Field>
+          <div className="flex gap-2 pt-1">
+            <Button variant="secondary" className="flex-1" onClick={() => setRejectingApp(null)}>
+              Cancel
+            </Button>
+            <Button className="flex-1 !bg-danger hover:!bg-[#912018] !text-white" onClick={handleReject}>
+              Reject application
+            </Button>
           </div>
         </div>
-      )}
+      </Modal>
     </div>
   );
 };

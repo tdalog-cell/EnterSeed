@@ -1,23 +1,13 @@
 import React, { useState } from 'react';
+import { ArrowRight } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { useLanguage, Language } from '../context/LanguageContext';
+import { useLanguage } from '../context/LanguageContext';
 import { ActivePage } from '../components/AppShell';
-import {
-  Lock,
-  Mail,
-  Building,
-  User,
-  Sparkles,
-  AlertCircle,
-  ArrowRight,
-  Globe,
-  CheckCircle2,
-  ShieldCheck,
-  ChevronDown,
-  Coins,
-  MapPin,
-  FileText
-} from 'lucide-react';
+import { LanguageMenu } from '../components/LanguageMenu';
+import { LanguageChoice } from '../components/LanguageChoice';
+import { PhotoImg } from '../components/PhotoImg';
+import { Button, CheckField, Field, Logo, Notice, Segmented, inputClass } from '../components/ui';
+import { PHOTOS } from '../photos';
 
 interface AuthViewProps {
   initialMode: 'login' | 'register';
@@ -25,10 +15,10 @@ interface AuthViewProps {
 }
 
 export const AuthView: React.FC<AuthViewProps> = ({ initialMode, setActivePage }) => {
-  const [isRegister, setIsRegister] = useState(initialMode === 'register');
+  const [mode, setMode] = useState<'login' | 'register'>(initialMode);
+  const isRegister = mode === 'register';
   const { login, register, setQuickDemoUser } = useAuth();
-  const { language, setLanguage } = useLanguage();
-  const [langMenuOpen, setLangMenuOpen] = useState(false);
+  const { t, language, setLanguage, hasChosenLanguage } = useLanguage();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -41,38 +31,31 @@ export const AuthView: React.FC<AuthViewProps> = ({ initialMode, setActivePage }
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const switchMode = (next: 'login' | 'register') => {
+    setMode(next);
+    setError(null);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    setLoading(true);
 
-    if (isRegister) {
-      if (!agree) {
-        setError('Please agree to the terms to create your account.');
-        setLoading(false);
-        return;
-      }
-      const res = await register({
-        firstName,
-        lastName,
-        email,
-        password,
-        business
-      });
-      if (res.success) {
-        setActivePage('dashboard');
-      } else {
-        setError(res.error || 'Registration failed.');
-      }
-    } else {
-      const res = await login(email, password, remember);
-      if (res.success) {
-        setActivePage('dashboard');
-      } else {
-        setError(res.error || 'Sign in failed. Check your email and password.');
-      }
+    if (isRegister && !agree) {
+      setError(t('auth.agreeRequired'));
+      return;
     }
+
+    setLoading(true);
+    const res = isRegister
+      ? await register({ firstName, lastName, email, password, business })
+      : await login(email, password, remember);
     setLoading(false);
+
+    if (res.success) {
+      setActivePage('dashboard');
+    } else {
+      setError(res.error || t(isRegister ? 'auth.registerFailed' : 'auth.signInFailed'));
+    }
   };
 
   const handleDemoSignIn = () => {
@@ -86,307 +69,157 @@ export const AuthView: React.FC<AuthViewProps> = ({ initialMode, setActivePage }
     setActivePage('dashboard');
   };
 
-  const languages: { code: Language; label: string }[] = [
-    { code: 'en', label: 'English' },
-    { code: 'fil', label: 'Filipino (Tagalog)' },
-    { code: 'hil', label: 'Hiligaynon' }
-  ];
-
   return (
-    <div className="min-h-screen bg-[#FFF7F1] flex flex-col justify-between selection:bg-[#FFD166] selection:text-[#4A1D8F]">
-      {/* Standalone Navigation Header */}
-      <header className="w-full bg-white/90 backdrop-blur-md border-b border-[#E9D9EF] px-6 py-4 flex items-center justify-between z-20">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#4A1D8F] to-[#FF8A3D] p-1.5 flex items-center justify-center shadow-md">
-            <img src="./logos/Icon White.png" alt="Enterseed" className="w-6 h-6 object-contain" />
-          </div>
-          <div>
-            <span className="font-extrabold text-xl tracking-tight text-[#4A1D8F] block leading-tight">Enterseed</span>
-            <span className="text-[10px] text-[#FF8A3D] font-bold uppercase tracking-wider block">South Cotabato MSME Hub</span>
+    <div className="min-h-screen bg-canvas lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(480px,560px)] xl:grid-cols-[minmax(0,1fr)_600px]">
+      {/* Photo side */}
+      <aside className="relative h-[19rem] sm:h-96 lg:h-auto lg:min-h-screen lg:sticky lg:top-0 lg:max-h-screen">
+        <PhotoImg photo={PHOTOS.carabao} sizes="(min-width: 1024px) 60vw, 100vw" fill eager />
+        <div className="absolute inset-0 bg-gradient-to-t from-night/85 via-night/25 to-night/35 pointer-events-none" />
+        <div className="relative h-full flex flex-col justify-between p-5 sm:p-8 lg:p-12 pointer-events-none">
+          <Logo tone="dark" caption="South Cotabato MSMEs" />
+          <div className="max-w-xl pb-2 lg:pb-8">
+            <h1 className="text-2xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-white leading-[1.1] max-w-[18ch] sm:max-w-none">
+              {t('auth.headline')}
+            </h1>
+            <p className="hidden sm:block mt-4 text-base lg:text-lg leading-relaxed text-white/85 max-w-lg">
+              {t('auth.lead')}
+            </p>
           </div>
         </div>
+      </aside>
 
-        <div className="flex items-center gap-3 sm:gap-4">
-          {/* Public navigation quick links */}
-          <div className="hidden sm:flex items-center gap-4 text-xs font-semibold text-[#6F5B77]">
-            <button onClick={() => setActivePage('about')} className="hover:text-[#4A1D8F] transition-colors">
-              About
-            </button>
-            <button onClick={() => setActivePage('efiling')} className="hover:text-[#4A1D8F] transition-colors">
-              E-Filing
-            </button>
-            <button onClick={() => setActivePage('pricing')} className="hover:text-[#4A1D8F] transition-colors">
-              Pricing
-            </button>
-          </div>
+      {/* Form side */}
+      <div className="flex flex-col min-h-[calc(100vh-16rem)] lg:min-h-screen">
+        <header className="flex items-center justify-end gap-1 px-4 sm:px-8 h-16">
+          <nav className="flex items-center text-[13px] font-medium text-muted mr-1">
+            {(['about', 'efiling', 'pricing'] as const).map((p) => (
+              <button
+                key={p}
+                type="button"
+                onClick={() => setActivePage(p)}
+                className="h-9 px-2.5 rounded-lg hover:text-ink hover:bg-brand-soft transition-colors"
+              >
+                {t(`auth.${p}`)}
+              </button>
+            ))}
+          </nav>
+          {hasChosenLanguage && <LanguageMenu />}
+        </header>
 
-          {/* Language Switcher */}
-          <div className="relative">
-            <button
-              onClick={() => setLangMenuOpen(!langMenuOpen)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#2B1C33] bg-[#F1EAF8] hover:bg-[#E9D9EF] rounded-xl border border-[#D8C6F0] transition-colors"
-            >
-              <Globe className="w-3.5 h-3.5 text-[#4A1D8F]" />
-              <span className="uppercase text-[11px] font-bold">{language}</span>
-              <ChevronDown className="w-3 h-3 text-[#6F5B77]" />
-            </button>
+        <main className="flex-1 flex items-center justify-center px-4 sm:px-8 py-8">
+          <div className="w-full max-w-sm view-enter" key={hasChosenLanguage ? 'form' : 'lang'}>
+            {!hasChosenLanguage ? (
+              <>
+                <h2 className="text-2xl font-extrabold tracking-tight text-ink">Choose your language</h2>
+                <p className="mt-1 mb-6 text-[15px] text-muted" lang="fil">
+                  Pumili ng wika. You can change it anytime.
+                </p>
+                <LanguageChoice onChoose={setLanguage} />
+              </>
+            ) : (
+              <>
+                <h2 className="text-2xl font-extrabold tracking-tight text-ink">
+                  {t(isRegister ? 'auth.registerTitle' : 'auth.signInTitle')}
+                </h2>
+                <p className="mt-1 mb-6 text-[15px] text-muted">
+                  {t(isRegister ? 'auth.registerLead' : 'auth.welcomeBack')}
+                </p>
 
-            {langMenuOpen && (
-              <div className="absolute right-0 mt-2 w-44 bg-white rounded-2xl shadow-xl border border-[#E9D9EF] py-2 z-50 animate-in fade-in zoom-in-95 duration-150">
-                {languages.map((l) => (
-                  <button
-                    key={l.code}
-                    onClick={() => {
-                      setLanguage(l.code);
-                      setLangMenuOpen(false);
-                    }}
-                    className={`w-full text-left px-4 py-2 text-xs flex items-center justify-between hover:bg-[#FFF7F1] ${
-                      language === l.code ? 'font-bold text-[#4A1D8F] bg-[#F1EAF8]' : 'text-[#2B1C33]'
-                    }`}
-                  >
-                    <span>{l.label}</span>
-                    {language === l.code && <span className="text-[#4A1D8F]">✓</span>}
-                  </button>
-                ))}
-              </div>
+                <Segmented
+                  label="Account"
+                  className="w-full mb-6"
+                  value={mode}
+                  onChange={switchMode}
+                  options={[
+                    { value: 'login', label: t('auth.signIn') },
+                    { value: 'register', label: t('auth.createAccount') }
+                  ]}
+                />
+
+                {error && (
+                  <Notice tone="error" className="mb-4">
+                    {error}
+                  </Notice>
+                )}
+
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  {isRegister && (
+                    <>
+                      <div className="grid grid-cols-2 gap-3">
+                        <Field label={t('auth.firstName')}>
+                          {(id) => (
+                            <input id={id} type="text" required autoComplete="given-name" value={firstName} onChange={(e) => setFirstName(e.target.value)} className={inputClass} />
+                          )}
+                        </Field>
+                        <Field label={t('auth.lastName')}>
+                          {(id) => (
+                            <input id={id} type="text" required autoComplete="family-name" value={lastName} onChange={(e) => setLastName(e.target.value)} className={inputClass} />
+                          )}
+                        </Field>
+                      </div>
+                      <Field label={t('auth.businessName')}>
+                        {(id) => (
+                          <input id={id} type="text" required autoComplete="organization" value={business} onChange={(e) => setBusiness(e.target.value)} placeholder="e.g. Tupi Agro-Coffee Roasters" className={inputClass} />
+                        )}
+                      </Field>
+                    </>
+                  )}
+
+                  <Field label={t('auth.email')}>
+                    {(id) => (
+                      <input id={id} type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="owner@business.ph" className={inputClass} />
+                    )}
+                  </Field>
+
+                  <Field label={t('auth.password')} hint={isRegister ? t('auth.passwordHint') : undefined}>
+                    {(id) => (
+                      <input
+                        id={id}
+                        type="password"
+                        required
+                        autoComplete={isRegister ? 'new-password' : 'current-password'}
+                        minLength={isRegister ? 12 : 1}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className={inputClass}
+                      />
+                    )}
+                  </Field>
+
+                  {isRegister ? (
+                    <CheckField checked={agree} onChange={setAgree} required>
+                      {t('auth.agree')}
+                    </CheckField>
+                  ) : (
+                    <CheckField checked={remember} onChange={setRemember}>
+                      {t('auth.remember')}
+                    </CheckField>
+                  )}
+
+                  <Button type="submit" size="lg" disabled={loading} className="w-full">
+                    {t(loading ? (isRegister ? 'auth.creating' : 'auth.signingIn') : isRegister ? 'auth.createAccount' : 'auth.signIn')}
+                    {!loading && <ArrowRight />}
+                  </Button>
+                </form>
+
+                <div className="mt-6 pt-6 border-t border-line">
+                  <Button variant="secondary" className="w-full" onClick={handleDemoSignIn}>
+                    {t('auth.demo')}
+                  </Button>
+                  <p className="mt-2 text-center text-xs text-muted">{t('auth.demoNote')}</p>
+                </div>
+              </>
             )}
           </div>
-        </div>
-      </header>
+        </main>
 
-      {/* Main Authentication Content (Two-Column on Desktop) */}
-      <main className="flex-1 flex items-center justify-center p-4 sm:p-8 lg:p-12">
-        <div className="max-w-5xl w-full grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
-          {/* Left Column: Platform Mission & Value Highlights */}
-          <div className="lg:col-span-6 space-y-6">
-            <div className="inline-flex items-center gap-2 bg-[#FFF0E4] border border-[#FF8A3D]/30 px-3.5 py-1.5 rounded-full text-xs font-bold text-[#F26430]">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Grounded Local MSME Platform</span>
-            </div>
-
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-[#2B1C33] tracking-tight leading-[1.1]">
-              Grow smarter with <span className="text-[#4A1D8F]">Enterseed</span> & Boss Narra.
-            </h2>
-
-            <p className="text-sm sm:text-base text-[#6F5B77] leading-relaxed max-w-lg">
-              Sign in to your private workspace to run cash flow checkups, discover reviewed suppliers across South Cotabato, and consult our grounded AI advisor.
-            </p>
-
-            <div className="space-y-4 pt-2">
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-xl bg-[#F1EAF8] text-[#4A1D8F] flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <Coins className="w-4 h-4" />
-                </div>
-                <div>
-                  <h4 className="font-bold text-xs sm:text-sm text-[#2B1C33]">Private Financial Checkup</h4>
-                  <p className="text-xs text-[#6F5B77] leading-snug">Assess monthly operating margins, debt servicing, and cash runway buffers securely.</p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-xl bg-[#FFF0E4] text-[#FF8A3D] flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <MapPin className="w-4 h-4" />
-                </div>
-                <div>
-                  <h4 className="font-bold text-xs sm:text-sm text-[#2B1C33]">Reviewed Supplier Directory & Map</h4>
-                  <p className="text-xs text-[#6F5B77] leading-snug">Connect with verified local packaging, raw material, and logistics partners in Region 12.</p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-xl bg-[#E1EBD4] text-[#76A13C] flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <ShieldCheck className="w-4 h-4" />
-                </div>
-                <div>
-                  <h4 className="font-bold text-xs sm:text-sm text-[#2B1C33]">Grounded Boss Narra AI Advisor</h4>
-                  <p className="text-xs text-[#6F5B77] leading-snug">Reliable MSME consultation with verification links to DTI, BIR, DOST, and provincial offices.</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Right Column: Clean Authentication Card */}
-          <div className="lg:col-span-6 w-full max-w-md mx-auto">
-            <div className="bg-white rounded-3xl p-6 sm:p-8 border border-[#E9D9EF] shadow-xl relative overflow-hidden">
-              {/* Tab Selector: Sign In vs Create Account */}
-              <div className="grid grid-cols-2 p-1 bg-[#FFF7F1] rounded-2xl border border-[#E9D9EF] mb-6">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsRegister(false);
-                    setError(null);
-                  }}
-                  className={`py-2 rounded-xl text-xs font-bold transition-all ${
-                    !isRegister
-                      ? 'bg-[#4A1D8F] text-white shadow-xs'
-                      : 'text-[#6F5B77] hover:text-[#2B1C33]'
-                  }`}
-                >
-                  Sign In
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsRegister(true);
-                    setError(null);
-                  }}
-                  className={`py-2 rounded-xl text-xs font-bold transition-all ${
-                    isRegister
-                      ? 'bg-[#4A1D8F] text-white shadow-xs'
-                      : 'text-[#6F5B77] hover:text-[#2B1C33]'
-                  }`}
-                >
-                  Create Account
-                </button>
-              </div>
-
-              {error && (
-                <div className="p-3 mb-4 rounded-xl text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200 flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                  <span>{error}</span>
-                </div>
-              )}
-
-              {/* Form */}
-              <form onSubmit={handleSubmit} className="space-y-3.5">
-                {isRegister && (
-                  <>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs font-semibold text-[#2B1C33] mb-1">First Name</label>
-                        <input
-                          type="text"
-                          required
-                          value={firstName}
-                          onChange={(e) => setFirstName(e.target.value)}
-                          placeholder="e.g. Maria"
-                          className="w-full bg-[#FFF7F1] border border-[#E9D9EF] focus:border-[#4A1D8F] focus:outline-none rounded-xl px-3.5 py-2.5 text-xs text-[#2B1C33]"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-semibold text-[#2B1C33] mb-1">Last Name</label>
-                        <input
-                          type="text"
-                          required
-                          value={lastName}
-                          onChange={(e) => setLastName(e.target.value)}
-                          placeholder="e.g. Santos"
-                          className="w-full bg-[#FFF7F1] border border-[#E9D9EF] focus:border-[#4A1D8F] focus:outline-none rounded-xl px-3.5 py-2.5 text-xs text-[#2B1C33]"
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-[#2B1C33] mb-1">Business Name</label>
-                      <input
-                        type="text"
-                        required
-                        value={business}
-                        onChange={(e) => setBusiness(e.target.value)}
-                        placeholder="e.g. Tupi Agro-Coffee Roasters"
-                        className="w-full bg-[#FFF7F1] border border-[#E9D9EF] focus:border-[#4A1D8F] focus:outline-none rounded-xl px-3.5 py-2.5 text-xs text-[#2B1C33]"
-                      />
-                    </div>
-                  </>
-                )}
-
-                <div>
-                  <label className="block text-xs font-semibold text-[#2B1C33] mb-1">Email Address</label>
-                  <input
-                    type="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="owner@business.ph"
-                    className="w-full bg-[#FFF7F1] border border-[#E9D9EF] focus:border-[#4A1D8F] focus:outline-none rounded-xl px-3.5 py-2.5 text-xs text-[#2B1C33]"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-[#2B1C33] mb-1">
-                    Password {isRegister && <span className="text-[#6F5B77] font-normal">(min 12 chars)</span>}
-                  </label>
-                  <input
-                    type="password"
-                    required
-                    minLength={isRegister ? 12 : 1}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••••••"
-                    className="w-full bg-[#FFF7F1] border border-[#E9D9EF] focus:border-[#4A1D8F] focus:outline-none rounded-xl px-3.5 py-2.5 text-xs text-[#2B1C33]"
-                  />
-                </div>
-
-                {isRegister ? (
-                  <label className="flex items-start gap-2.5 cursor-pointer pt-1">
-                    <input
-                      type="checkbox"
-                      required
-                      checked={agree}
-                      onChange={(e) => setAgree(e.target.checked)}
-                      className="mt-0.5 rounded text-[#4A1D8F]"
-                    />
-                    <span className="text-[11px] text-[#6F5B77] leading-tight">
-                      I agree to the terms of service and store my financial figures securely for workspace tools.
-                    </span>
-                  </label>
-                ) : (
-                  <div className="flex items-center justify-between text-xs pt-1">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={remember}
-                        onChange={(e) => setRemember(e.target.checked)}
-                        className="rounded text-[#4A1D8F]"
-                      />
-                      <span className="text-[#6F5B77] text-[11px]">Keep me signed in</span>
-                    </label>
-                  </div>
-                )}
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full bg-gradient-to-r from-[#4A1D8F] to-[#2C154F] hover:from-[#2C154F] hover:to-[#4A1D8F] text-white font-bold py-3 rounded-xl shadow-md transition-all text-xs sm:text-sm flex items-center justify-center gap-2 mt-4"
-                >
-                  <span>{loading ? 'Processing…' : isRegister ? 'Register Account' : 'Sign In'}</span>
-                  <ArrowRight className="w-4 h-4 text-[#FFD166]" />
-                </button>
-              </form>
-
-              {/* Fast Demo Access Button */}
-              <div className="mt-5 pt-4 border-t border-[#E9D9EF] text-center">
-                <button
-                  type="button"
-                  onClick={handleDemoSignIn}
-                  className="w-full py-2.5 bg-[#FFF0E4] hover:bg-[#FFE3CF] text-[#F26430] border border-[#FF8A3D]/30 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-2xs"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-[#FF8A3D]" />
-                  <span>⚡ Instant Demo Access (Preview Workspace)</span>
-                </button>
-                <p className="text-[10px] text-[#6F5B77] mt-1.5">
-                  Pre-configured local MSME profile for test evaluation.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </main>
-
-      {/* Public Footer */}
-      <footer className="w-full border-t border-[#E9D9EF] bg-white py-4 px-6 text-center text-xs text-[#6F5B77]">
-        <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
-          <span>Enterseed Platform · Empowering South Cotabato & SOCCSKSARGEN MSMEs</span>
-          <div className="flex items-center gap-4">
-            <button onClick={() => setActivePage('about')} className="hover:text-[#4A1D8F]">
-              Mission & Support
-            </button>
-            <button onClick={() => setActivePage('admin')} className="hover:text-[#4A1D8F]">
-              Staff Review Desk
-            </button>
-          </div>
-        </div>
-      </footer>
+        <footer className="px-4 sm:px-8 py-5 flex flex-wrap items-center justify-between gap-2 text-xs text-muted">
+          <span>{t('auth.footer')}</span>
+          <button type="button" onClick={() => setActivePage('admin')} className="hover:text-ink">
+            {t('auth.staffDesk')}
+          </button>
+        </footer>
+      </div>
     </div>
   );
 };

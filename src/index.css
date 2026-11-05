@@ -1,33 +1,173 @@
 @import "tailwindcss";
 
+/*
+ * Enterseed tokens. Plum + marigold identity from the logo, on a warm paper canvas.
+ * Text-bearing tones are darkened variants so small copy clears 4.5:1.
+ */
+@theme {
+  --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+
+  --color-canvas: #FFF7F1;
+  --color-surface: #FFFFFF;
+  --color-sunken: #FBF4EE;
+  --color-line: #EADFEA;
+  --color-line-strong: #D8C6E4;
+
+  --color-ink: #2B1C33;
+  --color-muted: #6A5672;
+
+  --color-brand: #4A1D8F;
+  --color-brand-deep: #2C154F;
+  --color-brand-soft: #F1EAF8;
+
+  --color-accent: #FF8A3D;
+  --color-accent-ink: #B4461A;
+  --color-accent-soft: #FFF0E4;
+
+  --color-night: #24172B;
+
+  --color-good: #4E7A22;
+  --color-good-soft: #EAF2DE;
+  --color-danger: #B42318;
+  --color-danger-soft: #FDEDEB;
+
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
 @layer base {
-  :root {
-    --green: #4A1D8F;
-    --lime: #FFD166;
-    --cream: #FFF7F1;
-    --slate: #2B1C33;
-    --white: #FFFFFF;
-    --muted: #6F5B77;
-    --line: #E9D9EF;
-    --orange: #FF8A3D;
-    --orange-deep: #F26430;
-    --purple-deep: #2C154F;
-    --brand-warm: #F5A623;
+  html {
+    -webkit-text-size-adjust: 100%;
+    scrollbar-color: var(--color-line-strong) var(--color-canvas);
+  }
+
+  body {
+    background: var(--color-canvas);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-feature-settings: "ss01";
+  }
+
+  ::selection {
+    background: #FFD166;
+    color: var(--color-ink);
+  }
+
+  h1, h2, h3 {
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  a {
+    text-underline-offset: 3px;
+    text-decoration-thickness: 1px;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-brand);
+    outline-offset: 2px;
+  }
+
+  input, select, textarea {
+    caret-color: var(--color-brand);
+    accent-color: var(--color-brand);
+  }
+
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type="number"] {
+    -moz-appearance: textfield;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
   }
 }
 
-/* Custom scrollbar and utilities */
+@utility tnum {
+  font-variant-numeric: tabular-nums;
+}
+
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
 }
 ::-webkit-scrollbar-track {
-  background: #FFF7F1;
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #D8C6F0;
-  border-radius: 4px;
+  background: var(--color-line-strong);
+  border-radius: 999px;
+  border: 2px solid var(--color-canvas);
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #4A1D8F;
+  background: var(--color-muted);
+}
+
+/* One authored motion: views settle in from a visible default. */
+@keyframes settle {
+  from { opacity: 0.4; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+.view-enter {
+  animation: settle 420ms var(--ease-out-expo) both;
+}
+
+@keyframes pop {
+  from { opacity: 0; transform: translateY(4px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+.pop-in {
+  animation: pop 180ms var(--ease-out-expo) both;
+}
+
+@keyframes sheet {
+  from { transform: translateX(-100%); }
+  to { transform: none; }
+}
+.sheet-in {
+  animation: sheet 280ms var(--ease-out-expo) both;
+}
+@keyframes fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.fade-in {
+  animation: fade 200ms ease-out both;
+}
+
+@keyframes typing {
+  0%, 80%, 100% { opacity: 0.25; }
+  40% { opacity: 1; }
+}
+.typing-dot {
+  animation: typing 1.2s infinite ease-in-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .view-enter, .pop-in, .typing-dot, .sheet-in, .fade-in {
+    animation: none;
+  }
+}
+
+/* Leaflet chrome in the house palette */
+.leaflet-container {
+  font-family: var(--font-sans);
+}
+.leaflet-popup-content-wrapper {
+  border-radius: 12px;
+  box-shadow: 0 8px 24px -8px rgb(43 28 51 / 0.35);
+}
+.supplier-pin {
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: var(--color-brand);
+  border: 3px solid #fff;
+  box-shadow: 0 2px 6px rgb(43 28 51 / 0.4);
 }

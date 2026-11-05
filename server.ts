@@ -256,7 +256,7 @@ const approvalSchema = z.object({
 const assistantSchema = z.object({
   question: z.string().trim().min(2).max(1200),
   history: z.array(z.object({ role: z.enum(['user', 'model']), text: z.string().max(1200) }).strict()).max(8).default([]),
-  language: z.enum(['en', 'fil', 'hil']).default('en')
+  language: z.enum(['en', 'fil', 'ceb', 'hil']).default('en')
 }).strict();
 
 const financeAssessmentSchema = z.object({
@@ -286,7 +286,7 @@ const loginSchema = z.object({
 }).strict();
 
 const languageSchema = z.object({
-  language: z.enum(['en', 'fil', 'hil'])
+  language: z.enum(['en', 'fil', 'ceb', 'hil'])
 }).strict();
 
 const referenceSources = [
@@ -323,10 +323,12 @@ const offlineAnswers = [
 
 function getOfflineAssistantAnswer(question: string, language: string) {
   const answer = offlineAnswers.find((entry) => entry.match.test(question));
-  if (language === 'fil' || language === 'hil') {
+  if (language === 'fil' || language === 'hil' || language === 'ceb') {
     return answer?.fil
       ?? (language === 'hil'
         ? 'Indi ko makumpirma ang sabat halin sa mga sanggunian nga yara sa akon. Tan-awa ang opisyal nga mga link sa idalom ukon kontaka ang suporta sang Enterseed.'
+        : language === 'ceb'
+        ? 'Dili nako makumpirma ang tubag gikan sa mga reperensiya nga naa nako. Tan-awa ang opisyal nga mga link sa ubos o kontaka ang suporta sa Enterseed.'
         : 'Hindi ko makukumpirma ang sagot gamit ang mga sangguniang mayroon ako. Tingnan ang mga opisyal na link sa ibaba o magpadala ng mensahe sa suporta ng Enterseed.');
   }
   return answer?.text
@@ -364,7 +366,7 @@ async function createAssistantAnswer(question: string, history: any[] = [], lang
         body: JSON.stringify({
           systemInstruction: {
             parts: [{
-              text: `You are Boss Narra, an informational assistant for MSMEs in South Cotabato. Be cautious and useful, not authoritative. No supplied source pages or source excerpts have been retrieved for this request: links alone are not evidence. Do not state legal, tax, lending, eligibility, filing, deadline, fee, or government-program facts unless explicitly present in the supplied local orientation snippet. Treat that snippet as non-authoritative and potentially outdated. Never invent figures, rules, citations, or source contents; never claim an application was filed or a source was checked. For unsupported questions, state that you cannot verify the answer and direct the user to the exact official links below. Clearly label arithmetic based on user-provided figures as estimates, not professional financial advice. ${language === 'fil' ? 'Respond in Filipino (Tagalog).' : language === 'hil' ? 'Respond in Hiligaynon; if you cannot express a detail reliably, say so plainly.' : 'Respond in English.'}\nLocal orientation only:\n${localReference}\nOfficial verification links (not retrieved evidence): ${sources.map((s) => `${s.label}: ${s.url}`).join('; ')}`
+              text: `You are Boss Narra, an informational assistant for MSMEs in South Cotabato. Be cautious and useful, not authoritative. No supplied source pages or source excerpts have been retrieved for this request: links alone are not evidence. Do not state legal, tax, lending, eligibility, filing, deadline, fee, or government-program facts unless explicitly present in the supplied local orientation snippet. Treat that snippet as non-authoritative and potentially outdated. Never invent figures, rules, citations, or source contents; never claim an application was filed or a source was checked. For unsupported questions, state that you cannot verify the answer and direct the user to the exact official links below. Clearly label arithmetic based on user-provided figures as estimates, not professional financial advice. ${language === 'fil' ? 'Respond in Filipino (Tagalog).' : language === 'ceb' ? 'Respond in Cebuano (Bisaya); if you cannot express a detail reliably, say so plainly.' : language === 'hil' ?'Respond in Hiligaynon; if you cannot express a detail reliably, say so plainly.' : 'Respond in English.'}\nLocal orientation only:\n${localReference}\nOfficial verification links (not retrieved evidence): ${sources.map((s) => `${s.label}: ${s.url}`).join('; ')}`
             }]
           },
           contents: [...history.map((entry) => ({ role: entry.role, parts: [{ text: entry.text }] })), { role: 'user', parts: [{ text: question }] }]

@@ -23,7 +23,14 @@
       "assistantBreadcrumb": "Assistant",
       "askBossNana": "Pamangkot kay Boss Narra",
       "logout": "Mag-log out",
-      "logoutError": "Indi maka-log out. Palihog sulayi liwat."
+      "logoutError": "Indi maka-log out. Palihog sulayi liwat.",
+      "resources": "Mga sanggunian",
+      "efiling": "E-Filing",
+      "pricing": "Presyo",
+      "about": "Parte sa amon kag suporta",
+      "staff": "Staff console",
+      "openMenu": "Buksi ang menu",
+      "closeMenu": "Serhi ang menu"
     },
     "bossNana": {
       "eyebrow": "Workspace sang Boss Narra",
@@ -51,7 +58,14 @@
       "save": "I-save ang assessment kag tan-awa ang rekomendasyon",
       "delete": "Delete ang na-save nga assessment",
       "empty": "Kompletoha kag i-save ang assessment agod makita ang mga estimate.",
-      "estimateDisclaimer": "Mga estimate ini halin lang sa imo ginbutang; indi ini audited nga report, propesyonal nga laygay, ukon opisyal nga assessment."
+      "estimateDisclaimer": "Mga estimate ini halin lang sa imo ginbutang; indi ini audited nga report, propesyonal nga laygay, ukon opisyal nga assessment.",
+      "groupMonthly": "Kada bulan",
+      "groupBalances": "Mga balanse subong",
+      "recommendations": "Mga rekomendasyon",
+      "saving": "Ginasave…",
+      "confirmDelete": "Panason gid?",
+      "confirmYes": "Panasa",
+      "confirmNo": "Indi"
     },
     "chatbot": {
       "name": "Boss Narra",
@@ -64,6 +78,36 @@
       "waiting": "Gina-usisa ang mga available nga reperensya…",
       "disclaimer": "Para sa impormasyon lamang. Wala ginakuha nga opisyal nga pahina sa sini nga chat; usisaa ang mga regulasyon direkta sa DTI, DOST, ukon BIR.",
       "unavailable": "Indi maabot ni Boss Narra ang serbisyo. Palihog sulayi liwat."
+    },
+    "auth": {
+      "headline": "Mag-uswag sing mas maalam upod sa Enterseed kag kay Boss Narra.",
+      "lead": "Pagsusi sang cash flow, mga ginsusi nga supplier sa South Cotabato, kag giya nga pirme nagatudlo sa opisyal nga ginhalinan.",
+      "signInTitle": "Mag-sign in sa imo workspace",
+      "registerTitle": "Maghimo sang account",
+      "welcomeBack": "Maayong pagbalik.",
+      "registerLead": "Libre para sa mga MSME sa South Cotabato kag SOCCSKSARGEN.",
+      "signIn": "Mag-sign in",
+      "createAccount": "Maghimo sang account",
+      "firstName": "Ngalan",
+      "lastName": "Apelyido",
+      "businessName": "Ngalan sang negosyo",
+      "email": "Email",
+      "password": "Password",
+      "passwordHint": "Indi magnubo sa 12 ka karakter.",
+      "agree": "Nagauyon ako sa mga termino sang serbisyo kag sa pagtipig sang Enterseed sang akon mga numero sa panalapi para sa mga gamit sang workspace.",
+      "agreeRequired": "Mag-uyon sa mga termino para makahimo sang account.",
+      "remember": "Magpabilin nga naka-sign in",
+      "signingIn": "Nagasign in…",
+      "creating": "Ginahimo ang account…",
+      "signInFailed": "Wala naka-sign in. Susiha ang imo email kag password.",
+      "registerFailed": "Wala nahimo ang account. Tilawi liwat.",
+      "demo": "Tilawi gamit ang demo profile",
+      "demoNote": "Magabukas sang sample nga negosyo sa Koronadal.",
+      "about": "Parte sa amon",
+      "efiling": "E-Filing",
+      "pricing": "Presyo",
+      "staffDesk": "Staff review desk",
+      "footer": "Enterseed · South Cotabato kag SOCCSKSARGEN"
     }
   },
   "legacy": {}

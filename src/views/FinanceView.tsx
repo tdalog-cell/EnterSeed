@@ -2,19 +2,21 @@ import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch } from '../services/apiClient';
+import { Trash2 } from 'lucide-react';
 import {
-  Coins,
-  CheckCircle,
-  AlertTriangle,
-  Trash2,
-  Save,
-  HelpCircle,
-  FileCheck,
-  TrendingDown,
-  TrendingUp,
-  ShieldCheck,
-  Building
-} from 'lucide-react';
+  Button,
+  CheckField,
+  Field,
+  Notice,
+  PageHeader,
+  Panel,
+  PanelHeader,
+  cx,
+  formatPesos,
+  inputClass
+} from '../components/ui';
+
+type TaxStanding = 'current' | 'needs-filing' | 'behind' | 'not-registered';
 
 interface AssessmentForm {
   monthlyIncome: string;
@@ -24,50 +26,79 @@ interface AssessmentForm {
   monthlyDebtPayment: string;
   otherAssets: string;
   otherLiabilities: string;
-  taxStanding: 'current' | 'needs-filing' | 'behind' | 'not-registered';
+  taxStanding: TaxStanding;
   consent: boolean;
 }
 
+type AmountKey = Exclude<keyof AssessmentForm, 'taxStanding' | 'consent'>;
+
+const EMPTY_FORM: AssessmentForm = {
+  monthlyIncome: '',
+  monthlyExpenses: '',
+  cashOnHand: '',
+  debtOutstanding: '',
+  monthlyDebtPayment: '',
+  otherAssets: '',
+  otherLiabilities: '',
+  taxStanding: 'current',
+  consent: false
+};
+
+/** Grouped so related figures sit together: monthly flow first, then balances. */
+const AMOUNT_GROUPS: Array<{ title: string; fields: Array<{ key: AmountKey; label: string; example: string }> }> = [
+  {
+    title: 'finance.groupMonthly',
+    fields: [
+      { key: 'monthlyIncome', label: 'finance.income', example: '85000' },
+      { key: 'monthlyExpenses', label: 'finance.expenses', example: '52000' },
+      { key: 'monthlyDebtPayment', label: 'finance.debtPayment', example: '5000' }
+    ]
+  },
+  {
+    title: 'finance.groupBalances',
+    fields: [
+      { key: 'cashOnHand', label: 'finance.cash', example: '150000' },
+      { key: 'otherAssets', label: 'finance.otherAssets', example: '200000' },
+      { key: 'debtOutstanding', label: 'finance.debt', example: '40000' },
+      { key: 'otherLiabilities', label: 'finance.otherLiabilities', example: '10000' }
+    ]
+  }
+];
+
 export const FinanceView: React.FC = () => {
   const { t } = useLanguage();
-  const { token, user } = useAuth();
+  const { token } = useAuth();
 
-  const [form, setForm] = useState<AssessmentForm>({
-    monthlyIncome: '',
-    monthlyExpenses: '',
-    cashOnHand: '',
-    debtOutstanding: '',
-    monthlyDebtPayment: '',
-    otherAssets: '',
-    otherLiabilities: '',
-    taxStanding: 'current',
-    consent: false
-  });
-
+  const [form, setForm] = useState<AssessmentForm>(EMPTY_FORM);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [hasSavedAssessment, setHasSavedAssessment] = useState(false);
 
-  // Fetch saved assessment
+  const authHeaders = (extra: Record<string, string> = {}) => {
+    const headers: Record<string, string> = { ...extra };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    return headers;
+  };
+
   useEffect(() => {
     const fetchSaved = async () => {
       try {
-        const headers: Record<string, string> = { Accept: 'application/json' };
-        if (token) headers['Authorization'] = `Bearer ${token}`;
-        const res = await apiFetch('/api/finance/assessment', { headers });
+        const res = await apiFetch('/api/finance/assessment', { headers: authHeaders({ Accept: 'application/json' }) });
         if (res.ok) {
           const data = await res.json();
           if (data.assessment) {
+            const a = data.assessment;
             setForm({
-              monthlyIncome: String(data.assessment.monthlyIncome),
-              monthlyExpenses: String(data.assessment.monthlyExpenses),
-              cashOnHand: String(data.assessment.cashOnHand),
-              debtOutstanding: String(data.assessment.debtOutstanding),
-              monthlyDebtPayment: String(data.assessment.monthlyDebtPayment),
-              otherAssets: String(data.assessment.otherAssets),
-              otherLiabilities: String(data.assessment.otherLiabilities),
-              taxStanding: data.assessment.taxStanding || 'current',
+              monthlyIncome: String(a.monthlyIncome),
+              monthlyExpenses: String(a.monthlyExpenses),
+              cashOnHand: String(a.cashOnHand),
+              debtOutstanding: String(a.debtOutstanding),
+              monthlyDebtPayment: String(a.monthlyDebtPayment),
+              otherAssets: String(a.otherAssets),
+              otherLiabilities: String(a.otherLiabilities),
+              taxStanding: a.taxStanding || 'current',
               consent: true
             });
             setHasSavedAssessment(true);
@@ -79,19 +110,10 @@ export const FinanceView: React.FC = () => {
         setLoading(false);
       }
     };
-
     fetchSaved();
-  }, [token]);
+  }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value, type } = e.target;
-    if (type === 'checkbox') {
-      const checked = (e.target as HTMLInputElement).checked;
-      setForm((prev) => ({ ...prev, [name]: checked }));
-    } else {
-      setForm((prev) => ({ ...prev, [name]: value }));
-    }
-  };
+  const setAmount = (key: AmountKey, value: string) => setForm((prev) => ({ ...prev, [key]: value }));
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -102,55 +124,34 @@ export const FinanceView: React.FC = () => {
       return;
     }
 
-    // Validate integer numbers
-    const numFields = [
-      'monthlyIncome',
-      'monthlyExpenses',
-      'cashOnHand',
-      'debtOutstanding',
-      'monthlyDebtPayment',
-      'otherAssets',
-      'otherLiabilities'
-    ] as const;
-
-    const payload: Record<string, any> = {
-      taxStanding: form.taxStanding,
-      consent: true
-    };
-
-    for (const f of numFields) {
-      const raw = form[f].trim();
-      if (!raw) {
-        setStatusMessage({ text: t('finance.amountRequired'), type: 'error' });
-        return;
+    const payload: Record<string, unknown> = { taxStanding: form.taxStanding, consent: true };
+    for (const group of AMOUNT_GROUPS) {
+      for (const { key } of group.fields) {
+        const raw = form[key].trim();
+        if (!raw) {
+          setStatusMessage({ text: t('finance.amountRequired'), type: 'error' });
+          return;
+        }
+        const val = Number(raw);
+        if (!Number.isSafeInteger(val) || val < 0 || val > 1_000_000_000) {
+          setStatusMessage({ text: t('finance.amountInvalid'), type: 'error' });
+          return;
+        }
+        payload[key] = val;
       }
-      const val = Number(raw);
-      if (!Number.isSafeInteger(val) || val < 0 || val > 1_000_000_000) {
-        setStatusMessage({ text: t('finance.amountInvalid'), type: 'error' });
-        return;
-      }
-      payload[f] = val;
     }
 
     setSaving(true);
     try {
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-        Accept: 'application/json'
-      };
-      if (token) headers['Authorization'] = `Bearer ${token}`;
-
       const res = await apiFetch('/api/finance/assessment', {
         method: 'PUT',
-        headers,
+        headers: authHeaders({ 'Content-Type': 'application/json', Accept: 'application/json' }),
         body: JSON.stringify(payload)
       });
-
       if (!res.ok) {
-        const errorData = await res.json();
+        const errorData = await res.json().catch(() => ({}));
         throw new Error(errorData.error || t('finance.error'));
       }
-
       setHasSavedAssessment(true);
       setStatusMessage({ text: t('finance.saved'), type: 'success' });
     } catch (err: any) {
@@ -161,33 +162,15 @@ export const FinanceView: React.FC = () => {
   };
 
   const handleDelete = async () => {
-    if (!confirm('Are you sure you want to delete your saved assessment?')) return;
+    setConfirmingDelete(false);
     setStatusMessage(null);
     setSaving(true);
     try {
-      const headers: Record<string, string> = {};
-      if (token) headers['Authorization'] = `Bearer ${token}`;
-
-      const res = await apiFetch('/api/finance/assessment', {
-        method: 'DELETE',
-        headers
-      });
-
-      if (res.ok) {
-        setForm({
-          monthlyIncome: '',
-          monthlyExpenses: '',
-          cashOnHand: '',
-          debtOutstanding: '',
-          monthlyDebtPayment: '',
-          otherAssets: '',
-          otherLiabilities: '',
-          taxStanding: 'current',
-          consent: false
-        });
-        setHasSavedAssessment(false);
-        setStatusMessage({ text: t('finance.deleted'), type: 'success' });
-      }
+      const res = await apiFetch('/api/finance/assessment', { method: 'DELETE', headers: authHeaders() });
+      if (!res.ok) throw new Error();
+      setForm(EMPTY_FORM);
+      setHasSavedAssessment(false);
+      setStatusMessage({ text: t('finance.deleted'), type: 'success' });
     } catch {
       setStatusMessage({ text: t('finance.error'), type: 'error' });
     } finally {
@@ -195,374 +178,200 @@ export const FinanceView: React.FC = () => {
     }
   };
 
-  const formatPesos = (val: number) => {
-    return new Intl.NumberFormat('en-PH', {
-      style: 'currency',
-      currency: 'PHP',
-      maximumFractionDigits: 0
-    }).format(val);
-  };
-
-  // Live calculation estimates
-  const income = Number(form.monthlyIncome) || 0;
-  const expenses = Number(form.monthlyExpenses) || 0;
-  const cash = Number(form.cashOnHand) || 0;
-  const debt = Number(form.debtOutstanding) || 0;
-  const debtPayment = Number(form.monthlyDebtPayment) || 0;
-  const otherAssets = Number(form.otherAssets) || 0;
-  const otherLiab = Number(form.otherLiabilities) || 0;
+  // Live estimates
+  const n = (k: AmountKey) => Number(form[k]) || 0;
+  const income = n('monthlyIncome');
+  const expenses = n('monthlyExpenses');
+  const cash = n('cashOnHand');
+  const debt = n('debtOutstanding');
+  const debtPayment = n('monthlyDebtPayment');
 
   const operatingProfit = income - expenses;
   const monthlyOutflows = expenses + debtPayment;
   const cashMonths = monthlyOutflows > 0 ? cash / monthlyOutflows : null;
-  const totalAssets = cash + otherAssets;
-  const totalLiabilities = debt + otherLiab;
+  const totalAssets = cash + n('otherAssets');
+  const totalLiabilities = debt + n('otherLiabilities');
   const estimatedEquity = totalAssets - totalLiabilities;
   const cashAfterDebt = operatingProfit - debtPayment;
+  const hasFigures = income > 0 || expenses > 0 || cash > 0;
+
+  const recommendations = [
+    {
+      title: t('finance.cashManagement'),
+      body:
+        operatingProfit <= 0
+          ? t('finance.negativeCash')
+          : cashMonths !== null && cashMonths < 1
+          ? t('finance.lowBuffer')
+          : cashMonths !== null
+          ? t('finance.reserve', { months: cashMonths.toFixed(1) })
+          : t('finance.positiveCash')
+    },
+    {
+      title: t('finance.debtManagement'),
+      body:
+        debt === 0
+          ? t('finance.noDebt')
+          : operatingProfit > 0 && debtPayment > operatingProfit * 0.5
+          ? t('finance.highDebt')
+          : t('finance.debtReview')
+    },
+    {
+      title: t('finance.taxCompliance'),
+      body:
+        form.taxStanding === 'current'
+          ? t('finance.taxCurrent')
+          : form.taxStanding === 'needs-filing'
+          ? t('finance.taxDue')
+          : form.taxStanding === 'behind'
+          ? t('finance.taxBehind')
+          : t('finance.taxNotRegistered')
+    }
+  ];
+
+  const summaryRow = (label: string, value: number, tone?: 'good' | 'danger') => (
+    <div className="flex items-baseline justify-between gap-4 py-2.5">
+      <dt className="text-sm text-muted">{label}</dt>
+      <dd className={cx('font-semibold tnum', tone === 'good' ? 'text-good' : tone === 'danger' ? 'text-danger' : 'text-ink')}>
+        {formatPesos(value)}
+      </dd>
+    </div>
+  );
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-300">
-      {/* Header */}
-      <div>
-        <div className="flex items-center gap-2 text-[#4A1D8F] font-bold text-xs uppercase tracking-wider mb-2">
-          <Coins className="w-4 h-4 text-[#FF8A3D]" />
-          <span>Finance Checkup & Practice Sets</span>
-        </div>
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-[#2B1C33] tracking-tight">
-          {t('finance.title')}
-        </h1>
-        <p className="text-sm text-[#6F5B77] mt-1 max-w-3xl leading-relaxed">
-          {t('finance.intro')}
-        </p>
-      </div>
+    <div className="space-y-6 sm:space-y-8">
+      <PageHeader title={t('finance.title')} lead={t('finance.intro')} />
 
-      {statusMessage && (
-        <div
-          className={`p-4 rounded-2xl flex items-center gap-3 text-xs font-semibold ${
-            statusMessage.type === 'success'
-              ? 'bg-[#E1EBD4] text-[#4A1D8F] border border-[#76A13C]/40'
-              : 'bg-rose-50 text-rose-700 border border-rose-200'
-          }`}
-        >
-          {statusMessage.type === 'success' ? (
-            <CheckCircle className="w-5 h-5 text-[#76A13C]" />
-          ) : (
-            <AlertTriangle className="w-5 h-5 text-rose-500" />
-          )}
-          <span>{statusMessage.text}</span>
-        </div>
-      )}
+      {statusMessage && <Notice tone={statusMessage.type}>{statusMessage.text}</Notice>}
 
-      {/* Grid: Form on Left, Live Practice Set Summary on Right */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        {/* Assessment Form Card */}
-        <div className="lg:col-span-7 bg-white rounded-3xl p-6 sm:p-8 border border-[#E9D9EF] shadow-sm">
-          <h2 className="text-lg font-bold text-[#2B1C33] mb-5 pb-3 border-b border-[#E9D9EF] flex items-center justify-between">
-            <span>Enter Monthly Totals & Balances</span>
-            <span className="text-xs font-normal text-[#6F5B77]">Philippine Pesos (PHP)</span>
-          </h2>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(320px,400px)] items-start">
+        {/* Form */}
+        <Panel aria-busy={loading}>
+          <form onSubmit={handleSave} className="space-y-7">
+            {AMOUNT_GROUPS.map((group) => (
+              <fieldset key={group.title} className="min-w-0">
+                <legend className="text-base font-bold text-ink mb-4">{t(group.title)}</legend>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {group.fields.map(({ key, label, example }) => (
+                    <Field key={key} label={t(label)}>
+                      {(id) => (
+                        <div className="relative">
+                          <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-muted">₱</span>
+                          <input
+                            id={id}
+                            type="number"
+                            inputMode="numeric"
+                            min="0"
+                            max="1000000000"
+                            step="1"
+                            required
+                            disabled={loading}
+                            value={form[key]}
+                            onChange={(e) => setAmount(key, e.target.value)}
+                            placeholder={Number(example).toLocaleString('en-PH')}
+                            className={cx(inputClass, 'pl-8 tnum')}
+                          />
+                        </div>
+                      )}
+                    </Field>
+                  ))}
+                </div>
+              </fieldset>
+            ))}
 
-          <form onSubmit={handleSave} className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-[#2B1C33] mb-1.5">
-                  {t('finance.income')} (₱)
-                </label>
-                <input
-                  type="number"
-                  name="monthlyIncome"
-                  value={form.monthlyIncome}
-                  onChange={handleChange}
-                  placeholder="e.g. 85000"
-                  min="0"
-                  max="1000000000"
-                  required
-                  className="w-full bg-[#FFF7F1] border border-[#E9D9EF] focus:border-[#4A1D8F] focus:outline-none rounded-xl px-3.5 py-2.5 text-sm font-medium text-[#2B1C33]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-[#2B1C33] mb-1.5">
-                  {t('finance.expenses')} (₱)
-                </label>
-                <input
-                  type="number"
-                  name="monthlyExpenses"
-                  value={form.monthlyExpenses}
-                  onChange={handleChange}
-                  placeholder="e.g. 52000"
-                  min="0"
-                  max="1000000000"
-                  required
-                  className="w-full bg-[#FFF7F1] border border-[#E9D9EF] focus:border-[#4A1D8F] focus:outline-none rounded-xl px-3.5 py-2.5 text-sm font-medium text-[#2B1C33]"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-[#2B1C33] mb-1.5">
-                  {t('finance.cash')} (₱)
-                </label>
-                <input
-                  type="number"
-                  name="cashOnHand"
-                  value={form.cashOnHand}
-                  onChange={handleChange}
-                  placeholder="e.g. 150000"
-                  min="0"
-                  max="1000000000"
-                  required
-                  className="w-full bg-[#FFF7F1] border border-[#E9D9EF] focus:border-[#4A1D8F] focus:outline-none rounded-xl px-3.5 py-2.5 text-sm font-medium text-[#2B1C33]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-[#2B1C33] mb-1.5">
-                  {t('finance.debt')} (₱)
-                </label>
-                <input
-                  type="number"
-                  name="debtOutstanding"
-                  value={form.debtOutstanding}
-                  onChange={handleChange}
-                  placeholder="e.g. 40000"
-                  min="0"
-                  max="1000000000"
-                  required
-                  className="w-full bg-[#FFF7F1] border border-[#E9D9EF] focus:border-[#4A1D8F] focus:outline-none rounded-xl px-3.5 py-2.5 text-sm font-medium text-[#2B1C33]"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-[#2B1C33] mb-1.5">
-                  {t('finance.debtPayment')} (₱)
-                </label>
-                <input
-                  type="number"
-                  name="monthlyDebtPayment"
-                  value={form.monthlyDebtPayment}
-                  onChange={handleChange}
-                  placeholder="e.g. 5000"
-                  min="0"
-                  max="1000000000"
-                  required
-                  className="w-full bg-[#FFF7F1] border border-[#E9D9EF] focus:border-[#4A1D8F] focus:outline-none rounded-xl px-3.5 py-2.5 text-sm font-medium text-[#2B1C33]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-[#2B1C33] mb-1.5">
-                  {t('finance.otherAssets')} (₱)
-                </label>
-                <input
-                  type="number"
-                  name="otherAssets"
-                  value={form.otherAssets}
-                  onChange={handleChange}
-                  placeholder="e.g. 200000"
-                  min="0"
-                  max="1000000000"
-                  required
-                  className="w-full bg-[#FFF7F1] border border-[#E9D9EF] focus:border-[#4A1D8F] focus:outline-none rounded-xl px-3.5 py-2.5 text-sm font-medium text-[#2B1C33]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-[#2B1C33] mb-1.5">
-                  {t('finance.otherLiabilities')} (₱)
-                </label>
-                <input
-                  type="number"
-                  name="otherLiabilities"
-                  value={form.otherLiabilities}
-                  onChange={handleChange}
-                  placeholder="e.g. 10000"
-                  min="0"
-                  max="1000000000"
-                  required
-                  className="w-full bg-[#FFF7F1] border border-[#E9D9EF] focus:border-[#4A1D8F] focus:outline-none rounded-xl px-3.5 py-2.5 text-sm font-medium text-[#2B1C33]"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-[#2B1C33] mb-1.5">
-                {t('finance.taxStanding')}
-              </label>
-              <select
-                name="taxStanding"
-                value={form.taxStanding}
-                onChange={handleChange}
-                className="w-full bg-[#FFF7F1] border border-[#E9D9EF] focus:border-[#4A1D8F] focus:outline-none rounded-xl px-3.5 py-2.5 text-sm font-medium text-[#2B1C33]"
-              >
-                <option value="current">{t('finance.current')}</option>
-                <option value="needs-filing">{t('finance.needsFiling')}</option>
-                <option value="behind">{t('finance.behind')}</option>
-                <option value="not-registered">{t('finance.notRegistered')}</option>
-              </select>
-            </div>
-
-            <div className="pt-2">
-              <label className="flex items-start gap-3 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  name="consent"
-                  checked={form.consent}
-                  onChange={handleChange}
-                  className="mt-1 w-4 h-4 rounded border-[#D8C6F0] text-[#4A1D8F] focus:ring-[#4A1D8F]"
-                />
-                <span className="text-xs text-[#6F5B77] leading-relaxed">
-                  {t('finance.consent')}
-                </span>
-              </label>
-            </div>
-
-            <div className="pt-4 flex flex-wrap items-center justify-between gap-3">
-              <button
-                type="submit"
-                disabled={saving}
-                className="bg-gradient-to-r from-[#4A1D8F] to-[#2C154F] hover:from-[#2C154F] hover:to-[#4A1D8F] text-white font-bold px-6 py-3 rounded-2xl shadow-md transition-all flex items-center gap-2 text-xs sm:text-sm"
-              >
-                <Save className="w-4 h-4 text-[#FFD166]" />
-                <span>{saving ? 'Saving…' : t('finance.save')}</span>
-              </button>
-
-              {hasSavedAssessment && (
-                <button
-                  type="button"
-                  onClick={handleDelete}
-                  disabled={saving}
-                  className="text-xs font-semibold text-rose-600 hover:text-rose-700 hover:bg-rose-50 px-3.5 py-2.5 rounded-xl transition-colors flex items-center gap-1.5"
+            <Field label={t('finance.taxStanding')}>
+              {(id) => (
+                <select
+                  id={id}
+                  value={form.taxStanding}
+                  disabled={loading}
+                  onChange={(e) => setForm((prev) => ({ ...prev, taxStanding: e.target.value as TaxStanding }))}
+                  className={inputClass}
                 >
-                  <Trash2 className="w-4 h-4" />
-                  <span>{t('finance.delete')}</span>
-                </button>
+                  <option value="current">{t('finance.current')}</option>
+                  <option value="needs-filing">{t('finance.needsFiling')}</option>
+                  <option value="behind">{t('finance.behind')}</option>
+                  <option value="not-registered">{t('finance.notRegistered')}</option>
+                </select>
               )}
+            </Field>
+
+            <CheckField checked={form.consent} onChange={(consent) => setForm((prev) => ({ ...prev, consent }))}>
+              {t('finance.consent')}
+            </CheckField>
+
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+              <Button type="submit" size="lg" disabled={saving || loading}>
+                {saving ? t('finance.saving') : t('finance.save')}
+              </Button>
+
+              {hasSavedAssessment &&
+                (confirmingDelete ? (
+                  <div className="flex items-center gap-2" role="group" aria-label="Confirm delete">
+                    <span className="text-[13px] text-muted">{t('finance.confirmDelete')}</span>
+                    <Button variant="danger" size="sm" onClick={handleDelete} disabled={saving}>
+                      {t('finance.confirmYes')}
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => setConfirmingDelete(false)}>
+                      {t('finance.confirmNo')}
+                    </Button>
+                  </div>
+                ) : (
+                  <Button variant="danger" size="sm" onClick={() => setConfirmingDelete(true)} disabled={saving}>
+                    <Trash2 />
+                    {t('finance.delete')}
+                  </Button>
+                ))}
             </div>
           </form>
-        </div>
+        </Panel>
 
-        {/* Live Calculation & Practice Set Summary */}
-        <div className="lg:col-span-5 space-y-6">
-          <div className="bg-white rounded-3xl p-6 border border-[#E9D9EF] shadow-sm">
-            <h3 className="font-bold text-base text-[#2B1C33] mb-4 flex items-center gap-2">
-              <FileCheck className="w-5 h-5 text-[#4A1D8F]" />
-              <span>{t('finance.reportTitle')}</span>
-            </h3>
-
-            <div className="grid grid-cols-2 gap-3 mb-6">
-              <div className="bg-[#FFF7F1] p-3 rounded-xl border border-[#E9D9EF]">
-                <span className="text-[11px] text-[#6F5B77] block">{t('finance.operatingProfit')}</span>
-                <strong className={`text-base font-extrabold ${operatingProfit >= 0 ? 'text-[#76A13C]' : 'text-rose-600'}`}>
+        {/* Live summary */}
+        <div className="space-y-6 lg:sticky lg:top-20">
+          <Panel>
+            <PanelHeader as="h2" title={t('finance.reportTitle')} />
+            <dl className="grid grid-cols-2 gap-x-4 gap-y-4">
+              <div>
+                <dt className="text-[13px] text-muted">{t('finance.operatingProfit')}</dt>
+                <dd className={cx('mt-0.5 text-xl font-bold tnum', operatingProfit >= 0 ? 'text-good' : 'text-danger')}>
                   {formatPesos(operatingProfit)}
-                </strong>
+                </dd>
               </div>
-
-              <div className="bg-[#FFF7F1] p-3 rounded-xl border border-[#E9D9EF]">
-                <span className="text-[11px] text-[#6F5B77] block">{t('finance.cashBuffer')}</span>
-                <strong className="text-base font-extrabold text-[#4A1D8F]">
-                  {cashMonths === null ? '—' : `${cashMonths.toFixed(1)} mo.`}
-                </strong>
+              <div>
+                <dt className="text-[13px] text-muted">{t('finance.cashBuffer')}</dt>
+                <dd className="mt-0.5 text-xl font-bold tnum text-brand">
+                  {cashMonths === null ? '—' : t('finance.monthsValue', { months: cashMonths.toFixed(1) })}
+                </dd>
               </div>
+            </dl>
 
-              <div className="bg-[#FFF7F1] p-3 rounded-xl border border-[#E9D9EF]">
-                <span className="text-[11px] text-[#6F5B77] block">{t('finance.totalAssets')}</span>
-                <strong className="text-base font-extrabold text-[#2B1C33]">
-                  {formatPesos(totalAssets)}
-                </strong>
-              </div>
+            <h3 className="mt-6 text-[13px] font-semibold text-ink">{t('finance.reports')}</h3>
+            <dl className="mt-1 divide-y divide-line">
+              {summaryRow(t('finance.reportProfitLoss'), operatingProfit, operatingProfit >= 0 ? undefined : 'danger')}
+              {summaryRow(t('finance.cashFlowAfterDebt'), cashAfterDebt, cashAfterDebt >= 0 ? undefined : 'danger')}
+              {summaryRow(t('finance.totalAssets'), totalAssets)}
+              {summaryRow(t('finance.totalLiabilities'), totalLiabilities)}
+              {summaryRow(t('finance.estimatedEquity'), estimatedEquity, estimatedEquity >= 0 ? undefined : 'danger')}
+            </dl>
 
-              <div className="bg-[#FFF7F1] p-3 rounded-xl border border-[#E9D9EF]">
-                <span className="text-[11px] text-[#6F5B77] block">{t('finance.estimatedEquity')}</span>
-                <strong className="text-base font-extrabold text-[#2B1C33]">
-                  {formatPesos(estimatedEquity)}
-                </strong>
-              </div>
-            </div>
+            <p className="mt-4 text-xs leading-relaxed text-muted">{t('finance.estimateDisclaimer')}</p>
+          </Panel>
 
-            {/* Practice Sets / Financial Reports Summary */}
-            <div className="space-y-3 border-t border-[#E9D9EF] pt-4">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-[#4A1D8F]">
-                {t('finance.reports')}
-              </h4>
-
-              <div className="text-xs space-y-2 bg-[#FCFAFE] p-3.5 rounded-xl border border-[#E4D7EF]">
-                <div className="flex justify-between items-center pb-1.5 border-b border-[#E9D9EF]">
-                  <span className="text-[#6F5B77]">{t('finance.reportProfitLoss')}</span>
-                  <span className="font-bold text-[#2B1C33]">{formatPesos(operatingProfit)}</span>
-                </div>
-                <div className="flex justify-between items-center pb-1.5 border-b border-[#E9D9EF]">
-                  <span className="text-[#6F5B77]">{t('finance.cashFlowAfterDebt')}</span>
-                  <span className="font-bold text-[#2B1C33]">{formatPesos(cashAfterDebt)}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-[#6F5B77]">{t('finance.reportBalanceSheet')}</span>
-                  <span className="font-bold text-[#2B1C33]">Eq: {formatPesos(estimatedEquity)}</span>
-                </div>
-              </div>
-            </div>
-
-            <p className="mt-4 text-[11px] text-[#6F5B77] leading-relaxed">
-              {t('finance.estimateDisclaimer')}
-            </p>
-          </div>
-
-          {/* Contextual Recommendations Card */}
-          <div className="bg-white rounded-3xl p-6 border border-[#E9D9EF] shadow-sm space-y-4">
-            <h3 className="font-bold text-base text-[#2B1C33] flex items-center gap-2">
-              <HelpCircle className="w-5 h-5 text-[#FF8A3D]" />
-              <span>Personalized Recommendations</span>
-            </h3>
-
-            {/* Cash Management Recommendation */}
-            <div className="p-3.5 rounded-2xl bg-[#FFF7F1] border border-[#E9D9EF]">
-              <span className="text-[11px] font-bold text-[#4A1D8F] block mb-1">
-                {t('finance.cashManagement')}
-              </span>
-              <p className="text-xs text-[#2B1C33] leading-relaxed">
-                {operatingProfit <= 0
-                  ? t('finance.negativeCash')
-                  : cashMonths !== null && cashMonths < 1
-                  ? t('finance.lowBuffer')
-                  : cashMonths !== null
-                  ? t('finance.reserve', { months: cashMonths.toFixed(1) })
-                  : t('finance.positiveCash')}
-              </p>
-            </div>
-
-            {/* Debt Management Recommendation */}
-            <div className="p-3.5 rounded-2xl bg-[#FFF7F1] border border-[#E9D9EF]">
-              <span className="text-[11px] font-bold text-[#4A1D8F] block mb-1">
-                {t('finance.debtManagement')}
-              </span>
-              <p className="text-xs text-[#2B1C33] leading-relaxed">
-                {debt === 0
-                  ? t('finance.noDebt')
-                  : operatingProfit > 0 && debtPayment > operatingProfit * 0.5
-                  ? t('finance.highDebt')
-                  : t('finance.debtReview')}
-              </p>
-            </div>
-
-            {/* Tax Compliance Guidance */}
-            <div className="p-3.5 rounded-2xl bg-[#FFF7F1] border border-[#E9D9EF]">
-              <span className="text-[11px] font-bold text-[#4A1D8F] block mb-1">
-                {t('finance.taxCompliance')}
-              </span>
-              <p className="text-xs text-[#2B1C33] leading-relaxed">
-                {form.taxStanding === 'current'
-                  ? t('finance.taxCurrent')
-                  : form.taxStanding === 'needs-filing'
-                  ? t('finance.taxDue')
-                  : form.taxStanding === 'behind'
-                  ? t('finance.taxBehind')
-                  : t('finance.taxNotRegistered')}
-              </p>
-            </div>
-          </div>
+          <Panel>
+            <PanelHeader as="h2" title={t('finance.recommendations')} />
+            {hasFigures ? (
+              <dl className="space-y-4">
+                {recommendations.map((r) => (
+                  <div key={r.title}>
+                    <dt className="text-sm font-semibold text-ink">{r.title}</dt>
+                    <dd className="mt-1 text-sm leading-relaxed text-muted">{r.body}</dd>
+                  </div>
+                ))}
+              </dl>
+            ) : (
+              <p className="text-sm text-muted">{t('finance.empty')}</p>
+            )}
+          </Panel>
         </div>
       </div>
     </div>

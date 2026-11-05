@@ -23,7 +23,14 @@
       "assistantBreadcrumb": "Assistant",
       "askBossNana": "Magtanong kay Boss Narra",
       "logout": "Mag-log out",
-      "logoutError": "Hindi makapag-log out. Subukan muli."
+      "logoutError": "Hindi makapag-log out. Subukan muli.",
+      "resources": "Mga sanggunian",
+      "efiling": "E-Filing",
+      "pricing": "Presyo",
+      "about": "Tungkol at suporta",
+      "staff": "Staff console",
+      "openMenu": "Buksan ang menu",
+      "closeMenu": "Isara ang menu"
     },
     "bossNana": {
       "eyebrow": "Workspace ni Boss Narra",
@@ -103,7 +110,14 @@
       "reportBalanceSheet": "Balance sheet (tinatayang tala)",
       "reportCashFlow": "Cash flow pagkatapos ng iniulat na bayad sa utang",
       "cashFlowAfterDebt": "Tinatayang cash mula sa operasyon matapos ang bayad sa utang",
-      "accountPrivacy": "Pribado sa account mo ang mga halaga at ginagamit lamang upang ipakita ang pagtatantiyang ito. Hindi naka-encrypt sa pahingahan ang SQLite ng prototype na ito."
+      "accountPrivacy": "Pribado sa account mo ang mga halaga at ginagamit lamang upang ipakita ang pagtatantiyang ito. Hindi naka-encrypt sa pahingahan ang SQLite ng prototype na ito.",
+      "groupMonthly": "Bawat buwan",
+      "groupBalances": "Mga balanse ngayon",
+      "recommendations": "Mga rekomendasyon",
+      "saving": "Sine-save…",
+      "confirmDelete": "Burahin nang tuluyan?",
+      "confirmYes": "Burahin",
+      "confirmNo": "Huwag"
     },
     "chatbot": {
       "name": "Boss Narra",
@@ -117,6 +131,36 @@
       "waiting": "Sinusuri ang mga sangguniang mayroon…",
       "disclaimer": "Pangkalahatang impormasyon lamang. Walang opisyal na pahina ang kinukuha sa chat na ito; tiyakin ang mga patakaran mismo sa DTI, DOST, o BIR.",
       "unavailable": "Hindi maabot ni Boss Narra ang serbisyo. Subukan muli."
+    },
+    "auth": {
+      "headline": "Palaguin ang negosyo kasama ang Enterseed at si Boss Narra.",
+      "lead": "Pagsusuri ng cash flow, mga nasuring supplier sa South Cotabato, at gabay na laging nagtuturo sa opisyal na pinagmulan.",
+      "signInTitle": "Mag-sign in sa iyong workspace",
+      "registerTitle": "Gumawa ng account",
+      "welcomeBack": "Maligayang pagbabalik.",
+      "registerLead": "Libre para sa mga MSME sa South Cotabato at SOCCSKSARGEN.",
+      "signIn": "Mag-sign in",
+      "createAccount": "Gumawa ng account",
+      "firstName": "Pangalan",
+      "lastName": "Apelyido",
+      "businessName": "Pangalan ng negosyo",
+      "email": "Email",
+      "password": "Password",
+      "passwordHint": "Hindi bababa sa 12 character.",
+      "agree": "Sumasang-ayon ako sa mga tuntunin ng serbisyo at sa pag-iimbak ng Enterseed ng aking mga numerong pinansyal para sa mga tool ng workspace.",
+      "agreeRequired": "Sumang-ayon sa mga tuntunin para makagawa ng account.",
+      "remember": "Manatiling naka-sign in",
+      "signingIn": "Nagsa-sign in…",
+      "creating": "Ginagawa ang account…",
+      "signInFailed": "Hindi naka-sign in. Suriin ang iyong email at password.",
+      "registerFailed": "Hindi nagawa ang account. Subukang muli.",
+      "demo": "Subukan gamit ang demo profile",
+      "demoNote": "Magbubukas ng sample na negosyo sa Koronadal.",
+      "about": "Tungkol",
+      "efiling": "E-Filing",
+      "pricing": "Presyo",
+      "staffDesk": "Staff review desk",
+      "footer": "Enterseed · South Cotabato at SOCCSKSARGEN"
     }
   },
   "legacy": {
