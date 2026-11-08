@@ -8,6 +8,7 @@ export interface User {
   firstName: string;
   lastName: string;
   business: string;
+  role?: 'owner' | 'admin';
   preferredLanguage?: string;
 }
 

@@ -56,6 +56,17 @@ export const AppShell: React.FC<AppShellProps> = ({ activePage, setActivePage, c
   }, [activePage]);
 
   useEffect(() => {
+    const handleNav = (e: Event) => {
+      const customEvent = e as CustomEvent<ActivePage>;
+      if (customEvent.detail) {
+        setActivePage(customEvent.detail);
+      }
+    };
+    window.addEventListener('navigate-tab', handleNav);
+    return () => window.removeEventListener('navigate-tab', handleNav);
+  }, [setActivePage]);
+
+  useEffect(() => {
     if (!drawerOpen) return;
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setDrawerOpen(false);
     document.addEventListener('keydown', onKey);
@@ -70,13 +81,13 @@ export const AppShell: React.FC<AppShellProps> = ({ activePage, setActivePage, c
   const workspace: NavItem[] = [
     { id: 'dashboard', label: t('appShell.dashboard'), icon: LayoutDashboard },
     { id: 'finance', label: t('appShell.finance'), icon: Coins },
-    { id: 'marketing', label: t('appShell.marketing'), icon: Store },
-    { id: 'documents', label: t('appShell.documents'), icon: FileText },
-    { id: 'boss-nana', label: t('appShell.bossNana'), icon: MessageCircle }
+    { id: 'marketing', label: 'Supplier Network', icon: Store },
+    { id: 'efiling', label: 'E-Filing & Hub', icon: FileCheck2 },
+    { id: 'documents', label: 'AI Document Studio', icon: FileText },
+    { id: 'boss-nana', label: 'Boss Narra AI', icon: MessageCircle }
   ];
 
   const resources: NavItem[] = [
-    { id: 'efiling', label: t('appShell.efiling'), icon: FileCheck2 },
     { id: 'pricing', label: t('appShell.pricing'), icon: Tag },
     { id: 'about', label: t('appShell.about'), icon: Info }
   ];
@@ -104,7 +115,11 @@ export const AppShell: React.FC<AppShellProps> = ({ activePage, setActivePage, c
           active ? 'bg-white/12 text-white font-semibold' : quiet ? 'text-white/55 hover:text-white hover:bg-white/6' : 'text-white/75 hover:text-white hover:bg-white/6'
         )}
       >
-        <Icon className={cx('w-[18px] h-[18px] shrink-0', active ? 'text-accent' : 'opacity-80')} />
+        {item.id === 'boss-nana' ? (
+          <img src="./logos/Narra.png" alt="" className="w-[18px] h-[18px] shrink-0 object-contain" />
+        ) : (
+          <Icon className={cx('w-[18px] h-[18px] shrink-0', active ? 'text-accent' : 'opacity-80')} />
+        )}
         <span>{item.label}</span>
       </button>
     );
@@ -268,37 +283,11 @@ export const AppShell: React.FC<AppShellProps> = ({ activePage, setActivePage, c
           </div>
         )}
 
-        <main className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8 pb-28 md:pb-12">
+        <main className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8 pb-12">
           <div key={activePage} className="view-enter">
             {children}
           </div>
         </main>
-
-        {/* Mobile bottom navigation */}
-        <nav
-          className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-surface border-t border-line grid grid-cols-5 pb-[env(safe-area-inset-bottom)]"
-          aria-label={t('appShell.mobileNavigation')}
-        >
-          {workspace.map((item) => {
-            const Icon = item.icon;
-            const active = activePage === item.id;
-            return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => setActivePage(item.id)}
-                aria-current={active ? 'page' : undefined}
-                className={cx(
-                  'flex flex-col items-center justify-center gap-1 h-16 text-[11px]',
-                  active ? 'text-brand font-semibold' : 'text-muted'
-                )}
-              >
-                <Icon className="w-5 h-5" />
-                <span className="truncate max-w-[64px]">{item.label}</span>
-              </button>
-            );
-          })}
-        </nav>
       </div>
 
       <BossNarraWidget hidden={activePage === 'boss-nana'} />

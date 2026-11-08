@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { MessageCircle, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { BossNarraAvatar, ChatComposer, ChatThread, useBossNarraChat } from './BossNarraChat';
 
@@ -25,15 +25,21 @@ export const BossNarraWidget: React.FC<{ hidden?: boolean }> = ({ hidden }) => {
   if (hidden) return null;
 
   return (
-    <div className="fixed right-4 bottom-20 md:right-6 md:bottom-6 z-50">
+    <div className="fixed right-4 bottom-6 md:right-6 md:bottom-6 z-50">
       {!isOpen ? (
         <button
           type="button"
           onClick={() => setIsOpen(true)}
-          className="flex items-center justify-center gap-2 w-12 h-12 sm:w-auto sm:pl-4 sm:pr-5 rounded-full bg-brand text-white font-semibold text-sm shadow-[0_10px_30px_-10px_rgb(74_29_143/0.7)] hover:bg-brand-deep transition-colors"
+          className="flex items-center justify-center gap-2.5 w-12 h-12 sm:w-auto sm:pl-2 sm:pr-5 rounded-full bg-brand text-white font-semibold text-sm shadow-[0_10px_30px_-10px_rgb(74_29_143/0.7)] hover:bg-brand-deep transition-all hover:scale-105 active:scale-95"
           aria-label={t('chatbot.label')}
         >
-          <MessageCircle className="w-5 h-5" />
+          <span className="w-8 h-8 sm:w-7 sm:h-7 rounded-full bg-white flex items-center justify-center p-0.5 shrink-0 shadow-xs ring-1 ring-white/20">
+            <img
+              src="./logos/Narra.png"
+              alt="Boss Narra"
+              className="w-full h-full object-contain"
+            />
+          </span>
           <span className="hidden sm:inline">{t('chatbot.label')}</span>
         </button>
       ) : (

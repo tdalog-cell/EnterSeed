@@ -76,11 +76,15 @@ export const BossNarraAvatar: React.FC<{ size?: 'sm' | 'md' }> = ({ size = 'sm' 
   <span
     aria-hidden="true"
     className={cx(
-      'shrink-0 rounded-full bg-brand text-white font-bold flex items-center justify-center',
-      size === 'sm' ? 'w-7 h-7 text-[11px]' : 'w-9 h-9 text-xs'
+      'shrink-0 rounded-full bg-white border border-brand/20 flex items-center justify-center p-0.5 shadow-xs overflow-hidden',
+      size === 'sm' ? 'w-7 h-7' : 'w-9 h-9'
     )}
   >
-    BN
+    <img
+      src="./logos/Narra.png"
+      alt="Boss Narra"
+      className="w-full h-full object-contain"
+    />
   </span>
 );
 
@@ -117,19 +121,35 @@ export const ChatThread: React.FC<{
                 <div className="mt-2.5">
                   <span className="sr-only">{t('chatbot.sources')}:</span>
                   <ul className="flex flex-wrap gap-1.5">
-                    {msg.sources.map((src) => (
-                      <li key={src.url + src.label}>
-                        <a
-                          href={src.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 h-7 px-2.5 rounded-full border border-line-strong text-xs font-medium text-brand hover:bg-brand-soft transition-colors"
-                        >
-                          {src.label}
-                          <ExternalLink className="w-3 h-3" />
-                        </a>
-                      </li>
-                    ))}
+                    {msg.sources.map((src) => {
+                      const isInternal = src.url.startsWith('#');
+                      return (
+                        <li key={src.url + src.label}>
+                          {isInternal ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const targetPage = src.url.replace('#', '') || 'documents';
+                                window.dispatchEvent(new CustomEvent('navigate-tab', { detail: targetPage }));
+                              }}
+                              className="inline-flex items-center gap-1 h-7 px-2.5 rounded-full border border-purple-300 bg-purple-50 text-xs font-semibold text-purple-900 hover:bg-purple-100 transition-colors cursor-pointer"
+                            >
+                              {src.label}
+                            </button>
+                          ) : (
+                            <a
+                              href={src.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 h-7 px-2.5 rounded-full border border-line-strong text-xs font-medium text-brand hover:bg-brand-soft transition-colors"
+                            >
+                              {src.label}
+                              <ExternalLink className="w-3 h-3" />
+                            </a>
+                          )}
+                        </li>
+                      );
+                    })}
                   </ul>
                 </div>
               )}
