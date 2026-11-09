@@ -3,8 +3,9 @@ import { useAuth } from '../context/AuthContext';
 import { apiFetch, fetchTickets, EfilingTicket } from '../services/apiClient';
 import { ActivePage } from '../components/AppShell';
 import { PhotoImg } from '../components/PhotoImg';
-import { Button, Panel, PanelHeader, Stat, cx, formatPesos } from '../components/ui';
+import { Button, Panel, PanelHeader, Stat, Modal, cx, formatPesos, inputClass } from '../components/ui';
 import { PHOTOS } from '../photos';
+import { calculateFinancialHealth, FinancialCheckupResult } from '../utils/msmeLogic';
 import {
   ArrowRight,
   ArrowUpRight,
@@ -14,9 +15,11 @@ import {
   Sparkles,
   MapPin,
   CheckCircle2,
-  Building2,
   Star,
-  ShieldCheck
+  ShieldCheck,
+  Activity,
+  ChevronRight,
+  HelpCircle
 } from 'lucide-react';
 
 interface FinanceAssessmentData {
@@ -33,23 +36,23 @@ interface FinanceAssessmentData {
 
 const MILESTONES = [
   {
-    title: 'DTI Business Name (BNRS)',
+    title: '1. DTI Business Name (BNRS)',
     desc: 'Register sole proprietorship name for barangay, municipal, regional, or national scope.',
     link: { label: 'BNRS portal', href: 'https://bnrs.dti.gov.ph/' }
   },
   {
-    title: 'Barangay Commercial Clearance',
-    desc: 'Commercial clearance from your barangay hall in Koronadal, Polomolok, Tupi, or your town.',
+    title: '2. Barangay Commercial Clearance',
+    desc: 'Commercial clearance from your local barangay hall in Koronadal, Polomolok, Tupi, or your town.',
     link: null
   },
   {
-    title: 'Mayor’s Permit (BPLO)',
+    title: '3. Mayor’s Permit (BPLO)',
     desc: 'Municipal business permit with sanitary inspection, zoning sketch, and BFP fire safety certificate.',
     link: { label: 'Provincial services', href: 'https://southcotabato.gov.ph/services/' }
   },
   {
-    title: 'BIR Form 1901 Registration',
-    desc: 'TIN issuance, 8% gross income tax election, books of accounts, and Authority to Print (ATP).',
+    title: '4. BIR Form 1901 Registration',
+    desc: 'TIN issuance, 8% gross income tax election, official books of accounts, and Authority to Print (ATP).',
     link: { label: 'BIR eServices', href: 'https://www.bir.gov.ph/' }
   }
 ];
@@ -60,6 +63,16 @@ export const DashboardView: React.FC<{ setActivePage: (page: ActivePage) => void
   const [tickets, setTickets] = useState<EfilingTicket[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Financial Checkup Wizard State
+  const [wizardOpen, setWizardOpen] = useState(false);
+  const [wizardStep, setWizardStep] = useState<1 | 2 | 3 | 4>(1);
+  const [salesInput, setSalesInput] = useState('180,000');
+  const [expensesInput, setExpensesInput] = useState('110,000');
+  const [debtInput, setDebtInput] = useState('15,000');
+  const [cashInput, setCashInput] = useState('150,000');
+  const [wizardResult, setWizardResult] = useState<FinancialCheckupResult | null>(null);
+  const [savingAssessment, setSavingAssessment] = useState(false);
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -68,7 +81,13 @@ export const DashboardView: React.FC<{ setActivePage: (page: ActivePage) => void
         const res = await apiFetch('/api/finance/assessment', { headers });
         if (res.ok) {
           const data = await res.json();
-          setAssessment(data.assessment || null);
+          if (data.assessment) {
+            setAssessment(data.assessment);
+            setSalesInput(data.assessment.monthlyIncome.toLocaleString('en-PH'));
+            setExpensesInput(data.assessment.monthlyExpenses.toLocaleString('en-PH'));
+            setDebtInput(data.assessment.monthlyDebtPayment.toLocaleString('en-PH'));
+            setCashInput(data.assessment.cashOnHand.toLocaleString('en-PH'));
+          }
         }
 
         const tix = await fetchTickets();
@@ -81,6 +100,70 @@ export const DashboardView: React.FC<{ setActivePage: (page: ActivePage) => void
     };
     fetchData();
   }, [token]);
+
+  const parseNumber = (val: string) => {
+    const cleaned = val.replace(/[^0-9.]/g, '');
+    return parseFloat(cleaned) || 0;
+  };
+
+  const handleStartCheckup = () => {
+    setWizardStep(1);
+    setWizardResult(null);
+    setWizardOpen(true);
+  };
+
+  const handleComputeCheckup = () => {
+    const sales = parseNumber(salesInput);
+    const expenses = parseNumber(expensesInput);
+    const debt = parseNumber(debtInput);
+    const cash = parseNumber(cashInput);
+    const res = calculateFinancialHealth(sales, expenses, debt, cash);
+    setWizardResult(res);
+    setWizardStep(4);
+  };
+
+  const handleSaveAssessment = async () => {
+    setSavingAssessment(true);
+    try {
+      const sales = parseNumber(salesInput);
+      const expenses = parseNumber(expensesInput);
+      const debt = parseNumber(debtInput);
+      const cash = parseNumber(cashInput);
+
+      const payload = {
+        monthlyIncome: sales,
+        monthlyExpenses: expenses,
+        cashOnHand: cash,
+        debtOutstanding: debt * 12,
+        monthlyDebtPayment: debt,
+        otherAssets: 80000,
+        otherLiabilities: 0,
+        taxStanding: 'up_to_date'
+      };
+
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        Accept: 'application/json'
+      };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const res = await apiFetch('/api/finance/assessment', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(payload)
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setAssessment(data.assessment);
+        setWizardOpen(false);
+      }
+    } catch (e) {
+      console.error('Error saving assessment:', e);
+    } finally {
+      setSavingAssessment(false);
+    }
+  };
 
   const operatingProfit = assessment ? assessment.monthlyIncome - assessment.monthlyExpenses : 0;
   const monthlyOutflows = assessment ? assessment.monthlyExpenses + assessment.monthlyDebtPayment : 0;
@@ -96,21 +179,21 @@ export const DashboardView: React.FC<{ setActivePage: (page: ActivePage) => void
         <div className="p-6 sm:p-8 lg:p-10 flex flex-col justify-center">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-400/20 text-amber-300 border border-amber-400/30 w-max mb-3">
             <ShieldCheck className="w-3.5 h-3.5" />
-            DTI Negosyo Center · Province of South Cotabato
+            Built for South Cotabato MSMEs
           </div>
           <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight leading-tight">
             {user?.firstName ? `Mabuhay, ${user.firstName}!` : 'Mabuhay!'}
           </h1>
-          {user?.business && <p className="mt-1 text-base text-amber-200/90 font-medium">{user.business}</p>}
+          {user?.business && <p className="mt-1 text-base text-amber-200/90 font-medium">{user.business} · {user.municipality || 'City of Koronadal'}</p>}
           <p className="mt-3 text-sm leading-relaxed text-purple-100/90 max-w-lg">
-            Welcome to the DTI MSME Support Hub & Local Marketplace. File statutory registrations, match government subsidies, generate AI feasibility studies, and connect with verified local packaging & raw material suppliers.
+            Welcome to Enterseed, an independent support tool for local entrepreneurs. Organize statutory registration requirements, find programs you may qualify for, draft business documents, and connect with South Cotabato suppliers.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <Button variant="accent" size="lg" onClick={() => setActivePage('efiling')}>
               <FileCheck2 className="w-5 h-5 mr-1" />
-              Open E-Filing Hub
+              Open Registration Assistant
             </Button>
-            <Button variant="secondary" size="lg" onClick={() => setActivePage('marketing')} className="bg-white/10 text-white border-white/20 hover:bg-white/20">
+            <Button variant="secondary" size="lg" onClick={() => setActivePage('suppliers')} className="bg-white/10 text-white border-white/20 hover:bg-white/20">
               <Store className="w-5 h-5 mr-1" />
               Supplier Network
             </Button>
@@ -126,18 +209,21 @@ export const DashboardView: React.FC<{ setActivePage: (page: ActivePage) => void
 
       {/* Two Core Pillars Quick Launchpad */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Module A: E-Filing & Advisory */}
+        {/* Module A: Registration Assistant & Advisory */}
         <div className="bg-surface border border-line rounded-2xl p-5 hover:border-brand/40 transition-all flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold uppercase tracking-wider text-purple-800 bg-purple-50 px-2.5 py-0.5 rounded-full border border-purple-200">
-                Module A · E-Filing & Advisory
+                Module A · Registration Assistant
               </span>
-              <span className="text-xs text-muted font-mono">{tickets.length} Active Tickets</span>
+              <span className="text-xs text-muted flex items-center gap-1">
+                <span className="bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded text-[10px] font-medium border border-slate-200">Demo data</span>
+                {tickets.length} Active Records
+              </span>
             </div>
-            <h3 className="text-lg font-bold text-ink mt-3">Multi-Client E-Filing & Smart Referral</h3>
+            <h3 className="text-lg font-bold text-ink mt-3">Registration Preparation & Subsidy Matcher</h3>
             <p className="text-xs text-muted mt-1 leading-relaxed">
-              Unified digital workflow for DTI Business Name, Barangay Clearances, Mayor's Permit with location sketch, and algorithmic subsidy/credit matchmaking.
+              Step-by-step checklist preparation for DTI Business Name, Barangay Clearances, Mayor's Permit with site sketch, and matchmaker for regional government grants.
             </p>
 
             <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
@@ -146,7 +232,7 @@ export const DashboardView: React.FC<{ setActivePage: (page: ActivePage) => void
                 <span className="font-extrabold text-blue-700 text-base">{inInspectionCount}</span>
               </div>
               <div className="p-2.5 rounded-xl bg-sunken/60 border border-line/60">
-                <span className="text-slate-500 block">Approved Filings</span>
+                <span className="text-slate-500 block">Prepared Filings</span>
                 <span className="font-extrabold text-emerald-700 text-base">{approvedCount}</span>
               </div>
             </div>
@@ -158,7 +244,7 @@ export const DashboardView: React.FC<{ setActivePage: (page: ActivePage) => void
               onClick={() => setActivePage('efiling')}
               className="text-xs font-bold text-brand hover:underline inline-flex items-center gap-1"
             >
-              Manage Filing Tickets <ArrowRight className="w-3.5 h-3.5" />
+              Open Registration Assistant <ArrowRight className="w-3.5 h-3.5" />
             </button>
             <button
               type="button"
@@ -170,30 +256,31 @@ export const DashboardView: React.FC<{ setActivePage: (page: ActivePage) => void
           </div>
         </div>
 
-        {/* Module B: Omnichannel Supplier Network */}
+        {/* Module B: Local Supplier Network */}
         <div className="bg-surface border border-line rounded-2xl p-5 hover:border-brand/40 transition-all flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold uppercase tracking-wider text-amber-800 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200">
-                Module B · Supplier Network
+                Module B · Local Suppliers
               </span>
-              <span className="text-xs font-bold text-emerald-700 flex items-center gap-1">
-                <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-500" /> ★ 4.9 Trust Score
+              <span className="text-xs text-muted flex items-center gap-1">
+                <span className="bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded text-[10px] font-medium border border-slate-200">Sample data</span>
+                <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-500" /> 4.9 Trust Rating
               </span>
             </div>
-            <h3 className="text-lg font-bold text-ink mt-3">Omnichannel Local Marketplace</h3>
+            <h3 className="text-lg font-bold text-ink mt-3">Local Suppliers Directory</h3>
             <p className="text-xs text-muted mt-1 leading-relaxed">
-              Searchable, categorized marketplace for South Cotabato across Raw Materials, Packaging, Intermediary/B2B Services, and Marketing Agencies with verified peer reviews.
+              Connect with verified South Cotabato packaging suppliers, coffee roasters, equipment fabricators, and regional logistics providers.
             </p>
 
             <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
               <div className="p-2.5 rounded-xl bg-sunken/60 border border-line/60">
-                <span className="text-slate-500 block">Verified Hub Suppliers</span>
+                <span className="text-slate-500 block">Sample Directory Listings</span>
                 <span className="font-extrabold text-purple-900 text-base">5 Producers</span>
               </div>
               <div className="p-2.5 rounded-xl bg-sunken/60 border border-line/60">
                 <span className="text-slate-500 block">Municipal Coverage</span>
-                <span className="font-extrabold text-ink text-base">All 11 Towns</span>
+                <span className="font-extrabold text-ink text-base">All 11 Municipalities</span>
               </div>
             </div>
           </div>
@@ -201,7 +288,7 @@ export const DashboardView: React.FC<{ setActivePage: (page: ActivePage) => void
           <div className="mt-5 pt-3 border-t border-line flex items-center justify-between">
             <button
               type="button"
-              onClick={() => setActivePage('marketing')}
+              onClick={() => setActivePage('suppliers')}
               className="text-xs font-bold text-brand hover:underline inline-flex items-center gap-1"
             >
               Explore Supplier Directory <ArrowRight className="w-3.5 h-3.5" />
@@ -217,18 +304,16 @@ export const DashboardView: React.FC<{ setActivePage: (page: ActivePage) => void
         </div>
       </div>
 
-      {/* Financial Runway Snapshot */}
+      {/* Financial Health Snapshot */}
       <Panel>
         <PanelHeader
-          title="Financial Health & Capital Runway"
-          description={assessment ? 'Self-reported monthly estimates. Shapes your credit matching and government grant recommendations.' : undefined}
+          title="Financial Health & How Long Cash Will Last"
+          description={assessment ? 'Self-reported monthly overview. Helps assess grant readiness and debt capacity.' : undefined}
           action={
-            assessment && (
-              <Button variant="ghost" size="sm" onClick={() => setActivePage('finance')}>
-                Update Checkup
-                <ArrowRight className="w-3.5 h-3.5" />
-              </Button>
-            )
+            <Button variant="secondary" size="sm" onClick={handleStartCheckup}>
+              <Activity className="w-3.5 h-3.5 mr-1" />
+              {assessment ? 'Retake 3-Minute Checkup' : 'Start 3-Minute Checkup'}
+            </Button>
           }
         />
 
@@ -242,21 +327,33 @@ export const DashboardView: React.FC<{ setActivePage: (page: ActivePage) => void
             ))}
           </dl>
         ) : assessment ? (
-          <dl className="grid grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-5">
-            <Stat label="Monthly Turnover" value={formatPesos(assessment.monthlyIncome)} />
-            <Stat label="Operating Surplus" value={formatPesos(operatingProfit)} tone={operatingProfit >= 0 ? 'good' : 'danger'} />
-            <Stat label="Cash Runway" value={cashRunway} tone="brand" />
-            <Stat label="Outstanding Liabilities" value={formatPesos(assessment.debtOutstanding)} />
-          </dl>
+          <div className="space-y-4">
+            <dl className="grid grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-5">
+              <Stat label="Monthly Sales" value={formatPesos(assessment.monthlyIncome)} />
+              <Stat label="Net Monthly Profit" value={formatPesos(operatingProfit)} tone={operatingProfit >= 0 ? 'good' : 'danger'} />
+              <Stat label="How Long Cash Will Last" value={cashRunway} tone="brand" />
+              <Stat label="Total Business Loans" value={formatPesos(assessment.debtOutstanding)} />
+            </dl>
+            <div className="pt-3 border-t border-line flex items-center justify-between text-xs text-muted">
+              <span>Opening balance: ₱{(assessment.cashOnHand - operatingProfit).toLocaleString('en-PH')} · Net flow: ₱{operatingProfit.toLocaleString('en-PH')}</span>
+              <button
+                type="button"
+                onClick={() => setActivePage('finance')}
+                className="text-brand font-semibold hover:underline inline-flex items-center gap-1"
+              >
+                Go to Finance ledger <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
         ) : (
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-xl bg-sunken px-5 py-5">
             <div>
               <p className="font-semibold text-ink">Take the 3-minute Financial Checkup</p>
               <p className="mt-1 text-sm text-muted max-w-md">
-                Enter your monthly turnover, expenses, and cash reserves to calculate runway and unlock tailored credit matching.
+                Answer 3 simple questions about your monthly sales, expenses, and cash savings to calculate your financial health score and runway.
               </p>
             </div>
-            <Button onClick={() => setActivePage('finance')}>Start Finance Checkup</Button>
+            <Button onClick={handleStartCheckup}>Start Finance Checkup</Button>
           </div>
         )}
       </Panel>
@@ -265,7 +362,7 @@ export const DashboardView: React.FC<{ setActivePage: (page: ActivePage) => void
       <Panel>
         <PanelHeader
           title="Statutory Business Registration Milestones"
-          description="Mandatory sequencing for establishing an MSME in South Cotabato under RA 11032 Ease of Doing Business."
+          description="Standard sequence for MSMEs in South Cotabato under RA 11032 Ease of Doing Business."
         />
         <ol className="grid gap-x-8 gap-y-6 sm:grid-cols-2 lg:grid-cols-4">
           {MILESTONES.map((m, i) => (
@@ -292,12 +389,196 @@ export const DashboardView: React.FC<{ setActivePage: (page: ActivePage) => void
                   <ArrowUpRight className="w-3 h-3" />
                 </a>
               ) : (
-                <p className="mt-2 text-xs font-medium text-muted">At your municipal barangay hall</p>
+                <p className="mt-2 text-xs font-medium text-muted">Visit your local municipal barangay hall</p>
               )}
             </li>
           ))}
         </ol>
       </Panel>
+
+      {/* 3-Minute Financial Checkup Wizard Modal */}
+      <Modal
+        open={wizardOpen}
+        onClose={() => setWizardOpen(false)}
+        title="3-Minute MSME Financial Checkup"
+        size="md"
+      >
+        <div className="space-y-5">
+          {/* Progress Indicator */}
+          <div className="flex items-center justify-between border-b border-line pb-3">
+            <span className="text-xs font-semibold text-muted">
+              Step {wizardStep} of 4: {wizardStep === 1 ? 'Monthly Sales' : wizardStep === 2 ? 'Costs & Loans' : wizardStep === 3 ? 'Cash Reserves' : 'Your Results'}
+            </span>
+            <div className="flex items-center gap-1.5">
+              {[1, 2, 3, 4].map((s) => (
+                <span
+                  key={s}
+                  className={cx(
+                    'w-6 h-1.5 rounded-full transition-colors',
+                    s === wizardStep ? 'bg-brand' : s < wizardStep ? 'bg-emerald-500' : 'bg-slate-200'
+                  )}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Wizard Step 1: Monthly Sales */}
+          {wizardStep === 1 && (
+            <div className="space-y-4">
+              <div>
+                <h4 className="text-sm font-bold text-ink">What is your average monthly sales (turnover)?</h4>
+                <p className="text-xs text-muted mt-1">
+                  Total revenue collected from customers per month before paying costs.
+                </p>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-ink mb-1">Monthly Sales (₱)</label>
+                <input
+                  type="text"
+                  value={salesInput}
+                  onChange={(e) => setSalesInput(e.target.value)}
+                  placeholder="e.g. 180,000"
+                  className={cx(inputClass, 'text-lg font-semibold')}
+                />
+              </div>
+              <div className="flex justify-end pt-3">
+                <Button onClick={() => setWizardStep(2)}>
+                  Next: Costs & Loans <ChevronRight className="w-4 h-4 ml-1" />
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Wizard Step 2: Costs & Debt */}
+          {wizardStep === 2 && (
+            <div className="space-y-4">
+              <div>
+                <h4 className="text-sm font-bold text-ink">What are your monthly business expenses?</h4>
+                <p className="text-xs text-muted mt-1">
+                  Include raw materials, rent, staff wages, utilities, and packaging.
+                </p>
+              </div>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-semibold text-ink mb-1">Monthly Operating Expenses (₱)</label>
+                  <input
+                    type="text"
+                    value={expensesInput}
+                    onChange={(e) => setExpensesInput(e.target.value)}
+                    placeholder="e.g. 110,000"
+                    className={cx(inputClass, 'font-semibold')}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-ink mb-1">Monthly Loan / Amortization Payments (₱)</label>
+                  <input
+                    type="text"
+                    value={debtInput}
+                    onChange={(e) => setDebtInput(e.target.value)}
+                    placeholder="e.g. 15,000 (0 if none)"
+                    className={cx(inputClass, 'font-semibold')}
+                  />
+                  <p className="text-[11px] text-muted mt-1">Leave 0 if your business has no outstanding debts.</p>
+                </div>
+              </div>
+              <div className="flex justify-between pt-3">
+                <Button variant="ghost" onClick={() => setWizardStep(1)}>Back</Button>
+                <Button onClick={() => setWizardStep(3)}>
+                  Next: Cash Reserves <ChevronRight className="w-4 h-4 ml-1" />
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Wizard Step 3: Cash Reserves */}
+          {wizardStep === 3 && (
+            <div className="space-y-4">
+              <div>
+                <h4 className="text-sm font-bold text-ink">How much liquid cash do you have right now?</h4>
+                <p className="text-xs text-muted mt-1">
+                  Cash on hand in your cash register, bank savings, and GCash/Maya business accounts.
+                </p>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-ink mb-1">Total Available Cash (₱)</label>
+                <input
+                  type="text"
+                  value={cashInput}
+                  onChange={(e) => setCashInput(e.target.value)}
+                  placeholder="e.g. 150,000"
+                  className={cx(inputClass, 'text-lg font-semibold')}
+                />
+              </div>
+              <div className="flex justify-between pt-3">
+                <Button variant="ghost" onClick={() => setWizardStep(2)}>Back</Button>
+                <Button variant="accent" onClick={handleComputeCheckup}>
+                  Compute Health Score
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Wizard Step 4: Results */}
+          {wizardStep === 4 && wizardResult && (
+            <div className="space-y-4">
+              <div className="p-4 rounded-xl bg-sunken/80 border border-line text-center">
+                <span className="text-xs font-semibold uppercase tracking-wider text-muted">Business Health Score</span>
+                <div className="mt-1 flex items-center justify-center gap-2">
+                  <span className="text-4xl font-extrabold text-ink">{wizardResult.healthScore}</span>
+                  <span className="text-lg font-bold text-muted">/ 100</span>
+                </div>
+                <div className="mt-2 inline-flex items-center px-3 py-1 rounded-full text-xs font-bold capitalize gap-1.5 bg-emerald-100 text-emerald-800 border border-emerald-300">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  Status: {wizardResult.status}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div className="p-3 rounded-lg border border-line bg-surface">
+                  <span className="text-muted block">Estimated Cash Runway</span>
+                  <span className="text-base font-bold text-brand mt-0.5 block">{wizardResult.runwayMonths} months</span>
+                  <span className="text-[11px] text-muted">How long savings last with current outflow</span>
+                </div>
+                <div className="p-3 rounded-lg border border-line bg-surface">
+                  <span className="text-muted block">Net Monthly Cash Flow</span>
+                  <span className={cx('text-base font-bold mt-0.5 block', wizardResult.monthlyNetCash >= 0 ? 'text-emerald-700' : 'text-danger')}>
+                    {formatPesos(wizardResult.monthlyNetCash)}
+                  </span>
+                  <span className="text-[11px] text-muted">Sales minus expenses & loans</span>
+                </div>
+              </div>
+
+              <div>
+                <h5 className="text-xs font-bold text-ink uppercase tracking-wider mb-2">Recommended 3 Next Steps</h5>
+                <ol className="space-y-2">
+                  {wizardResult.actionItems.map((item, idx) => (
+                    <li key={idx} className="flex items-start gap-2 text-xs text-ink bg-surface p-2.5 rounded-lg border border-line">
+                      <span className="w-5 h-5 rounded-full bg-brand/10 text-brand font-bold flex items-center justify-center shrink-0 text-[11px]">
+                        {idx + 1}
+                      </span>
+                      <span className="leading-relaxed">{item}</span>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+
+              <div className="flex flex-col sm:flex-row justify-between gap-2 pt-3 border-t border-line">
+                <Button variant="ghost" onClick={() => setWizardStep(1)}>
+                  Recalculate
+                </Button>
+                <div className="flex items-center gap-2">
+                  <Button variant="secondary" onClick={() => { setWizardOpen(false); setActivePage('finance'); }}>
+                    Open Finance Tabs
+                  </Button>
+                  <Button onClick={handleSaveAssessment} disabled={savingAssessment}>
+                    {savingAssessment ? 'Saving...' : 'Save to Dashboard'}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </Modal>
     </div>
   );
 };

@@ -97,10 +97,15 @@ export const ChatThread: React.FC<{
 }> = ({ messages, loading, dense, children, after }) => {
   const { t } = useLanguage();
   const endRef = useRef<HTMLDivElement>(null);
+  const [feedback, setFeedback] = useState<Record<number, 'helpful' | 'unhelpful'>>({});
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
   }, [messages, loading]);
+
+  const handleFeedback = (idx: number, type: 'helpful' | 'unhelpful') => {
+    setFeedback((prev) => ({ ...prev, [idx]: type }));
+  };
 
   return (
     <div className={cx('flex-1 overflow-y-auto', dense ? 'p-4 space-y-4' : 'p-5 sm:p-6 space-y-5')} aria-live="polite">
@@ -151,6 +156,32 @@ export const ChatThread: React.FC<{
                       );
                     })}
                   </ul>
+                </div>
+              )}
+              {/* Helpful feedback buttons */}
+              {idx > 0 && (
+                <div className="mt-2 flex items-center gap-2 text-[11px] text-muted">
+                  <span>Was this helpful?</span>
+                  <button
+                    type="button"
+                    onClick={() => handleFeedback(idx, 'helpful')}
+                    className={cx(
+                      'px-2 py-0.5 rounded transition-colors',
+                      feedback[idx] === 'helpful' ? 'bg-emerald-100 text-emerald-800 font-bold' : 'hover:bg-slate-100 text-slate-600'
+                    )}
+                  >
+                    👍 Yes
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleFeedback(idx, 'unhelpful')}
+                    className={cx(
+                      'px-2 py-0.5 rounded transition-colors',
+                      feedback[idx] === 'unhelpful' ? 'bg-rose-100 text-rose-800 font-bold' : 'hover:bg-slate-100 text-slate-600'
+                    )}
+                  >
+                    👎 Needs improvement
+                  </button>
                 </div>
               )}
             </div>

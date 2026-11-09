@@ -1,6 +1,25 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { evaluateSubsidies, evaluateCredit, calculatePaybackPeriod } from './msmeLogic';
+import { evaluateSubsidies, evaluateCredit, calculatePaybackPeriod, calculateFinancialHealth } from './msmeLogic';
+
+test('calculateFinancialHealth evaluates healthy business with runway and 3 clear next steps', () => {
+  const result = calculateFinancialHealth(180_000, 110_000, 15_000, 250_000);
+  assert.equal(result.status, 'Strong');
+  assert.ok(result.healthScore >= 80, `Expected score >= 80, got ${result.healthScore}`);
+  assert.equal(result.monthlyNetCash, 55_000);
+  assert.equal(result.runwayMonths, 2.0);
+  assert.equal(result.actionItems.length, 3);
+});
+
+test('calculateFinancialHealth detects vulnerable business with negative cash flow and short runway', () => {
+  const result = calculateFinancialHealth(40_000, 50_000, 10_000, 15_000);
+  assert.equal(result.status, 'Vulnerable');
+  assert.ok(result.healthScore < 50, `Expected score < 50, got ${result.healthScore}`);
+  assert.equal(result.monthlyNetCash, -20_000);
+  assert.equal(result.actionItems.length, 3);
+  assert.ok(result.actionItems.some(item => item.includes('stop monthly cash loss') || item.includes('buffer')));
+});
+
 
 test('evaluateSubsidies gives high priority to food and agri processing in DOST SETUP', () => {
   const matches = evaluateSubsidies({

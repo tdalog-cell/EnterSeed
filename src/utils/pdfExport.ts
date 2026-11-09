@@ -92,8 +92,8 @@ export function exportDocumentAsPdf(doc: GeneratedDocument): void {
     pdf.setFont('helvetica', 'bold');
     pdf.setFontSize(8);
     pdf.setTextColor(100, 116, 139);
-    pdf.text('REPUBLIC OF THE PHILIPPINES · DTI SOUTH COTABATO MSME HUB', margin, cursorY);
-    pdf.text(`REF: DTI-DOC-${doc.id}`, pageWidth - margin, cursorY, { align: 'right' });
+    pdf.text('ENTERSEED MSME SUPPORT SUITE · SOUTH COTABATO', margin, cursorY);
+    pdf.text(`REF: ENTERSEED-DOC-${doc.id}`, pageWidth - margin, cursorY, { align: 'right' });
     cursorY += 16;
   };
 
@@ -181,7 +181,7 @@ export function exportDocumentAsPdf(doc: GeneratedDocument): void {
     pdf.setTextColor(148, 163, 184);
     pdf.line(margin, pageHeight - 32, pageWidth - margin, pageHeight - 32);
     pdf.text(
-      'Official Regulatory Document · DTI South Cotabato MSME Support Hub · RA 9178 & RA 11032 Compliant',
+      'Enterseed MSME Document Draft · Independent Business Preparation Tool · South Cotabato',
       margin,
       pageHeight - 20
     );
@@ -193,7 +193,7 @@ export function exportDocumentAsPdf(doc: GeneratedDocument): void {
 }
 
 /**
- * Exports the Consolidated All-in-One E-Filing Application strictly as a .pdf file.
+ * Exports the Consolidated All-in-One Registration Preparation Application strictly as a .pdf file.
  */
 export function exportConsolidatedEfilingPdf(data: ConsolidatedFilingData): void {
   const pdf = new jsPDF({
@@ -223,8 +223,8 @@ export function exportConsolidatedEfilingPdf(data: ConsolidatedFilingData): void
     pdf.setFont('helvetica', 'bold');
     pdf.setFontSize(8);
     pdf.setTextColor(100, 116, 139);
-    pdf.text('REPUBLIC OF THE PHILIPPINES · PROVINCE OF SOUTH COTABATO', margin, cursorY);
-    pdf.text(`TRACKING: ${data.trackingNumber}`, pageWidth - margin, cursorY, { align: 'right' });
+    pdf.text('ENTERSEED REGISTRATION ASSISTANT · SOUTH COTABATO MSME PREPARATION', margin, cursorY);
+    pdf.text(`REF: ${data.trackingNumber}`, pageWidth - margin, cursorY, { align: 'right' });
     cursorY += 16;
   };
 
@@ -238,13 +238,13 @@ export function exportConsolidatedEfilingPdf(data: ConsolidatedFilingData): void
   pdf.setFont('helvetica', 'bold');
   pdf.setFontSize(16);
   pdf.setTextColor(30, 41, 59);
-  pdf.text('CONSOLIDATED STATUTORY E-FILING APPLICATION', margin, cursorY);
+  pdf.text('MSME STATUTORY REGISTRATION PREPARATION DOSSIER', margin, cursorY);
   cursorY += 18;
 
   pdf.setFont('helvetica', 'normal');
   pdf.setFontSize(9);
   pdf.setTextColor(100, 116, 139);
-  pdf.text('Single-Window Business Registration Dossier (BNRS, Barangay, BPLO Mayor\'s Permit, BIR Form 1901, Zoning)', margin, cursorY);
+  pdf.text('Pre-Filing Preparation Dossier (For submission by owner via DTI BNRS, LGU BPLO, and BIR eServices)', margin, cursorY);
   cursorY += 20;
 
   // Applicant & Enterprise Box
@@ -345,13 +345,13 @@ export function exportConsolidatedEfilingPdf(data: ConsolidatedFilingData): void
   pdf.setFont('helvetica', 'bold');
   pdf.setFontSize(8);
   pdf.setTextColor(133, 77, 14);
-  pdf.text('LEGAL AFFIRMATION & APPLICANT UNDERTAKING (RA 11032)', margin + 10, cursorY + 14);
+  pdf.text('MSME PREPARATION NOTICE & APPLICANT UNDERTAKING', margin + 10, cursorY + 14);
 
   pdf.setFont('helvetica', 'normal');
   pdf.setFontSize(7.5);
   pdf.setTextColor(113, 63, 18);
   const pledge =
-    'I hereby certify under penalty of law that all entries in this consolidated statutory application are true and correct. I authorize the DTI, Municipal BPLO, Barangay Council, and BIR to inspect the premises and verify the submitted records.';
+    'This document is prepared using Enterseed as an independent support assistant for the business owner. Always confirm requirements directly with DTI, your LGU BPLO, and BIR before submission.';
   const pledgeLines = pdf.splitTextToSize(pledge, contentWidth - 20);
   pdf.text(pledgeLines, margin + 10, cursorY + 26);
 
@@ -371,7 +371,7 @@ export function exportConsolidatedEfilingPdf(data: ConsolidatedFilingData): void
   pdf.line(pageWidth - margin - 200, cursorY + 24, pageWidth - margin - 20, cursorY + 24);
   pdf.setFont('helvetica', 'bold');
   pdf.setFontSize(8.5);
-  pdf.text('DTI Negosyo Center Intake Officer', pageWidth - margin - 200, cursorY + 36);
+  pdf.text('Receiving Officer / Notary Stamp', pageWidth - margin - 200, cursorY + 36);
   pdf.setFont('helvetica', 'normal');
   pdf.setFontSize(7.5);
   pdf.text('Verification & Document Stamp', pageWidth - margin - 200, cursorY + 46);
@@ -385,7 +385,7 @@ export function exportConsolidatedEfilingPdf(data: ConsolidatedFilingData): void
     pdf.setTextColor(148, 163, 184);
     pdf.line(margin, pageHeight - 28, pageWidth - margin, pageHeight - 28);
     pdf.text(
-      `DTI Consolidated E-Filing Application · Tracking: ${data.trackingNumber} · Province of South Cotabato`,
+      `Enterseed Registration Preparation Dossier · Ref: ${data.trackingNumber} · Province of South Cotabato`,
       margin,
       pageHeight - 16
     );

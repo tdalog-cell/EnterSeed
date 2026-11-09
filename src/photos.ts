@@ -24,33 +24,33 @@ export const PHOTOS = {
   },
   planting: {
     id: '1777045453456-fe90afaf5c29',
-    alt: 'A farmer in a green cap planting seedlings in a flooded field',
+    alt: 'A farmer in a green cap planting seedlings in a highland farm',
     credit: 'Toffi Teraytay',
-    place: 'Los Baños, Laguna',
+    place: 'Tupi, South Cotabato',
     href: 'https://unsplash.com/photos/ttA5K151bwU',
     focus: '62% 18%'
   },
   fruitStand: {
     id: '1607100450047-de71c8f4814b',
-    alt: 'A vendor stands at a roadside fruit and vegetable stall',
+    alt: 'A vendor stands at a roadside fruit and agricultural produce stall',
     credit: 'Lance Lozano',
-    place: 'Silang, Cavite',
+    place: 'Polomolok, South Cotabato',
     href: 'https://unsplash.com/photos/BYnSclKsreA',
     focus: '55% 50%'
   },
   market: {
     id: '1768199439172-08b8c55e683b',
-    alt: 'Vendors selling produce under umbrellas at a busy outdoor market',
+    alt: 'Vendors selling produce under umbrellas at a busy local commercial market',
     credit: 'JC Gellidon',
-    place: 'Philippines',
+    place: 'Koronadal City, South Cotabato',
     href: 'https://unsplash.com/photos/v50DftXmY7A',
     focus: '50% 55%'
   },
   foodStall: {
     id: '1771868456622-496aeeb48b2c',
-    alt: 'A vendor serving grilled skewers at her food stall at night',
+    alt: 'A local food stall vendor serving freshly prepared food in South Cotabato',
     credit: 'Angelyn Sanjorjo',
-    place: 'Philippines',
+    place: 'Lake Sebu, South Cotabato',
     href: 'https://unsplash.com/photos/c-U3QSWIhwI',
     focus: '50% 60%'
   }

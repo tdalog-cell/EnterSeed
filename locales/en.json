@@ -129,12 +129,12 @@
       "send": "Send message",
       "sources": "Official verification links",
       "waiting": "Checking the available references…",
-      "disclaimer": "Informational support only. No official source pages are fetched for this chat; verify rules directly with DTI, DOST, or BIR.",
+      "disclaimer": "Informational support only. Always verify rules directly with DTI, DOST, your LGU, or BIR.",
       "unavailable": "Boss Narra could not reach the service. Please try again."
     },
     "auth": {
       "headline": "Grow smarter with Enterseed and Boss Narra.",
-      "lead": "Cash flow checkups, reviewed suppliers across South Cotabato, and a grounded advisor that points you to the official source every time.",
+      "lead": "Cash flow checkups, local suppliers across South Cotabato, and an independent AI advisor that links to official verification portals.",
       "signInTitle": "Sign in to your workspace",
       "registerTitle": "Create your account",
       "welcomeBack": "Welcome back.",

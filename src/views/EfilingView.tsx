@@ -92,10 +92,10 @@ export const EfilingView: React.FC = () => {
 
   // Single-Page AI Form State (Consolidates all 5 statutory registration stages)
   const [formData, setFormData] = useState<ConsolidatedFilingData>({
-    trackingNumber: `DTI-SC-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
-    businessName: user?.business || 'Matutum Agro-Industrial Roasters',
+    trackingNumber: `PREP-SC-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
+    businessName: user?.business || 'Matutum Highlands Coffee Roasters',
     businessType: 'Sole Proprietorship',
-    municipality: 'Tupi',
+    municipality: user?.municipality || 'City of Koronadal',
     applicantName: user ? `${user.firstName} ${user.lastName}` : 'Maria Elena Santos',
     applicantEmail: user?.email || 'msme.owner@southcotabato.ph',
 
@@ -105,7 +105,7 @@ export const EfilingView: React.FC = () => {
     bnrsDominantName: 'Matutum Highlands',
 
     // Section 2: Barangay Clearance
-    barangayName: 'Barangay Poblacion',
+    barangayName: 'Barangay Zone III',
     barangayPurpose: 'Commercial Manufacturing & Retail Operation Clearance',
     propertyOwnership: 'Owned Commercial Agricultural Lot (Tax Dec No. 2024-04-1182)',
 
@@ -114,7 +114,7 @@ export const EfilingView: React.FC = () => {
     capitalInvestment: 450000,
     employeeCount: 4,
     sanitaryCompliance: 'Compliant (4 staff completed Municipal Health Office sanitary exams)',
-    fireSafetyStatus: 'Inspection Requested (Bureau of Fire Protection Tupi Sub-station)',
+    fireSafetyStatus: 'Inspection Requested (Bureau of Fire Protection Koronadal Sub-station)',
 
     // Section 4: BIR Form 1901
     tinNumber: '742-891-304-000',
@@ -123,9 +123,9 @@ export const EfilingView: React.FC = () => {
     atpStatus: 'Authority to Print Official Invoices in progress with BIR RDO 110 General Santos / Koronadal',
 
     // Section 5: Location & Zoning
-    locationAddress: 'Km 14, General Santos Highway, Crossing Matutum, Poblacion, Tupi, South Cotabato',
+    locationAddress: 'Km 14, General Santos Highway, Crossing Matutum, Barangay Zone III, City of Koronadal, South Cotabato',
     zoningClassification: 'Commercial C-1 / Light Agro-Processing Zone',
-    locationSketchDesc: 'Situated 150 meters north of Tupi Fruit & Vegetable Terminal, fronting Municipal Agricultural Demo Plot, adjacent to South Cotabato Electric Coop (SOCOTECO II) transformer hub.',
+    locationSketchDesc: 'Situated 150 meters north of Koronadal Fruit & Agro Terminal, fronting Municipal Agricultural Demo Plot, adjacent to SOCOTECO II hub.',
     notes: 'Prioritized under DTI OTOP Next Gen Coffee Value Chain and South Cotabato Provincial Micro-Enterprise Development Council.'
   });
 
@@ -139,7 +139,7 @@ export const EfilingView: React.FC = () => {
     annualSales: 1500000,
     employeeCount: 5,
     yearsOperating: 2,
-    municipality: 'Tupi',
+    municipality: user?.municipality || 'City of Koronadal',
     needsMachinery: true,
     isWomenOrYouthLed: true,
     hasExportPotential: true
@@ -273,8 +273,8 @@ export const EfilingView: React.FC = () => {
     <div className="space-y-6 sm:space-y-8">
       {/* Page Header */}
       <PageHeader
-        title="DTI MSME E-Filing & Advisory Hub"
-        lead="Unified single-page statutory business registration, smart subsidy/credit referral engine, and official Philippine government portals."
+        title="Registration Assistant & Compliance Preparation"
+        lead="Organize your statutory business registration requirements and export a clean dossier. Enterseed is an information preparation tool and does not submit filings directly to government offices."
         actions={
           <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
             <Button
@@ -284,7 +284,7 @@ export const EfilingView: React.FC = () => {
               onClick={() => setActiveTab('all-in-one')}
             >
               <FileText className="w-4 h-4 mr-1.5" />
-              All-in-One Single-Page Form
+              All-in-One Dossier
             </Button>
             <Button
               variant={activeTab === 'referrals' ? 'primary' : 'secondary'}
@@ -293,7 +293,7 @@ export const EfilingView: React.FC = () => {
               onClick={() => setActiveTab('referrals')}
             >
               <Sparkles className="w-4 h-4 mr-1.5" />
-              Smart Referral
+              Grants & Credit Matcher
             </Button>
             <Button
               variant={activeTab === 'portals' ? 'primary' : 'secondary'}
@@ -307,6 +307,19 @@ export const EfilingView: React.FC = () => {
           </div>
         }
       />
+
+      {/* Preparation Disclaimer Notice */}
+      <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 flex items-start gap-3">
+        <ShieldCheck className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
+        <div className="space-y-1">
+          <p className="font-bold text-amber-950">
+            Information Preparation Only · Not an Official Government Filing Submission
+          </p>
+          <p className="leading-relaxed">
+            This tool organizes your details and prepares your documents for filing so you have all requirements ready. It does <strong>not</strong> submit filings directly to government agencies. Use the "Go to official portal" buttons below each section or in the "Official Portals" tab to complete and officially submit your filings.
+          </p>
+        </div>
+      </div>
 
       {/* Notification banner */}
       {consolidatedNotice && (
@@ -324,13 +337,13 @@ export const EfilingView: React.FC = () => {
               <div>
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-400/20 text-amber-300 border border-amber-400/30 mb-2">
                   <ShieldCheck className="w-3.5 h-3.5" />
-                  RA 11032 Ease of Doing Business Unified Workflow
+                  RA 11032 Ease of Doing Business Preparation Tool
                 </span>
                 <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight">
-                  All-in-One Statutory Business E-Filing
+                  MSME Registration Preparation Dossier
                 </h2>
                 <p className="mt-1 text-sm text-purple-200 max-w-2xl leading-relaxed">
-                  Consolidated single-page registration workflow. Generate, review, and complete statutory requirements for DTI Business Name, Barangay Clearance, Mayor’s Permit (BPLO), BIR Form 1901, and Location & Zoning all on this single page.
+                  Consolidated preparation workflow. Organize your requirements for DTI Business Name, Barangay Clearance, Mayor’s Permit (BPLO), BIR Form 1901, and Location & Zoning all on one screen before visiting official portals.
                 </p>
               </div>
 
@@ -538,6 +551,18 @@ export const EfilingView: React.FC = () => {
                   )}
                 </Field>
               </div>
+
+              <div className="mt-4 pt-3 border-t border-line flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-purple-50/50 -mx-5 -mb-5 px-5 py-3 rounded-b-2xl">
+                <span className="text-xs text-muted">Ready to register your proposed business name?</span>
+                <a
+                  href="https://bnrs.dti.gov.ph/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-purple-900 bg-white hover:bg-purple-100 border border-purple-200 px-3 py-1.5 rounded-lg transition-colors shadow-xs"
+                >
+                  Go to official DTI BNRS portal <ArrowUpRight className="w-3.5 h-3.5" />
+                </a>
+              </div>
             </Panel>
 
             {/* SECTION 2: BARANGAY CLEARANCE */}
@@ -603,6 +628,18 @@ export const EfilingView: React.FC = () => {
                     />
                   )}
                 </Field>
+              </div>
+
+              <div className="mt-4 pt-3 border-t border-line flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-blue-50/50 -mx-5 -mb-5 px-5 py-3 rounded-b-2xl">
+                <span className="text-xs text-muted">Clearance must be obtained in person from your local Barangay Hall.</span>
+                <a
+                  href="https://southcotabato.gov.ph/services/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-900 bg-white hover:bg-blue-100 border border-blue-200 px-3 py-1.5 rounded-lg transition-colors shadow-xs"
+                >
+                  South Cotabato LGU Barangay Directory <ArrowUpRight className="w-3.5 h-3.5" />
+                </a>
               </div>
             </Panel>
 
@@ -695,6 +732,18 @@ export const EfilingView: React.FC = () => {
                   )}
                 </Field>
               </div>
+
+              <div className="mt-4 pt-3 border-t border-line flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-emerald-50/50 -mx-5 -mb-5 px-5 py-3 rounded-b-2xl">
+                <span className="text-xs text-muted">Ready to file for your Mayor’s Permit and zoning clearance?</span>
+                <a
+                  href="https://southcotabato.gov.ph/services/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-900 bg-white hover:bg-emerald-100 border border-emerald-200 px-3 py-1.5 rounded-lg transition-colors shadow-xs"
+                >
+                  Go to official South Cotabato LGU portal <ArrowUpRight className="w-3.5 h-3.5" />
+                </a>
+              </div>
             </Panel>
 
             {/* SECTION 4: BIR FORM 1901 */}
@@ -779,6 +828,18 @@ export const EfilingView: React.FC = () => {
                     />
                   )}
                 </Field>
+              </div>
+
+              <div className="mt-4 pt-3 border-t border-line flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-indigo-50/50 -mx-5 -mb-5 px-5 py-3 rounded-b-2xl">
+                <span className="text-xs text-muted">Ready to file your BIR Form 1901 or apply for TIN / ATP?</span>
+                <a
+                  href="https://www.bir.gov.ph/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-900 bg-white hover:bg-indigo-100 border border-indigo-200 px-3 py-1.5 rounded-lg transition-colors shadow-xs"
+                >
+                  Go to official BIR eServices portal <ArrowUpRight className="w-3.5 h-3.5" />
+                </a>
               </div>
             </Panel>
 

@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
-import { apiFetch, formatPesos } from '../services/apiClient';
 import {
   Wallet,
   CreditCard,
@@ -10,17 +9,17 @@ import {
   FileBarChart,
   Plus,
   Trash2,
+  Edit2,
+  Download,
+  Upload,
   AlertTriangle,
-  ExternalLink,
-  CheckSquare,
-  Square,
+  ArrowUpRight,
   ShieldAlert,
   Info,
-  ArrowUpRight,
-  ArrowDownRight,
-  DollarSign,
-  Calendar,
-  Building
+  CheckSquare,
+  Square,
+  CheckCircle2,
+  Calendar
 } from 'lucide-react';
 import {
   Button,
@@ -30,6 +29,7 @@ import {
   Panel,
   PanelHeader,
   Segmented,
+  Modal,
   cx,
   inputClass,
   textareaClass
@@ -43,7 +43,7 @@ interface CashTransaction {
   category: string;
   description: string;
   amount: number;
-  date: string;
+  date: string; // ISO date 'YYYY-MM-DD'
 }
 
 interface DebtItem {
@@ -63,25 +63,53 @@ interface InvestmentOption {
   usefulLifeMonths: number;
 }
 
+function formatDatePH(dateStr: string): string {
+  try {
+    const parts = dateStr.split('-');
+    if (parts.length === 3) {
+      const year = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10) - 1;
+      const day = parseInt(parts[2], 10);
+      const d = new Date(year, month, day);
+      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+    return dateStr;
+  } catch {
+    return dateStr;
+  }
+}
+
 export const FinanceView: React.FC = () => {
   const { t } = useLanguage();
   const { user } = useAuth();
 
   const [activeTab, setActiveTab] = useState<FinanceTab>('cash');
 
+  // Opening Cash Balance
+  const [openingBalance, setOpeningBalance] = useState<number>(97500);
+
   // --- 1. CASH MANAGEMENT STATE ---
-  const [cashOnHand, setCashOnHand] = useState<number>(150000);
   const [transactions, setTransactions] = useState<CashTransaction[]>([
-    { id: '1', type: 'in', category: 'Product Sales', description: 'Coffee Bean Wholesale to Koronadal Cafe', amount: 45000, date: '2026-11-01' },
-    { id: '2', type: 'out', category: 'Raw Materials', description: 'Green Coffee Sourcing from Mt. Matutum Farmers', amount: 18000, date: '2026-11-03' },
-    { id: '3', type: 'out', category: 'Packaging', description: 'Pouch Packaging from Polomolok Supplier', amount: 6500, date: '2026-11-05' },
-    { id: '4', type: 'in', category: 'B2B Contract', description: 'Hotel Supply Order in GenSan', amount: 32000, date: '2026-11-07' }
+    { id: '1', type: 'in', category: 'Product Sales', description: 'Arabica & Robusta Wholesale to Koronadal Cafes', amount: 45000, date: '2026-11-01' },
+    { id: '2', type: 'out', category: 'Raw Materials', description: 'Fresh Coffee Cherries from Mt. Matutum Farmers', amount: 18000, date: '2026-11-03' },
+    { id: '3', type: 'out', category: 'Packaging', description: 'Degassing Valve Pouches from Polomolok Supplier', amount: 6500, date: '2026-11-05' },
+    { id: '4', type: 'in', category: 'B2B Contract', description: 'Quarterly Hotel Supply Order in GenSan', amount: 32000, date: '2026-11-07' }
   ]);
 
   const [newTxType, setNewTxType] = useState<'in' | 'out'>('in');
-  const [newTxCategory, setNewTxCategory] = useState('Sales / Income');
+  const [newTxCategory, setNewTxCategory] = useState('Product Sales');
   const [newTxDesc, setNewTxDesc] = useState('');
   const [newTxAmount, setNewTxAmount] = useState<string>('');
+
+  // Editing Transaction Modal
+  const [editingTx, setEditingTx] = useState<CashTransaction | null>(null);
+  const [editDesc, setEditDesc] = useState('');
+  const [editAmount, setEditAmount] = useState('');
+  const [editCategory, setEditCategory] = useState('');
+  const [editType, setEditType] = useState<'in' | 'out'>('in');
+  const [editDate, setEditDate] = useState('');
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // --- 2. DEBT MANAGEMENT STATE ---
   const [debts, setDebts] = useState<DebtItem[]>([
@@ -96,12 +124,12 @@ export const FinanceView: React.FC = () => {
     },
     {
       id: 'd2',
-      lender: 'LandBank MSME Facility',
+      lender: 'LandBank MSME Facility (Koronadal)',
       principal: 250000,
       monthlyPayment: 8500,
       dueDate: '28th of every month',
       interestRate: '6% per annum',
-      notes: 'Equipment loan for roasting machine'
+      notes: 'Equipment loan for commercial roasting machine'
     }
   ]);
 
@@ -123,14 +151,14 @@ export const FinanceView: React.FC = () => {
 
   // --- 4. INVESTMENT PLANNING STATE ---
   const [investA, setInvestA] = useState<InvestmentOption>({
-    name: 'Option A: High-Capacity Roaster',
+    name: 'Option A: High-Capacity Batch Roaster',
     cost: 180000,
     monthlyBenefit: 22000,
     usefulLifeMonths: 36
   });
 
   const [investB, setInvestB] = useState<InvestmentOption>({
-    name: 'Option B: Automated Packaging Machine',
+    name: 'Option B: Semi-Automated Pouch Sealer',
     cost: 120000,
     monthlyBenefit: 14000,
     usefulLifeMonths: 24
@@ -140,6 +168,7 @@ export const FinanceView: React.FC = () => {
   const totalCashIn = transactions.filter((t) => t.type === 'in').reduce((sum, t) => sum + t.amount, 0);
   const totalCashOut = transactions.filter((t) => t.type === 'out').reduce((sum, t) => sum + t.amount, 0);
   const netMonthlyCashFlow = totalCashIn - totalCashOut;
+  const currentLiquidCash = openingBalance + netMonthlyCashFlow;
   const recommendedReserve = totalCashOut > 0 ? totalCashOut * 3 : 50000;
 
   // Calculations for Debt Management
@@ -150,8 +179,8 @@ export const FinanceView: React.FC = () => {
   // Add new cash transaction
   const handleAddTransaction = (e: React.FormEvent) => {
     e.preventDefault();
-    const amt = Number(newTxAmount);
-    if (!newTxDesc || !amt || amt <= 0) return;
+    const amt = parseFloat(newTxAmount.replace(/,/g, ''));
+    if (!newTxDesc || isNaN(amt) || amt <= 0) return;
 
     const newTx: CashTransaction = {
       id: Date.now().toString(),
@@ -163,12 +192,6 @@ export const FinanceView: React.FC = () => {
     };
 
     setTransactions([newTx, ...transactions]);
-    if (newTxType === 'in') {
-      setCashOnHand((prev) => prev + amt);
-    } else {
-      setCashOnHand((prev) => Math.max(0, prev - amt));
-    }
-
     setNewTxDesc('');
     setNewTxAmount('');
   };
@@ -177,18 +200,112 @@ export const FinanceView: React.FC = () => {
     setTransactions((prev) => prev.filter((t) => t.id !== id));
   };
 
+  const handleStartEdit = (tx: CashTransaction) => {
+    setEditingTx(tx);
+    setEditDesc(tx.description);
+    setEditAmount(tx.amount.toLocaleString('en-PH'));
+    setEditCategory(tx.category);
+    setEditType(tx.type);
+    setEditDate(tx.date);
+  };
+
+  const handleSaveEdit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingTx) return;
+    const amt = parseFloat(editAmount.replace(/,/g, ''));
+    if (isNaN(amt) || amt <= 0) return;
+
+    setTransactions((prev) =>
+      prev.map((t) =>
+        t.id === editingTx.id
+          ? {
+              ...t,
+              description: editDesc,
+              amount: amt,
+              category: editCategory,
+              type: editType,
+              date: editDate || t.date
+            }
+          : t
+      )
+    );
+    setEditingTx(null);
+  };
+
+  // CSV Export
+  const handleExportCsv = () => {
+    const headers = ['Date', 'Type', 'Category', 'Description', 'Amount'];
+    const rows = transactions.map((t) => [
+      t.date,
+      t.type === 'in' ? 'Cash-In' : 'Cash-Out',
+      `"${t.category.replace(/"/g, '""')}"`,
+      `"${t.description.replace(/"/g, '""')}"`,
+      t.amount
+    ]);
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `enterseed-cashflow-${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // CSV Import
+  const handleImportCsv = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result as string;
+      if (!text) return;
+      const lines = text.split('\n').map((l) => l.trim()).filter((l) => l.length > 0);
+      if (lines.length <= 1) return;
+
+      const parsed: CashTransaction[] = [];
+      for (let i = 1; i < lines.length; i++) {
+        const parts = lines[i].split(',');
+        if (parts.length >= 5) {
+          const date = parts[0].replace(/"/g, '').trim();
+          const typeStr = parts[1].replace(/"/g, '').toLowerCase().trim();
+          const category = parts[2].replace(/"/g, '').trim();
+          const description = parts[3].replace(/"/g, '').trim();
+          const amount = parseFloat(parts[4].replace(/[^0-9.]/g, ''));
+          if (!isNaN(amount) && amount > 0) {
+            parsed.push({
+              id: `${Date.now()}-${i}`,
+              date: date || new Date().toISOString().split('T')[0],
+              type: typeStr.includes('in') ? 'in' : 'out',
+              category: category || 'General',
+              description: description || 'Imported Transaction',
+              amount
+            });
+          }
+        }
+      }
+
+      if (parsed.length > 0) {
+        setTransactions((prev) => [...parsed, ...prev]);
+      }
+    };
+    reader.readAsText(file);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
   // Add new debt entry
   const handleAddDebt = (e: React.FormEvent) => {
     e.preventDefault();
-    const princ = Number(newDebtPrincipal);
-    const mth = Number(newDebtMonthly);
-    if (!newDebtLender || !princ) return;
+    const princ = parseFloat(newDebtPrincipal.replace(/,/g, ''));
+    const mth = parseFloat(newDebtMonthly.replace(/,/g, ''));
+    if (!newDebtLender || isNaN(princ)) return;
 
     const newItem: DebtItem = {
       id: Date.now().toString(),
       lender: newDebtLender,
       principal: princ,
-      monthlyPayment: mth || 0,
+      monthlyPayment: isNaN(mth) ? 0 : mth,
       dueDate: newDebtDueDate || 'End of month',
       interestRate: 'Standard Rate',
       notes: newDebtNotes
@@ -210,104 +327,178 @@ export const FinanceView: React.FC = () => {
     setTaxChecklist((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
+  // Format number input with commas
+  const handleAmountChange = (val: string) => {
+    const raw = val.replace(/[^0-9]/g, '');
+    if (!raw) {
+      setNewTxAmount('');
+      return;
+    }
+    const num = parseInt(raw, 10);
+    setNewTxAmount(num.toLocaleString('en-PH'));
+  };
+
   return (
     <div className="space-y-6 sm:space-y-8">
-      <PageHeader
-        title="Enterprise Financial Management Dashboard"
-        lead="Track cash flow, organize debt obligations, prepare statutory tax checklists, compare capital investments, and review financial drafts."
-        actions={
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              variant={activeTab === 'cash' ? 'primary' : 'secondary'}
-              size="sm"
-              onClick={() => setActiveTab('cash')}
-            >
-              <Wallet className="w-4 h-4 mr-1.5" />
-              Cash Management
-            </Button>
-            <Button
-              variant={activeTab === 'debt' ? 'primary' : 'secondary'}
-              size="sm"
-              onClick={() => setActiveTab('debt')}
-            >
-              <CreditCard className="w-4 h-4 mr-1.5" />
-              Debt Management
-            </Button>
-            <Button
-              variant={activeTab === 'tax' ? 'primary' : 'secondary'}
-              size="sm"
-              onClick={() => setActiveTab('tax')}
-            >
-              <FileCheck className="w-4 h-4 mr-1.5" />
-              Tax Preparation
-            </Button>
-            <Button
-              variant={activeTab === 'investment' ? 'primary' : 'secondary'}
-              size="sm"
-              onClick={() => setActiveTab('investment')}
-            >
-              <TrendingUp className="w-4 h-4 mr-1.5" />
-              Investment Planning
-            </Button>
-            <Button
-              variant={activeTab === 'reports' ? 'primary' : 'secondary'}
-              size="sm"
-              onClick={() => setActiveTab('reports')}
-            >
-              <FileBarChart className="w-4 h-4 mr-1.5" />
-              Financial Reports
-            </Button>
-          </div>
-        }
-      />
+      {/* Shortened full-width title */}
+      <div>
+        <h1 className="text-2xl sm:text-3xl font-extrabold text-ink tracking-tight">Finance</h1>
+        <p className="mt-1 text-sm text-muted max-w-3xl leading-relaxed">
+          Record everyday business cash flow, track loans, complete statutory tax checklists, and review draft financial statements for {user?.business || 'Matutum Highlands Coffee Roasters'}.
+        </p>
+      </div>
+
+      {/* Tabs on their own row below header (horizontally scrollable on mobile) */}
+      <div className="border-b border-line pb-2 overflow-x-auto">
+        <div className="flex items-center gap-2 min-w-max">
+          <Button
+            variant={activeTab === 'cash' ? 'primary' : 'secondary'}
+            size="md"
+            className="min-h-[44px] shrink-0"
+            onClick={() => setActiveTab('cash')}
+          >
+            <Wallet className="w-4 h-4 mr-1.5" />
+            Cash Management
+          </Button>
+          <Button
+            variant={activeTab === 'debt' ? 'primary' : 'secondary'}
+            size="md"
+            className="min-h-[44px] shrink-0"
+            onClick={() => setActiveTab('debt')}
+          >
+            <CreditCard className="w-4 h-4 mr-1.5" />
+            Debt Management
+          </Button>
+          <Button
+            variant={activeTab === 'tax' ? 'primary' : 'secondary'}
+            size="md"
+            className="min-h-[44px] shrink-0"
+            onClick={() => setActiveTab('tax')}
+          >
+            <FileCheck className="w-4 h-4 mr-1.5" />
+            Tax Checklist
+          </Button>
+          <Button
+            variant={activeTab === 'investment' ? 'primary' : 'secondary'}
+            size="md"
+            className="min-h-[44px] shrink-0"
+            onClick={() => setActiveTab('investment')}
+          >
+            <TrendingUp className="w-4 h-4 mr-1.5" />
+            Equipment ROI
+          </Button>
+          <Button
+            variant={activeTab === 'reports' ? 'primary' : 'secondary'}
+            size="md"
+            className="min-h-[44px] shrink-0"
+            onClick={() => setActiveTab('reports')}
+          >
+            <FileBarChart className="w-4 h-4 mr-1.5" />
+            Financial Summaries
+          </Button>
+        </div>
+      </div>
 
       {/* --- SUB-SECTION 1: CASH MANAGEMENT --- */}
       {activeTab === 'cash' && (
         <div className="space-y-6">
+          {/* Top 3 KPI Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <Panel className="bg-emerald-50/60 border-emerald-200">
+            <Panel className="bg-emerald-50/70 border-emerald-200">
               <span className="text-xs font-semibold text-emerald-800 uppercase tracking-wider block">Total Recorded Cash-In</span>
-              <p className="text-2xl font-extrabold text-emerald-950 mt-1">₱{totalCashIn.toLocaleString()}</p>
-              <p className="text-xs text-emerald-700 mt-0.5">Calculated strictly from owner's manual entries</p>
+              <p className="text-2xl font-extrabold text-emerald-950 mt-1">₱{totalCashIn.toLocaleString('en-PH')}</p>
+              <p className="text-xs text-emerald-700 mt-0.5">Coffee wholesale & retail sales</p>
             </Panel>
-            <Panel className="bg-rose-50/60 border-rose-200">
+            <Panel className="bg-rose-50/70 border-rose-200">
               <span className="text-xs font-semibold text-rose-800 uppercase tracking-wider block">Total Recorded Cash-Out</span>
-              <p className="text-2xl font-extrabold text-rose-950 mt-1">₱{totalCashOut.toLocaleString()}</p>
-              <p className="text-xs text-rose-700 mt-0.5">Operating expenses and raw material payments</p>
+              <p className="text-2xl font-extrabold text-rose-950 mt-1">₱{totalCashOut.toLocaleString('en-PH')}</p>
+              <p className="text-xs text-rose-700 mt-0.5">Green bean sourcing & packaging</p>
             </Panel>
-            <Panel className="bg-purple-50/60 border-purple-200">
-              <span className="text-xs font-semibold text-purple-800 uppercase tracking-wider block">Net Cash Flow & Reserves</span>
+            <Panel className="bg-purple-50/70 border-purple-200">
+              <span className="text-xs font-semibold text-purple-800 uppercase tracking-wider block">Net Cash Flow</span>
               <p className={cx('text-2xl font-extrabold mt-1', netMonthlyCashFlow >= 0 ? 'text-purple-950' : 'text-rose-700')}>
-                ₱{netMonthlyCashFlow.toLocaleString()}
+                {netMonthlyCashFlow >= 0 ? '+' : ''}₱{netMonthlyCashFlow.toLocaleString('en-PH')}
               </p>
-              <p className="text-xs text-purple-700 mt-0.5">Current Liquid Cash: ₱{cashOnHand.toLocaleString()}</p>
+              <p className="text-xs text-purple-700 mt-0.5">Cash-in minus cash-out</p>
             </Panel>
           </div>
 
-          {/* Reserve Explanation Breakdown */}
+          {/* Cash Flow Reconciliation Formula (Resolving Net Flow vs Liquid Cash confusion) */}
+          <div className="p-4 rounded-xl bg-surface border border-line flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xs">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold uppercase tracking-wider text-brand bg-brand-soft px-2 py-0.5 rounded">
+                  Cash Reconciliation
+                </span>
+                <span className="text-xs text-muted">How liquid cash is calculated</span>
+              </div>
+              <p className="text-sm font-semibold text-ink">
+                Opening Balance (₱{openingBalance.toLocaleString('en-PH')}) + Net Cash Flow (₱{netMonthlyCashFlow.toLocaleString('en-PH')}) = <span className="text-emerald-700 font-bold">Current Liquid Cash: ₱{currentLiquidCash.toLocaleString('en-PH')}</span>
+              </p>
+            </div>
+            <div className="flex items-center gap-2 text-xs shrink-0">
+              <span className="text-muted">Target 3-Month Reserve:</span>
+              <span className="font-bold text-ink bg-sunken px-2.5 py-1 rounded-lg border border-line">
+                ₱{recommendedReserve.toLocaleString('en-PH')}
+              </span>
+            </div>
+          </div>
+
+          {/* Monthly Trend Chart */}
           <Panel>
             <PanelHeader
-              title="Operating Cash Reserve Explanation & Buffer Target"
-              description="Understanding your enterprise liquidity reserve requirements based on monthly operating cash-out."
+              title="Recent Monthly Cash Flow Trend"
+              description="Historical monthly comparison of cash-in versus cash-out (August to November 2026)."
             />
-            <div className="p-4 rounded-xl bg-sunken border border-line text-xs space-y-2 leading-relaxed text-ink">
-              <p>
-                <strong>Reserve Target Logic:</strong> Small enterprises in South Cotabato are advised to hold a minimum <strong>3-month operating reserve buffer</strong> to absorb seasonal agricultural fluctuations, supply chain delays, or crop harvest cycles.
-              </p>
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-line text-sm">
-                <span>Recommended 3-Month Reserve Target:</span>
-                <strong className="text-brand font-mono text-base">₱{recommendedReserve.toLocaleString()}</strong>
+            <div className="pt-3 pb-1">
+              <div className="grid grid-cols-4 gap-4 text-center">
+                {[
+                  { month: 'Aug', inAmt: 65000, outAmt: 22000 },
+                  { month: 'Sep', inAmt: 72000, outAmt: 26000 },
+                  { month: 'Oct', inAmt: 80000, outAmt: 29000 },
+                  { month: 'Nov', inAmt: totalCashIn, outAmt: totalCashOut }
+                ].map((item, idx) => {
+                  const maxVal = 90000;
+                  const inPct = Math.round((item.inAmt / maxVal) * 100);
+                  const outPct = Math.round((item.outAmt / maxVal) * 100);
+                  return (
+                    <div key={idx} className="flex flex-col items-center">
+                      <div className="h-28 w-full flex items-end justify-center gap-1.5 bg-sunken/40 rounded-lg p-2 border border-line/60">
+                        {/* Cash-in bar */}
+                        <div
+                          className="w-4 bg-emerald-500 rounded-t transition-all hover:bg-emerald-600 relative group"
+                          style={{ height: `${Math.max(12, inPct)}%` }}
+                          title={`Cash In: ₱${item.inAmt.toLocaleString('en-PH')}`}
+                        />
+                        {/* Cash-out bar */}
+                        <div
+                          className="w-4 bg-rose-400 rounded-t transition-all hover:bg-rose-500 relative group"
+                          style={{ height: `${Math.max(8, outPct)}%` }}
+                          title={`Cash Out: ₱${item.outAmt.toLocaleString('en-PH')}`}
+                        />
+                      </div>
+                      <span className="text-xs font-bold text-ink mt-2">{item.month}</span>
+                      <span className="text-[11px] text-emerald-700 font-semibold">₱{(item.inAmt / 1000).toFixed(0)}k in</span>
+                      <span className="text-[10px] text-rose-600">₱{(item.outAmt / 1000).toFixed(0)}k out</span>
+                    </div>
+                  );
+                })}
               </div>
-              <p className="text-[11px] text-muted italic">
-                * Note: All estimates and reserve summaries are strictly calculated based on the owner's manual entries recorded below.
-              </p>
+              <div className="flex items-center justify-center gap-6 mt-4 pt-3 border-t border-line text-xs text-muted">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-3 h-3 rounded bg-emerald-500 inline-block" /> Cash In (Revenue)
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-3 h-3 rounded bg-rose-400 inline-block" /> Cash Out (Expenses)
+                </span>
+              </div>
             </div>
           </Panel>
 
           {/* Cash Transaction Entry & Log */}
           <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,4.5fr)_minmax(0,7.5fr)] gap-6 items-start">
             <Panel>
-              <PanelHeader title="Record Cash Transaction" description="Manual entry for cash-in income or cash-out expense." />
+              <PanelHeader title="Record Cash Transaction" description="Add cash-in income or cash-out expense to update your ledger." />
               <form onSubmit={handleAddTransaction} className="space-y-4">
                 <Field label="Transaction Type">
                   {(id) => (
@@ -335,9 +526,9 @@ export const FinanceView: React.FC = () => {
                         </>
                       ) : (
                         <>
-                          <option value="Raw Materials">Raw Materials Sourcing</option>
+                          <option value="Raw Materials">Raw Materials Sourcing (Coffee Cherries)</option>
                           <option value="Packaging">Packaging & Supplies</option>
-                          <option value="Utilities & Rent">Utilities & Facility Rent</option>
+                          <option value="Utilities & Rent">Utilities & Roasting Facility Rent</option>
                           <option value="Payroll & Staff">Payroll & Worker Wages</option>
                           <option value="Logistics">Logistics & Transportation</option>
                         </>
@@ -352,7 +543,7 @@ export const FinanceView: React.FC = () => {
                       id={id}
                       type="text"
                       required
-                      placeholder="e.g., Sold 50kg Arabica beans to local cafe"
+                      placeholder="e.g., Sold 50kg roasted beans to local cafe"
                       value={newTxDesc}
                       onChange={(e) => setNewTxDesc(e.target.value)}
                       className={inputClass}
@@ -362,16 +553,18 @@ export const FinanceView: React.FC = () => {
 
                 <Field label="Amount (PHP)">
                   {(id) => (
-                    <input
-                      id={id}
-                      type="number"
-                      required
-                      min="1"
-                      placeholder="e.g., 15000"
-                      value={newTxAmount}
-                      onChange={(e) => setNewTxAmount(e.target.value)}
-                      className={inputClass}
-                    />
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted font-bold">₱</span>
+                      <input
+                        id={id}
+                        type="text"
+                        required
+                        placeholder="e.g. 15,000"
+                        value={newTxAmount}
+                        onChange={(e) => handleAmountChange(e.target.value)}
+                        className={cx(inputClass, 'pl-7 font-semibold')}
+                      />
+                    </div>
                   )}
                 </Field>
 
@@ -381,9 +574,30 @@ export const FinanceView: React.FC = () => {
               </form>
             </Panel>
 
-            {/* Month-over-Month Transaction Table */}
+            {/* Transaction Table with Edit & CSV Export/Import */}
             <Panel>
-              <PanelHeader title="Recorded Cash Transactions Log" description="Manual entry log for cash-in and cash-out comparison." />
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 mb-3 border-b border-line gap-2">
+                <div>
+                  <h3 className="font-bold text-ink text-base">Recorded Cash Transactions Log</h3>
+                  <p className="text-xs text-muted">Owner entries sorted by date. Click edit to adjust.</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button variant="ghost" size="sm" onClick={handleExportCsv} title="Download CSV">
+                    <Download className="w-3.5 h-3.5 mr-1" /> Export CSV
+                  </Button>
+                  <label className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-line bg-surface hover:bg-brand-soft/40 cursor-pointer text-ink transition-colors">
+                    <Upload className="w-3.5 h-3.5" /> Import CSV
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".csv"
+                      onChange={handleImportCsv}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+              </div>
+
               <div className="overflow-x-auto">
                 <table className="w-full text-xs text-left">
                   <thead className="bg-sunken border-b border-line text-muted uppercase tracking-wider font-semibold">
@@ -392,13 +606,13 @@ export const FinanceView: React.FC = () => {
                       <th className="py-2.5 px-3">Type</th>
                       <th className="py-2.5 px-3">Category & Description</th>
                       <th className="py-2.5 px-3 text-right">Amount</th>
-                      <th className="py-2.5 px-3 text-center">Action</th>
+                      <th className="py-2.5 px-3 text-center">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-line">
                     {transactions.map((tx) => (
                       <tr key={tx.id} className="hover:bg-sunken/50 transition-colors">
-                        <td className="py-2.5 px-3 text-muted font-mono">{tx.date}</td>
+                        <td className="py-2.5 px-3 text-muted whitespace-nowrap">{formatDatePH(tx.date)}</td>
                         <td className="py-2.5 px-3">
                           <span
                             className={cx(
@@ -413,10 +627,18 @@ export const FinanceView: React.FC = () => {
                           <strong className="text-ink block">{tx.category}</strong>
                           <span className="text-muted">{tx.description}</span>
                         </td>
-                        <td className={cx('py-2.5 px-3 text-right font-bold font-mono', tx.type === 'in' ? 'text-emerald-700' : 'text-rose-700')}>
-                          {tx.type === 'in' ? '+' : '-'}₱{tx.amount.toLocaleString()}
+                        <td className={cx('py-2.5 px-3 text-right font-bold', tx.type === 'in' ? 'text-emerald-700' : 'text-rose-700')}>
+                          {tx.type === 'in' ? '+' : '-'}₱{tx.amount.toLocaleString('en-PH')}
                         </td>
-                        <td className="py-2.5 px-3 text-center">
+                        <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                          <button
+                            type="button"
+                            onClick={() => handleStartEdit(tx)}
+                            className="p-1 text-muted hover:text-brand rounded hover:bg-brand-soft mr-1 transition-colors"
+                            aria-label="Edit entry"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
                           <button
                             type="button"
                             onClick={() => handleDeleteTransaction(tx.id)}
@@ -439,7 +661,6 @@ export const FinanceView: React.FC = () => {
       {/* --- SUB-SECTION 2: DEBT MANAGEMENT --- */}
       {activeTab === 'debt' && (
         <div className="space-y-6">
-          {/* Prominent Legal Disclaimer Box */}
           <Notice tone="info" className="border-amber-300 bg-amber-50 text-amber-950">
             <div className="flex items-start gap-2.5">
               <ShieldAlert className="w-5 h-5 shrink-0 text-amber-700 mt-0.5" />
@@ -455,16 +676,16 @@ export const FinanceView: React.FC = () => {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <Panel className="bg-slate-50 border-slate-200">
               <span className="text-xs font-semibold text-slate-700 uppercase tracking-wider block">Total Outstanding Principal</span>
-              <p className="text-2xl font-extrabold text-slate-900 mt-1">₱{totalDebtPrincipal.toLocaleString()}</p>
+              <p className="text-2xl font-extrabold text-slate-900 mt-1">₱{totalDebtPrincipal.toLocaleString('en-PH')}</p>
               <p className="text-xs text-slate-600 mt-0.5">Across {debts.length} active credit facilities</p>
             </Panel>
             <Panel className="bg-blue-50/60 border-blue-200">
               <span className="text-xs font-semibold text-blue-800 uppercase tracking-wider block">Total Monthly Amortization</span>
-              <p className="text-2xl font-extrabold text-blue-950 mt-1">₱{totalMonthlyDebtPayments.toLocaleString()}/mo</p>
+              <p className="text-2xl font-extrabold text-blue-950 mt-1">₱{totalMonthlyDebtPayments.toLocaleString('en-PH')}/mo</p>
               <p className="text-xs text-blue-700 mt-0.5">Mandatory recurring debt outflows</p>
             </Panel>
             <Panel className="bg-purple-50/60 border-purple-200">
-              <span className="text-xs font-semibold text-purple-800 uppercase tracking-wider block">Debt Coverage Illustration</span>
+              <span className="text-xs font-semibold text-purple-800 uppercase tracking-wider block">Debt Coverage Ratio</span>
               <p className="text-2xl font-extrabold text-purple-950 mt-1">{debtCoverageRatio > 0 ? `${debtCoverageRatio.toFixed(1)}x` : 'N/A'}</p>
               <p className="text-xs text-purple-700 mt-0.5">Ratio of Net Operating Profit to Debt Service</p>
             </Panel>
@@ -476,12 +697,11 @@ export const FinanceView: React.FC = () => {
               title="Visual Debt Affordability Illustration"
               description="Visualizes how much of your monthly operating profit is consumed by debt payments."
             />
-
             <div className="space-y-3 pt-2">
               <div className="flex items-center justify-between text-xs font-bold text-ink">
                 <span>Monthly Debt Service vs Net Operating Cash Flow</span>
                 <span>
-                  ₱{totalMonthlyDebtPayments.toLocaleString()} / ₱{Math.max(netMonthlyCashFlow, 1).toLocaleString()}
+                  ₱{totalMonthlyDebtPayments.toLocaleString('en-PH')} / ₱{Math.max(netMonthlyCashFlow, 1).toLocaleString('en-PH')}
                 </span>
               </div>
 
@@ -519,7 +739,7 @@ export const FinanceView: React.FC = () => {
                       id={id}
                       type="text"
                       required
-                      placeholder="e.g., SBCorp, LandBank, GenSan Coop"
+                      placeholder="e.g., SBCorp, LandBank, Koronadal Coop"
                       value={newDebtLender}
                       onChange={(e) => setNewDebtLender(e.target.value)}
                       className={inputClass}
@@ -583,7 +803,7 @@ export const FinanceView: React.FC = () => {
                 </Field>
 
                 <Button type="submit" variant="primary" size="lg" className="w-full">
-                  <Plus className="w-4 h-4 mr-1.5" /> Add Debt Track Item
+                  <Plus className="w-4 h-4 mr-1.5" /> Add Debt Item
                 </Button>
               </form>
             </Panel>
@@ -600,9 +820,9 @@ export const FinanceView: React.FC = () => {
                         </span>
                         <span className="text-xs text-muted">Due: {d.dueDate}</span>
                       </div>
-                      <h4 className="font-bold text-ink text-base">₱{d.principal.toLocaleString()} Principal</h4>
+                      <h4 className="font-bold text-ink text-base">₱{d.principal.toLocaleString('en-PH')} Principal</h4>
                       <p className="text-xs text-muted">
-                        Monthly Amortization: <strong className="text-ink">₱{d.monthlyPayment.toLocaleString()}/mo</strong> ({d.interestRate})
+                        Monthly Amortization: <strong className="text-ink">₱{d.monthlyPayment.toLocaleString('en-PH')}/mo</strong> ({d.interestRate})
                       </p>
                       {d.notes && <p className="text-xs text-muted italic">"{d.notes}"</p>}
                     </div>
@@ -623,10 +843,9 @@ export const FinanceView: React.FC = () => {
         </div>
       )}
 
-      {/* --- SUB-SECTION 3: TAX PREPARATION --- */}
+      {/* --- SUB-SECTION 3: TAX CHECKLIST --- */}
       {activeTab === 'tax' && (
         <div className="space-y-6">
-          {/* Strict Informational Constraint Box */}
           <Notice tone="info" className="border-blue-300 bg-blue-50 text-blue-950">
             <div className="flex items-start gap-2.5">
               <Info className="w-5 h-5 shrink-0 text-blue-700 mt-0.5" />
@@ -640,7 +859,6 @@ export const FinanceView: React.FC = () => {
           </Notice>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-            {/* Dynamic Recordkeeping Checklist */}
             <Panel>
               <PanelHeader
                 title="Dynamic MSME Tax Recordkeeping Checklist"
@@ -703,7 +921,6 @@ export const FinanceView: React.FC = () => {
               </div>
             </Panel>
 
-            {/* Official Government Tax Guidance Resources */}
             <Panel>
               <PanelHeader
                 title="Official Government Tax Guidance & Portals"
@@ -759,7 +976,6 @@ export const FinanceView: React.FC = () => {
       {/* --- SUB-SECTION 4: INVESTMENT PLANNING --- */}
       {activeTab === 'investment' && (
         <div className="space-y-6">
-          {/* Prominent Educational Disclaimer Box */}
           <Notice tone="info" className="border-purple-300 bg-purple-50 text-purple-950">
             <div className="flex items-start gap-2.5">
               <ShieldAlert className="w-5 h-5 shrink-0 text-purple-700 mt-0.5" />
@@ -779,7 +995,6 @@ export const FinanceView: React.FC = () => {
             />
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start pt-2">
-              {/* Option A Card */}
               <div className="p-5 rounded-2xl border border-line bg-surface space-y-4">
                 <div className="flex items-center justify-between pb-2 border-b border-line">
                   <h3 className="font-bold text-ink text-base">Investment Option A</h3>
@@ -824,7 +1039,6 @@ export const FinanceView: React.FC = () => {
                   </Field>
                 </div>
 
-                {/* Analysis Box */}
                 <div className="p-3.5 rounded-xl bg-sunken border border-line space-y-2 text-xs">
                   <div className="flex justify-between">
                     <span className="text-muted">Payback Period:</span>
@@ -835,13 +1049,12 @@ export const FinanceView: React.FC = () => {
                   <div className="flex justify-between">
                     <span className="text-muted">3-Year Net Projected Benefit:</span>
                     <strong className="text-emerald-700">
-                      ₱{(investA.monthlyBenefit * 36 - investA.cost).toLocaleString()}
+                      ₱{(investA.monthlyBenefit * 36 - investA.cost).toLocaleString('en-PH')}
                     </strong>
                   </div>
                 </div>
               </div>
 
-              {/* Option B Card */}
               <div className="p-5 rounded-2xl border border-line bg-surface space-y-4">
                 <div className="flex items-center justify-between pb-2 border-b border-line">
                   <h3 className="font-bold text-ink text-base">Investment Option B</h3>
@@ -886,7 +1099,6 @@ export const FinanceView: React.FC = () => {
                   </Field>
                 </div>
 
-                {/* Analysis Box */}
                 <div className="p-3.5 rounded-xl bg-sunken border border-line space-y-2 text-xs">
                   <div className="flex justify-between">
                     <span className="text-muted">Payback Period:</span>
@@ -897,7 +1109,7 @@ export const FinanceView: React.FC = () => {
                   <div className="flex justify-between">
                     <span className="text-muted">3-Year Net Projected Benefit:</span>
                     <strong className="text-emerald-700">
-                      ₱{(investB.monthlyBenefit * 36 - investB.cost).toLocaleString()}
+                      ₱{(investB.monthlyBenefit * 36 - investB.cost).toLocaleString('en-PH')}
                     </strong>
                   </div>
                 </div>
@@ -910,7 +1122,6 @@ export const FinanceView: React.FC = () => {
       {/* --- SUB-SECTION 5: FINANCIAL REPORTS --- */}
       {activeTab === 'reports' && (
         <div className="space-y-6">
-          {/* Prominent Draft Watermark Warning Banner */}
           <Notice tone="info" className="border-rose-300 bg-rose-50 text-rose-950 font-bold uppercase tracking-wider text-xs">
             <div className="flex items-center gap-2">
               <AlertTriangle className="w-4 h-4 text-rose-700 shrink-0" />
@@ -925,7 +1136,6 @@ export const FinanceView: React.FC = () => {
             />
 
             <div className="p-6 rounded-2xl border-2 border-dashed border-line bg-surface relative overflow-hidden space-y-6">
-              {/* Draft Watermark Overlay Text */}
               <div className="absolute inset-0 pointer-events-none flex items-center justify-center opacity-5 select-none rotate-[-12deg]">
                 <span className="text-6xl font-extrabold uppercase text-slate-900 tracking-widest text-center">
                   DRAFT ONLY · UNAUDITED
@@ -935,7 +1145,7 @@ export const FinanceView: React.FC = () => {
               <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-line gap-2">
                 <div>
                   <h3 className="font-extrabold text-lg text-ink">
-                    {user?.business || 'South Cotabato Enterprise'} — Draft Profit & Loss
+                    {user?.business || 'Matutum Highlands Coffee Roasters'} — Draft Profit & Loss
                   </h3>
                   <p className="text-xs text-muted">Reporting Period: Current Operating Month</p>
                 </div>
@@ -944,41 +1154,133 @@ export const FinanceView: React.FC = () => {
                 </span>
               </div>
 
-              {/* Draft P&L Table */}
               <div className="space-y-2 text-xs">
                 <div className="flex justify-between py-1.5 border-b border-line/60">
                   <span className="font-semibold text-ink">Gross Recorded Sales / Income:</span>
-                  <strong className="text-emerald-700 font-mono">₱{totalCashIn.toLocaleString()}</strong>
+                  <strong className="text-emerald-700">₱{totalCashIn.toLocaleString('en-PH')}</strong>
                 </div>
                 <div className="flex justify-between py-1.5 border-b border-line/60">
-                  <span className="text-muted">Operating Expenses (Raw Materials, Utilities, Payroll):</span>
-                  <span className="text-rose-700 font-mono">-₱{totalCashOut.toLocaleString()}</span>
+                  <span className="text-muted">Operating Expenses (Raw Materials, Packaging, Utilities):</span>
+                  <span className="text-rose-700">-₱{totalCashOut.toLocaleString('en-PH')}</span>
                 </div>
                 <div className="flex justify-between py-2 border-b border-line font-bold text-sm">
                   <span className="text-ink">Net Operating Cash Flow:</span>
                   <span className={netMonthlyCashFlow >= 0 ? 'text-emerald-700' : 'text-rose-700'}>
-                    ₱{netMonthlyCashFlow.toLocaleString()}
+                    ₱{netMonthlyCashFlow.toLocaleString('en-PH')}
                   </span>
                 </div>
                 <div className="flex justify-between py-1.5 border-b border-line/60">
                   <span className="text-muted">Monthly Debt Obligations (Amortization):</span>
-                  <span className="text-rose-700 font-mono">-₱{totalMonthlyDebtPayments.toLocaleString()}</span>
+                  <span className="text-rose-700">-₱{totalMonthlyDebtPayments.toLocaleString('en-PH')}</span>
                 </div>
                 <div className="flex justify-between py-2.5 pt-3 border-t-2 border-slate-900 font-extrabold text-base">
-                  <span className="text-ink">Net Retained Earnings After Debt:</span>
+                  <span className="text-ink">Net Retained Cash Flow After Debt:</span>
                   <span className={netMonthlyCashFlow - totalMonthlyDebtPayments >= 0 ? 'text-emerald-700' : 'text-rose-700'}>
-                    ₱{(netMonthlyCashFlow - totalMonthlyDebtPayments).toLocaleString()}
+                    ₱{(netMonthlyCashFlow - totalMonthlyDebtPayments).toLocaleString('en-PH')}
                   </span>
                 </div>
               </div>
 
-              {/* Draft Statement Footer Notice */}
               <div className="pt-4 border-t border-line text-[11px] text-muted text-center italic">
                 Notice: Draft summaries only. Not audited or certified financial statements. Prepared for internal MSME planning.
               </div>
             </div>
           </Panel>
         </div>
+      )}
+
+      {/* Edit Transaction Modal */}
+      {editingTx && (
+        <Modal
+          open={Boolean(editingTx)}
+          onClose={() => setEditingTx(null)}
+          title="Edit Cash Transaction"
+          size="md"
+        >
+          <form onSubmit={handleSaveEdit} className="space-y-4">
+            <Field label="Transaction Type">
+              {(id) => (
+                <Segmented
+                  label="Type"
+                  value={editType}
+                  onChange={(val) => setEditType(val as 'in' | 'out')}
+                  options={[
+                    { value: 'in', label: 'Cash-In' },
+                    { value: 'out', label: 'Cash-Out' }
+                  ]}
+                />
+              )}
+            </Field>
+
+            <Field label="Category">
+              {(id) => (
+                <select id={id} value={editCategory} onChange={(e) => setEditCategory(e.target.value)} className={inputClass}>
+                  <option value="Product Sales">Product Sales / Retail</option>
+                  <option value="B2B Wholesale">B2B Wholesale Order</option>
+                  <option value="Raw Materials">Raw Materials Sourcing</option>
+                  <option value="Packaging">Packaging & Supplies</option>
+                  <option value="Utilities & Rent">Utilities & Rent</option>
+                  <option value="Payroll & Staff">Payroll & Staff</option>
+                  <option value="Logistics">Logistics & Transportation</option>
+                </select>
+              )}
+            </Field>
+
+            <Field label="Description">
+              {(id) => (
+                <input
+                  id={id}
+                  type="text"
+                  required
+                  value={editDesc}
+                  onChange={(e) => setEditDesc(e.target.value)}
+                  className={inputClass}
+                />
+              )}
+            </Field>
+
+            <Field label="Amount (PHP)">
+              {(id) => (
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted font-bold">₱</span>
+                  <input
+                    id={id}
+                    type="text"
+                    required
+                    value={editAmount}
+                    onChange={(e) => {
+                      const raw = e.target.value.replace(/[^0-9]/g, '');
+                      setEditAmount(raw ? parseInt(raw, 10).toLocaleString('en-PH') : '');
+                    }}
+                    className={cx(inputClass, 'pl-7 font-semibold')}
+                  />
+                </div>
+              )}
+            </Field>
+
+            <Field label="Date">
+              {(id) => (
+                <input
+                  id={id}
+                  type="date"
+                  required
+                  value={editDate}
+                  onChange={(e) => setEditDate(e.target.value)}
+                  className={inputClass}
+                />
+              )}
+            </Field>
+
+            <div className="flex justify-end gap-2 pt-3 border-t border-line">
+              <Button type="button" variant="ghost" onClick={() => setEditingTx(null)}>
+                Cancel
+              </Button>
+              <Button type="submit">
+                Save Changes
+              </Button>
+            </div>
+          </form>
+        </Modal>
       )}
     </div>
   );

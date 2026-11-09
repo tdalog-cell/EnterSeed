@@ -8,7 +8,8 @@ export interface User {
   firstName: string;
   lastName: string;
   business: string;
-  role?: 'owner' | 'admin';
+  municipality?: string;
+  role?: 'owner' | 'staff' | 'admin';
   preferredLanguage?: string;
 }
 
@@ -19,9 +20,11 @@ interface AuthContextType {
   needsLanguageSelection: boolean;
   setNeedsLanguageSelection: (val: boolean) => void;
   login: (email: string, password: string, remember?: boolean) => Promise<{ success: boolean; error?: string }>;
-  register: (data: { firstName: string; lastName: string; email: string; password: string; business: string }) => Promise<{ success: boolean; error?: string }>;
+  register: (data: { firstName: string; lastName: string; email: string; password: string; business: string; municipality?: string }) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   updateLanguagePreference: (lang: Language) => Promise<void>;
+  exportUserData: () => Promise<void>;
+  deleteUserData: () => Promise<boolean>;
   setQuickDemoUser: (user: User) => void;
 }
 
@@ -97,7 +100,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const register = async (data: { firstName: string; lastName: string; email: string; password: string; business: string }): Promise<{ success: boolean; error?: string }> => {
+  const register = async (data: { firstName: string; lastName: string; email: string; password: string; business: string; municipality?: string }): Promise<{ success: boolean; error?: string }> => {
     try {
       const res = await apiFetch('/api/auth/register', {
         method: 'POST',
@@ -155,6 +158,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const exportUserData = async () => {
+    try {
+      const headers: Record<string, string> = { Accept: 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      const res = await apiFetch('/api/user/export-data', { headers });
+      if (!res.ok) throw new Error('Export failed');
+      const data = await res.json();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `enterseed-data-export-${user?.id || 'me'}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      alert(err.message || 'Could not export data.');
+    }
+  };
+
+  const deleteUserData = async (): Promise<boolean> => {
+    try {
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      const res = await apiFetch('/api/user/delete-data', { method: 'DELETE', headers });
+      if (!res.ok) return false;
+      await logout();
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
   const setQuickDemoUser = (demoUser: User) => {
     setUser(demoUser);
     localStorage.setItem('enterseed_current_user', JSON.stringify(demoUser));
@@ -172,6 +209,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         register,
         logout,
         updateLanguagePreference,
+        exportUserData,
+        deleteUserData,
         setQuickDemoUser
       }}
     >

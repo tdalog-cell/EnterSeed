@@ -6,11 +6,13 @@ import { AppShell, ActivePage } from './components/AppShell';
 import { DashboardView } from './views/DashboardView';
 import { FinanceView } from './views/FinanceView';
 import { MarketingView } from './views/MarketingView';
+import { SuppliersView } from './views/SuppliersView';
 import { DocumentsView } from './views/DocumentsView';
 import { BossNanaView } from './views/BossNanaView';
 import { EfilingView } from './views/EfilingView';
 import { PricingView } from './views/PricingView';
 import { AboutView } from './views/AboutView';
+import { PrivacyView } from './views/PrivacyView';
 import { AdminView } from './views/AdminView';
 import { AuthView } from './views/AuthView';
 import { LanguageMenu } from './components/LanguageMenu';
@@ -20,6 +22,7 @@ const protectedPages: ActivePage[] = [
   'dashboard',
   'finance',
   'marketing',
+  'suppliers',
   'documents',
   'boss-nana'
 ];
@@ -29,8 +32,8 @@ const MainRouter: React.FC = () => {
   const [activePage, setActivePage] = useState<ActivePage>(() => {
     const hash = window.location.hash.replace('#', '') as ActivePage;
     if (hash && [
-      'dashboard', 'finance', 'marketing', 'documents', 'boss-nana',
-      'efiling', 'pricing', 'about', 'admin', 'login', 'register'
+      'dashboard', 'finance', 'marketing', 'suppliers', 'documents', 'boss-nana',
+      'efiling', 'pricing', 'about', 'privacy', 'admin', 'login', 'register'
     ].includes(hash)) {
       return hash;
     }
@@ -80,7 +83,9 @@ const MainRouter: React.FC = () => {
     return <AuthView initialMode={activePage} setActivePage={setActivePage} />;
   }
 
-  // 2. Unauthenticated views of public pages (e.g. About, Pricing, E-Filing, Admin) with a clean public header
+  const isStaff = user?.role === 'admin' || user?.role === 'staff';
+
+  // 2. Unauthenticated views of public pages (e.g. About, Pricing, E-Filing, Privacy) with a clean public header
   if (!user) {
     return (
       <div className="min-h-screen bg-canvas flex flex-col">
@@ -106,9 +111,22 @@ const MainRouter: React.FC = () => {
             {activePage === 'pricing' && <PricingView />}
             {activePage === 'about' && <AboutView />}
             {activePage === 'efiling' && <EfilingView />}
-            {activePage === 'admin' && <AdminView />}
+            {activePage === 'privacy' && <PrivacyView />}
+            {activePage === 'admin' && (
+              <div className="text-center py-12">
+                <h2 className="text-lg font-semibold text-ink">Staff Console Restricted</h2>
+                <p className="text-sm text-muted mt-1">Please sign in with a verified staff account to continue.</p>
+                <Button className="mt-4" onClick={() => setActivePage('login')}>Sign in</Button>
+              </div>
+            )}
           </div>
         </main>
+
+        <footer className="w-full border-t border-line bg-surface py-4 px-4 sm:px-8 text-center text-xs text-muted">
+          <p>
+            <strong className="font-semibold text-ink">Enterseed is an independent support tool.</strong> Always confirm requirements with DTI, your LGU, and BIR. Built for South Cotabato MSMEs.
+          </p>
+        </footer>
       </div>
     );
   }
@@ -122,6 +140,8 @@ const MainRouter: React.FC = () => {
         return <FinanceView />;
       case 'marketing':
         return <MarketingView />;
+      case 'suppliers':
+        return <SuppliersView />;
       case 'documents':
         return <DocumentsView />;
       case 'boss-nana':
@@ -132,7 +152,22 @@ const MainRouter: React.FC = () => {
         return <PricingView />;
       case 'about':
         return <AboutView />;
+      case 'privacy':
+        return <PrivacyView />;
       case 'admin':
+        if (!isStaff) {
+          return (
+            <div className="bg-surface rounded-2xl border border-line p-8 text-center max-w-md mx-auto my-12">
+              <h2 className="text-lg font-semibold text-ink">Staff Console Restricted</h2>
+              <p className="text-sm text-muted mt-2">
+                Your account does not have staff or administrator privileges. Only DTI / Negosyo Center partner staff may access this view.
+              </p>
+              <Button className="mt-5" onClick={() => setActivePage('dashboard')}>
+                Back to Dashboard
+              </Button>
+            </div>
+          );
+        }
         return <AdminView />;
       default:
         return <DashboardView setActivePage={setActivePage} />;

@@ -18,18 +18,23 @@ import {
   LogOut,
   Menu,
   X,
-  ChevronDown
+  ChevronDown,
+  Megaphone,
+  Download,
+  Lock
 } from 'lucide-react';
 
 export type ActivePage =
   | 'dashboard'
   | 'finance'
   | 'marketing'
+  | 'suppliers'
   | 'documents'
   | 'boss-nana'
   | 'efiling'
   | 'pricing'
   | 'about'
+  | 'privacy'
   | 'admin'
   | 'login'
   | 'register';
@@ -81,17 +86,20 @@ export const AppShell: React.FC<AppShellProps> = ({ activePage, setActivePage, c
   const workspace: NavItem[] = [
     { id: 'dashboard', label: t('appShell.dashboard'), icon: LayoutDashboard },
     { id: 'finance', label: t('appShell.finance'), icon: Coins },
-    { id: 'marketing', label: 'Supplier Network', icon: Store },
-    { id: 'efiling', label: 'E-Filing & Hub', icon: FileCheck2 },
+    { id: 'marketing', label: 'Marketing', icon: Megaphone },
+    { id: 'suppliers', label: 'Supplier Network', icon: Store },
+    { id: 'efiling', label: 'Registration Assistant', icon: FileCheck2 },
     { id: 'documents', label: 'AI Document Studio', icon: FileText },
     { id: 'boss-nana', label: 'Boss Narra AI', icon: MessageCircle }
   ];
 
   const resources: NavItem[] = [
     { id: 'pricing', label: t('appShell.pricing'), icon: Tag },
-    { id: 'about', label: t('appShell.about'), icon: Info }
+    { id: 'about', label: t('appShell.about'), icon: Info },
+    { id: 'privacy', label: 'Privacy (RA 10173)', icon: ShieldCheck }
   ];
 
+  const isStaff = user?.role === 'admin' || user?.role === 'staff';
   const staff: NavItem = { id: 'admin', label: t('appShell.staff'), icon: ShieldCheck };
 
   const initial = (user?.firstName || user?.email || '?')[0].toUpperCase();
@@ -132,7 +140,7 @@ export const AppShell: React.FC<AppShellProps> = ({ activePage, setActivePage, c
       {/* Desktop sidebar */}
       <aside className="hidden md:flex md:sticky md:top-0 md:h-screen w-60 lg:w-64 shrink-0 flex-col bg-night text-white">
         <div className="px-5 pt-6 pb-5">
-          <Logo tone="dark" caption="South Cotabato MSMEs" onClick={() => setActivePage('dashboard')} />
+          <Logo tone="dark" caption="Built for South Cotabato MSMEs" onClick={() => setActivePage('dashboard')} />
         </div>
 
         <nav className="flex-1 overflow-y-auto px-3 pb-4" aria-label={t('appShell.primaryNavigation')}>
@@ -154,9 +162,11 @@ export const AppShell: React.FC<AppShellProps> = ({ activePage, setActivePage, c
           </ul>
         </nav>
 
-        <div className="px-3 pb-4">
-          {sideLink(staff, true)}
-        </div>
+        {isStaff && (
+          <div className="px-3 pb-4 border-t border-white/10 pt-3">
+            {sideLink(staff, true)}
+          </div>
+        )}
       </aside>
 
       <div className="flex-1 min-w-0 flex flex-col">
@@ -257,7 +267,7 @@ export const AppShell: React.FC<AppShellProps> = ({ activePage, setActivePage, c
                 </ul>
                 <p className="mt-6 mb-2 px-3 text-xs font-semibold text-white/45">{t('appShell.resources')}</p>
                 <ul className="space-y-0.5">
-                  {[...resources, staff].map((item) => (
+                  {[...resources, ...(isStaff ? [staff] : [])].map((item) => (
                     <li key={item.id}>{sideLink(item, true)}</li>
                   ))}
                 </ul>
@@ -288,6 +298,12 @@ export const AppShell: React.FC<AppShellProps> = ({ activePage, setActivePage, c
             {children}
           </div>
         </main>
+
+        <footer className="w-full border-t border-line bg-surface py-4 px-4 sm:px-6 lg:px-8 text-center text-xs text-muted">
+          <p>
+            <strong className="font-semibold text-ink">Enterseed is an independent support tool.</strong> Always confirm requirements with DTI, your LGU, and BIR. Built for South Cotabato MSMEs.
+          </p>
+        </footer>
       </div>
 
       <BossNarraWidget hidden={activePage === 'boss-nana'} />

@@ -13,10 +13,15 @@ export const SubsidyEstimator: React.FC<{ initialSpend?: number }> = ({ initialS
 
   return (
     <Panel>
-      <PanelHeader
-        title="Shipping subsidy estimate"
-        description="MSME members in South Cotabato can get 25% of monthly courier fees back, up to ₱350, on Koronadal, General Santos, and Davao routes."
-      />
+      <div className="flex items-center gap-2 mb-2">
+        <PanelHeader
+          title="Shipping Subsidy Calculator"
+          description="Illustrative calculation model: 25% of monthly courier fees, up to ₱350, on Koronadal, General Santos, and Davao routes."
+        />
+        <span className="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
+          Example / Illustrative Only
+        </span>
+      </div>
       <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
         <div>
           <div className="flex items-baseline justify-between gap-4 mb-3">
@@ -52,6 +57,18 @@ export const SubsidyEstimator: React.FC<{ initialSpend?: number }> = ({ initialS
             <dd className="mt-0.5 text-2xl font-bold text-ink tnum">{formatPesos(net)}</dd>
           </div>
         </dl>
+      </div>
+
+      <div className="mt-4 pt-3 border-t border-line text-[11px] text-muted flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+        <span>Terms: Example model only. Actual subsidy eligibility depends on provincial MSMEDC guidelines and accredited courier receipts.</span>
+        <a
+          href="https://southcotabato.gov.ph/services/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-brand font-semibold hover:underline shrink-0"
+        >
+          Provincial Program Guidelines →
+        </a>
       </div>
     </Panel>
   );

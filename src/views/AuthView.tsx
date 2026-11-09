@@ -25,6 +25,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ initialMode, setActivePage }
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [business, setBusiness] = useState('');
+  const [municipality, setMunicipality] = useState('City of Koronadal');
   const [agree, setAgree] = useState(false);
   const [remember, setRemember] = useState(true);
 
@@ -47,7 +48,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ initialMode, setActivePage }
 
     setLoading(true);
     const res = isRegister
-      ? await register({ firstName, lastName, email, password, business })
+      ? await register({ firstName, lastName, email, password, business, municipality })
       : await login(email, password, remember);
     setLoading(false);
 
@@ -60,10 +61,12 @@ export const AuthView: React.FC<AuthViewProps> = ({ initialMode, setActivePage }
 
   const handleDemoSignIn = () => {
     setQuickDemoUser({
-      email: 'santos.crafts@southcotabato.msme.ph',
+      email: 'maria.santos@matutumcoffee.ph',
       firstName: 'Maria Elena',
       lastName: 'Santos',
-      business: 'Santos Weaving & Agricultural Exports (Koronadal)',
+      business: 'Matutum Highlands Coffee',
+      municipality: 'City of Koronadal',
+      role: 'owner',
       preferredLanguage: language
     });
     setActivePage('dashboard');
@@ -186,9 +189,42 @@ export const AuthView: React.FC<AuthViewProps> = ({ initialMode, setActivePage }
                     )}
                   </Field>
 
+                  {isRegister && (
+                    <Field label="Municipality (South Cotabato)">
+                      {(id) => (
+                        <select
+                          id={id}
+                          value={municipality}
+                          onChange={(e) => setMunicipality(e.target.value)}
+                          className={inputClass}
+                        >
+                          <option value="City of Koronadal">City of Koronadal</option>
+                          <option value="Polomolok">Polomolok</option>
+                          <option value="Tupi">Tupi</option>
+                          <option value="Surallah">Surallah</option>
+                          <option value="Lake Sebu">Lake Sebu</option>
+                          <option value="Norala">Norala</option>
+                          <option value="Tampakan">Tampakan</option>
+                          <option value="Banga">Banga</option>
+                          <option value="Santo Niño">Santo Niño</option>
+                          <option value="Tantangan">Tantangan</option>
+                        </select>
+                      )}
+                    </Field>
+                  )}
+
                   {isRegister ? (
                     <CheckField checked={agree} onChange={setAgree} required>
-                      {t('auth.agree')}
+                      <span>
+                        I consent under the Data Privacy Act of 2012 (RA 10173) to Enterseed storing my records strictly for workspace calculations. I can export or delete my data anytime.{' '}
+                        <button
+                          type="button"
+                          onClick={() => setActivePage('privacy')}
+                          className="font-semibold text-brand underline"
+                        >
+                          Read Privacy Policy
+                        </button>
+                      </span>
                     </CheckField>
                   ) : (
                     <CheckField checked={remember} onChange={setRemember}>
@@ -213,11 +249,18 @@ export const AuthView: React.FC<AuthViewProps> = ({ initialMode, setActivePage }
           </div>
         </main>
 
-        <footer className="px-4 sm:px-8 py-5 flex flex-wrap items-center justify-between gap-2 text-xs text-muted">
-          <span>{t('auth.footer')}</span>
-          <button type="button" onClick={() => setActivePage('admin')} className="hover:text-ink">
-            {t('auth.staffDesk')}
-          </button>
+        <footer className="px-4 sm:px-8 py-5 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-muted border-t border-line/60">
+          <p className="text-center sm:text-left">
+            Enterseed is an independent support tool. Always confirm requirements with DTI, your LGU, and BIR.
+          </p>
+          <div className="flex items-center gap-3">
+            <button type="button" onClick={() => setActivePage('privacy')} className="hover:text-ink underline">
+              Privacy (RA 10173)
+            </button>
+            <button type="button" onClick={() => setActivePage('about')} className="hover:text-ink">
+              About
+            </button>
+          </div>
         </footer>
       </div>
     </div>

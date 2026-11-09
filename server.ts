@@ -182,6 +182,8 @@ ensureColumn('inquiries', 'consent_at', 'TEXT');
 ensureColumn('inquiries', 'supplier_id', 'INTEGER');
 ensureColumn('readiness_records', 'consent_at', 'TEXT');
 ensureColumn('suppliers', 'expires_at', "TEXT NOT NULL DEFAULT '1970-01-01'");
+ensureColumn('users', 'municipality', "TEXT NOT NULL DEFAULT 'City of Koronadal'");
+ensureColumn('users', 'role', "TEXT NOT NULL DEFAULT 'owner'");
 
 function purgeExpiredRecords() {
   database.exec(`
@@ -348,6 +350,7 @@ const registrationSchema = z.object({
   email: z.string().email().trim().max(254),
   password: z.string().min(12).max(128),
   business: z.string().trim().min(2).max(120),
+  municipality: z.string().trim().max(80).optional().default('City of Koronadal'),
   agree: z.literal(true)
 }).strict();
 
@@ -418,6 +421,16 @@ const documentGenerateSchema = z.object({
   supplyChainNotes: z.string().trim().max(1000).optional().default(''),
   saveToLibrary: z.boolean().optional().default(false)
 });
+
+const marketingGenerateSchema = z.object({
+  type: z.enum(['facebook_post', 'promo_text', 'price_list']),
+  businessName: z.string().trim().min(2).max(120),
+  productOrOffer: z.string().trim().min(2).max(300),
+  targetAudience: z.string().trim().max(200).optional().default('Local customers in South Cotabato'),
+  tone: z.enum(['friendly', 'professional', 'festive', 'urgent']).default('friendly'),
+  language: z.enum(['fil', 'en', 'ceb', 'hil']).default('fil'),
+  keyDetails: z.string().trim().max(500).optional().default('')
+}).strict();
 
 function evaluateSubsidies(data: z.infer<typeof subsidyCheckSchema>) {
   const matches: Array<{
@@ -651,12 +664,12 @@ Include:
       <div class="border-b-2 border-purple-900 pb-4 mb-6">
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-xs font-bold uppercase tracking-widest text-purple-900">Republic of the Philippines · Province of South Cotabato</p>
+            <p class="text-xs font-bold uppercase tracking-widest text-purple-900">Enterseed MSME Workspace · South Cotabato</p>
             <h1 class="text-2xl font-extrabold text-slate-900 mt-1">${title}</h1>
-            <p class="text-xs text-slate-500 mt-0.5">DTI Negosyo Center Support Hub · Prepared for: ${account.firstName} ${account.lastName}</p>
+            <p class="text-xs text-slate-500 mt-0.5">Independent MSME Planning Draft · Prepared for: ${account.firstName} ${account.lastName}</p>
           </div>
           <div class="text-right text-xs text-slate-500">
-            <p><strong>Tracking No:</strong> DOC-SC-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}</p>
+            <p><strong>Ref Code:</strong> DOC-SC-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}</p>
             <p><strong>Date Generated:</strong> ${new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
           </div>
         </div>
@@ -746,7 +759,7 @@ Include:
       </section>
 
       <section class="mb-8">
-        <h2 class="text-lg font-bold text-purple-900 border-b border-purple-100 pb-1 mb-2">6. Endorsement & Sign-Off</h2>
+        <h2 class="text-lg font-bold text-purple-900 border-b border-purple-100 pb-1 mb-2">6. Proponent Certification & Submission Notice</h2>
         <div class="grid grid-cols-2 gap-8 pt-4 text-xs">
           <div>
             <p class="text-slate-500 mb-8">Prepared and Certified by:</p>
@@ -755,10 +768,9 @@ Include:
             <p class="text-slate-500">${data.businessName}</p>
           </div>
           <div>
-            <p class="text-slate-500 mb-8">Noted by LGU / DTI Negosyo Center Officer:</p>
-            <p class="border-t border-slate-400 pt-1 font-bold text-slate-900">DTI Negosyo Center Counselor</p>
-            <p class="text-slate-500">Province of South Cotabato Desk</p>
-            <p class="text-slate-500">City of Koronadal, Region 12</p>
+            <p class="text-slate-500 mb-8">Independent MSME Support Tool Notice:</p>
+            <p class="border-t border-slate-400 pt-1 font-medium text-slate-700">Enterseed Advisory Workspace</p>
+            <p class="text-slate-500">This document is a commercial planning draft. Always confirm official statutory requirements directly with DTI, your LGU BPLO, and BIR.</p>
           </div>
         </div>
       </section>
@@ -957,7 +969,7 @@ async function retrieveRagContext(question: string) {
   }
 }
 
-async function createAssistantAnswer(question: string, history: any[] = [], language = 'en') {
+async function createAssistantAnswer(question: string, history: any[] = [], language = 'en', account?: any) {
   const localReference = offlineAnswers.find((entry) => entry.match.test(question))?.text
     ?? 'No matching local reference is available. Direct the visitor to an official source or human support.';
   const defaultSources = getAssistantReferences(question);
@@ -965,6 +977,10 @@ async function createAssistantAnswer(question: string, history: any[] = [], lang
   // Retrieve RAG context from the user's saved Document Library
   const ragResult = await retrieveRagContext(question);
   const sources = [...ragResult.sources, ...defaultSources];
+
+  const businessContext = account?.business
+    ? `\n\n--- USER BUSINESS CONTEXT ---\nBusiness Name: ${account.business}\nMunicipality: ${account.municipality || 'City of Koronadal'}, South Cotabato\nOwner: ${account.firstName || ''} ${account.lastName || ''}\n--- END USER BUSINESS CONTEXT ---`
+    : '';
 
   const ragInstruction = ragResult.contextText
     ? `\n\n--- RETRIEVED CONTEXT FROM USER'S DOCUMENT LIBRARY ---\nThe user has generated and saved the following business documents in their personal Document Library. Incorporate these exact figures, strategies, and facts directly into your answer to provide highly contextual, user-specific business advice:\n${ragResult.contextText}\n--- END RETRIEVED CONTEXT ---`
@@ -987,7 +1003,7 @@ async function createAssistantAnswer(question: string, history: any[] = [], lang
           { role: 'user', parts: [{ text: question }] }
         ],
         config: {
-          systemInstruction: `You are Boss Narra, an expert AI business advisor for MSMEs in South Cotabato, Philippines. Be encouraging, highly practical, grounded, and specific. Analyze the user's question alongside their saved Document Library context if available. ${language === 'fil' ? 'Respond in Filipino (Tagalog).' : language === 'ceb' ? 'Respond in Cebuano (Bisaya).' : language === 'hil' ? 'Respond in Hiligaynon.' : 'Respond in English.'}${ragInstruction}\nLocal reference:\n${localReference}`
+          systemInstruction: `You are Boss Narra, an expert AI business advisor for MSMEs in South Cotabato, Philippines. Be encouraging, highly practical, grounded, and specific. Provide guidance based on published official guidelines (DTI BNRS, BIR, DOST, LGU) and always cite official links for formal statutory verification.${businessContext}${ragInstruction}\nLocal reference:\n${localReference}\n${language === 'fil' ? 'Respond in Filipino (Tagalog).' : language === 'ceb' ? 'Respond in Cebuano (Bisaya).' : language === 'hil' ? 'Respond in Hiligaynon.' : 'Respond in English.'}`
         }
       });
       const answer = response.text;
@@ -1002,6 +1018,53 @@ async function createAssistantAnswer(question: string, history: any[] = [], lang
     offlineAnswer += `\n\n[Retrieved Context from ${ragResult.sources[0]?.label}]: We analyzed your saved proposal/plan and tailored these operational steps for your enterprise.`;
   }
   return { answer: offlineAnswer, mode: 'offline-rag', sources };
+}
+
+async function generateMarketingCopy(data: z.infer<typeof marketingGenerateSchema>) {
+  if (process.env.GEMINI_API_KEY) {
+    try {
+      const ai = new GoogleGenAI({
+        apiKey: process.env.GEMINI_API_KEY,
+        httpOptions: { headers: { 'User-Agent': 'aistudio-build' } }
+      });
+      const prompt = `You are a social media copywriter for MSMEs in South Cotabato, Philippines.
+Generate ready-to-publish ${data.type.replace('_', ' ')} for:
+- Business: ${data.businessName}
+- Product / Offer: ${data.productOrOffer}
+- Target Customers: ${data.targetAudience}
+- Tone: ${data.tone}
+- Language: ${data.language === 'fil' ? 'Filipino / Tagalog' : data.language === 'ceb' ? 'Cebuano / Bisaya' : data.language === 'hil' ? 'Hiligaynon' : 'English'}
+- Key details: ${data.keyDetails || 'None'}
+
+Include engaging emojis, local cultural warmth, clear call to action (e.g. sending a PM, visiting the shop or pickup point in South Cotabato), and relevant hashtags (#SouthCotabatoMSME #SupportLocal).`;
+      const res = await ai.models.generateContent({
+        model: 'gemini-3.8-flash',
+        contents: prompt
+      });
+      if (res.text) return res.text;
+    } catch (err) {
+      console.warn('Gemini marketing generator failed, using local template:', err);
+    }
+  }
+
+  // Grounded local template fallback
+  if (data.type === 'facebook_post') {
+    if (data.language === 'fil') {
+      return `☕ Magandang araw mga suki at kapwa taga-South Cotabato!\n\nIpinagmamalaki ng ${data.businessName} ang aming: ${data.productOrOffer}!\n\n✨ Bakit mo magugustuhan ito:\n• Sariwa at de-kalidad mula sa lokal na produksyon\n• Abot-kayang presyo para sa inyong pamilya at negosyo\n• Available para sa pickup o delivery sa Koronadal, Tupi, Polomolok, at karatig-bayan\n\n${data.keyDetails ? `📌 Mahahalagang detalye: ${data.keyDetails}\n\n` : ''}📩 Mag-iwan ng mensahe (PM) o mag-comment sa ibaba para magpa-reserve o mag-order ngayon!\n\n#SouthCotabatoMSME #SupportLocal #${data.businessName.replace(/[^a-zA-Z0-9]/g, '')} #GawangLokal`;
+    } else if (data.language === 'ceb') {
+      return `☕ Maayong adlaw mga suki sa South Cotabato!\n\nGarbo sa ${data.businessName} ang paghatod sa: ${data.productOrOffer}!\n\n✨ Nganong angayan nimong sulayan:\n• Lab-as ug taas nga kalidad gikan sa lokal nga mag-uuma\n• Barato ug sulit kaayo alang sa inyong pamilya\n• Paspas nga delivery sa Koronadal, Polomolok, ug Tupi\n\n${data.keyDetails ? `📌 Dugang detalye: ${data.keyDetails}\n\n` : ''}📩 I-PM mi karon o i-comment imong order sa ubos!\n\n#SouthCotabatoMSME #SupportLocalBisaya #${data.businessName.replace(/[^a-zA-Z0-9]/g, '')}`;
+    } else {
+      return `☕ Fresh from South Cotabato! ${data.businessName} is proud to bring you: ${data.productOrOffer}.\n\n✨ Highlights:\n• Premium quality locally crafted with passion\n• Direct-from-source freshness supporting regional farmers\n• Available for delivery across Koronadal, Polomolok, and Tupi\n\n${data.keyDetails ? `📌 Special Notes: ${data.keyDetails}\n\n` : ''}📩 Send us a direct message (PM) or comment below to order yours today!\n\n#SouthCotabatoMSME #SupportLocal #${data.businessName.replace(/[^a-zA-Z0-9]/g, '')}`;
+    }
+  } else if (data.type === 'promo_text') {
+    if (data.language === 'fil') {
+      return `🎉 SPECIAL PROMO ng ${data.businessName}!\n\nSulit deals para sa ating mga suki! Kunin ang ${data.productOrOffer} sa espesyal na discount ngayong linggo.\n\n${data.keyDetails ? `Promo terms: ${data.keyDetails}\n` : ''}Huwag magpahuli, limited stocks lamang! I-message kami agad para i-claim ang iyong promo voucher.`;
+    } else {
+      return `🎉 EXCLUSIVE PROMO from ${data.businessName}!\n\nEnjoy special pricing on ${data.productOrOffer} for a limited time only!\n\n${data.keyDetails ? `Terms & Details: ${data.keyDetails}\n` : ''}DM us now to place your order or visit our Koronadal location. Hurry while supplies last!`;
+    }
+  } else {
+    return `📋 ${data.businessName.toUpperCase()} — OFFICIAL PRICE LIST\n\nProduct / Offer: ${data.productOrOffer}\n${data.keyDetails ? `Pricing & Packages:\n${data.keyDetails}\n` : '• Retail Pack: ₱250\n• Wholesale Bundle (5+ units): ₱220 each\n• Institutional / Bulk Order: Custom quotation on request\n'}\n📍 Location: Koronadal City, South Cotabato\n🚚 Delivery: Courier delivery across SOCCSKSARGEN\n💳 Payment: GCash, Bank Transfer, or Cash upon Pickup\n\nPM us to confirm your order!`;
+  }
 }
 
 // Password hashing & session auth
@@ -1063,7 +1126,8 @@ function findAuthenticatedAccount(request: Request, response: Response) {
   const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
   const session = database.prepare(`
     SELECT u.id, u.email, u.first_name AS firstName, u.last_name AS lastName,
-           u.business_name AS business, u.preferred_language AS preferredLanguage
+           u.business_name AS business, COALESCE(u.municipality, 'City of Koronadal') AS municipality,
+           COALESCE(u.role, 'owner') AS role, u.preferred_language AS preferredLanguage
     FROM auth_sessions s JOIN users u ON u.id = s.user_id
     WHERE s.token_hash = ? AND s.expires_at > CURRENT_TIMESTAMP
   `).get(tokenHash) as any;
@@ -1087,26 +1151,34 @@ function optionalAuthentication(request: any, response: Response, next: NextFunc
   const account = findAuthenticatedAccount(request, response);
   request.account = account || {
     id: 1,
-    email: 'demo@enterseed.example.ph',
+    email: 'maria.santos@matutumcoffee.ph',
     firstName: 'Maria Elena',
     lastName: 'Santos',
-    business: 'Santos Weaving & Agricultural Exports (Koronadal)',
+    business: 'Matutum Highlands Coffee',
+    municipality: 'City of Koronadal',
+    role: 'owner',
     preferredLanguage: 'en'
   };
   response.set('Cache-Control', 'no-store');
   next();
 }
 
-function requireAdmin(request: Request, response: Response, next: NextFunction) {
+function requireAdmin(request: any, response: Response, next: NextFunction) {
+  const account = findAuthenticatedAccount(request, response);
+  if (account && (account.role === 'admin' || account.role === 'staff')) {
+    request.account = account;
+    return next();
+  }
+
   const expected = process.env.ADMIN_API_KEY || '';
   const supplied = request.get('authorization')?.replace(/^Bearer\s+/i, '') || '';
   const expectedBuffer = Buffer.from(expected);
   const suppliedBuffer = Buffer.from(supplied);
-  if (!expected || expectedBuffer.length !== suppliedBuffer.length || !crypto.timingSafeEqual(expectedBuffer, suppliedBuffer)) {
-    response.status(expected ? 401 : 503).json({ error: expected ? 'Unauthorized.' : 'Admin review is not configured.' });
-    return;
+  if (expected && expectedBuffer.length === suppliedBuffer.length && crypto.timingSafeEqual(expectedBuffer, suppliedBuffer)) {
+    return next();
   }
-  next();
+
+  response.status(403).json({ error: 'Staff access restricted. You do not have permissions for the staff console.' });
 }
 
 // API Routes
@@ -1125,15 +1197,25 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
     return res.status(409).json({ error: 'An account with this email already exists. Try logging in instead.' });
   }
   const passwordHash = await hashPassword(data.password);
+  const municipality = data.municipality || 'City of Koronadal';
   try {
     const result = database.prepare(`
-      INSERT INTO users (email, password_hash, first_name, last_name, business_name)
-      VALUES (?, ?, ?, ?, ?)
-    `).run(email, passwordHash, data.firstName, data.lastName, data.business);
+      INSERT INTO users (email, password_hash, first_name, last_name, business_name, municipality, role)
+      VALUES (?, ?, ?, ?, ?, ?, 'owner')
+    `).run(email, passwordHash, data.firstName, data.lastName, data.business, municipality);
     const userId = Number(result.lastInsertRowid);
     const sessionToken = createSession(userId, res);
     res.status(201).set('Cache-Control', 'no-store').json({
-      user: { email, firstName: data.firstName, lastName: data.lastName, business: data.business, preferredLanguage: '' },
+      user: {
+        id: userId,
+        email,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        business: data.business,
+        municipality,
+        role: 'owner',
+        preferredLanguage: ''
+      },
       needsLanguageSelection: true,
       sessionToken
     });
@@ -1152,6 +1234,8 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
   const user = database.prepare(`
     SELECT id, email, password_hash AS passwordHash, first_name AS firstName,
            last_name AS lastName, business_name AS business,
+           COALESCE(municipality, 'City of Koronadal') AS municipality,
+           COALESCE(role, 'owner') AS role,
            preferred_language AS preferredLanguage
     FROM users WHERE email = ?
   `).get(email) as any;
@@ -1165,10 +1249,13 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
   const sessionToken = createSession(user.id, res);
   res.set('Cache-Control', 'no-store').json({
     user: {
+      id: user.id,
       email: user.email,
       firstName: user.firstName,
       lastName: user.lastName,
       business: user.business,
+      municipality: user.municipality || 'City of Koronadal',
+      role: user.role || 'owner',
       preferredLanguage: user.preferredLanguage
     },
     needsLanguageSelection: !user.preferredLanguage,
@@ -1178,6 +1265,47 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
 
 app.get('/api/auth/me', requireAuthentication, (req: any, res) => {
   res.json({ user: req.account });
+});
+
+// Data Privacy Act of 2012 (RA 10173) Endpoints
+app.get('/api/user/export-data', requireAuthentication, (req: any, res) => {
+  const userId = req.account.id;
+  const profile = database.prepare('SELECT id, email, first_name AS firstName, last_name AS lastName, business_name AS business, municipality, role, preferred_language AS preferredLanguage, created_at AS createdAt FROM users WHERE id = ?').get(userId);
+  const assessments = database.prepare('SELECT monthly_income, monthly_expenses, cash_on_hand, debt_outstanding, monthly_debt_payment, other_assets, other_liabilities, tax_standing, updated_at FROM finance_assessments WHERE user_id = ?').all(userId);
+  const tickets = database.prepare('SELECT id, tracking_number, business_name, business_type, municipality, filing_stage, status, created_at, updated_at FROM efiling_tickets WHERE user_id = ?').all(userId);
+  const documents = database.prepare('SELECT id, doc_type, title, business_name, municipality, summary_json, created_at FROM generated_documents WHERE user_id = ?').all(userId);
+  const messages = database.prepare('SELECT id, supplier_id, subject, message, status, reply, created_at FROM supplier_messages WHERE user_id = ?').all(userId);
+
+  res.set('Content-Disposition', `attachment; filename="enterseed-msme-data-${userId}.json"`);
+  res.json({
+    compliance: 'Republic Act No. 10173 (Philippine Data Privacy Act of 2012)',
+    exportTimestamp: new Date().toISOString(),
+    profile,
+    assessments,
+    tickets,
+    documents,
+    messages
+  });
+});
+
+app.delete('/api/user/delete-data', requireAuthentication, (req: any, res) => {
+  const userId = req.account.id;
+  database.exec('BEGIN IMMEDIATE');
+  try {
+    database.prepare('DELETE FROM finance_assessments WHERE user_id = ?').run(userId);
+    database.prepare('DELETE FROM efiling_tickets WHERE user_id = ?').run(userId);
+    database.prepare('DELETE FROM generated_documents WHERE user_id = ?').run(userId);
+    database.prepare('DELETE FROM supplier_messages WHERE user_id = ?').run(userId);
+    database.prepare('DELETE FROM supplier_reviews WHERE user_id = ?').run(userId);
+    database.prepare('DELETE FROM auth_sessions WHERE user_id = ?').run(userId);
+    database.prepare('DELETE FROM users WHERE id = ?').run(userId);
+    database.exec('COMMIT');
+    clearSessionCookie(res);
+    res.json({ success: true, message: 'All personal business data and credentials deleted in compliance with RA 10173.' });
+  } catch (err) {
+    database.exec('ROLLBACK');
+    res.status(500).json({ error: 'Failed to delete records. Please try again or contact support.' });
+  }
 });
 
 app.patch('/api/auth/language', authLimiter, requireAuthentication, (req: any, res) => {
@@ -1194,7 +1322,10 @@ app.post('/api/auth/logout', requireAuthentication, (req: any, res) => {
   res.status(204).end();
 });
 
-app.get('/api/finance/assessment', requireAuthentication, (req: any, res) => {
+app.get('/api/finance/assessment', optionalAuthentication, (req: any, res) => {
+  if (!req.account) {
+    return res.json({ assessment: null });
+  }
   const assessment = database.prepare(`
     SELECT monthly_income AS monthlyIncome, monthly_expenses AS monthlyExpenses,
            cash_on_hand AS cashOnHand, debt_outstanding AS debtOutstanding,
@@ -1206,9 +1337,10 @@ app.get('/api/finance/assessment', requireAuthentication, (req: any, res) => {
   res.json({ assessment: assessment || null });
 });
 
-app.put('/api/finance/assessment', requireAuthentication, (req: any, res) => {
+const handleSaveFinanceAssessment = (req: any, res: any) => {
   const data = parseBody(financeAssessmentSchema, req, res);
   if (!data) return;
+  const userId = req.account ? req.account.id : 'demo-user';
   database.prepare(`
     INSERT INTO finance_assessments
       (user_id, monthly_income, monthly_expenses, cash_on_hand, debt_outstanding,
@@ -1226,15 +1358,27 @@ app.put('/api/finance/assessment', requireAuthentication, (req: any, res) => {
       consent_at = excluded.consent_at,
       updated_at = CURRENT_TIMESTAMP
   `).run(
-    req.account.id, data.monthlyIncome, data.monthlyExpenses, data.cashOnHand,
+    userId, data.monthlyIncome, data.monthlyExpenses, data.cashOnHand,
     data.debtOutstanding, data.monthlyDebtPayment, data.otherAssets,
     data.otherLiabilities, data.taxStanding, new Date().toISOString()
   );
-  res.status(200).set('Cache-Control', 'no-store').json({ saved: true });
-});
+  const updated = database.prepare(`
+    SELECT monthly_income AS monthlyIncome, monthly_expenses AS monthlyExpenses,
+           cash_on_hand AS cashOnHand, debt_outstanding AS debtOutstanding,
+           monthly_debt_payment AS monthlyDebtPayment, other_assets AS otherAssets,
+           other_liabilities AS otherLiabilities, tax_standing AS taxStanding,
+           updated_at AS updatedAt
+    FROM finance_assessments WHERE user_id = ?
+  `).get(userId);
+  res.status(200).set('Cache-Control', 'no-store').json({ saved: true, assessment: updated });
+};
 
-app.delete('/api/finance/assessment', requireAuthentication, (req: any, res) => {
-  database.prepare('DELETE FROM finance_assessments WHERE user_id = ?').run(req.account.id);
+app.put('/api/finance/assessment', optionalAuthentication, handleSaveFinanceAssessment);
+app.post('/api/finance/assessment', optionalAuthentication, handleSaveFinanceAssessment);
+
+app.delete('/api/finance/assessment', optionalAuthentication, (req: any, res) => {
+  const userId = req.account ? req.account.id : 'demo-user';
+  database.prepare('DELETE FROM finance_assessments WHERE user_id = ?').run(userId);
   res.status(204).end();
 });
 
@@ -1281,7 +1425,7 @@ app.post('/api/efiling/tickets', optionalAuthentication, (req: any, res) => {
   const data = parseBody(ticketSchema, req, res);
   if (!data) return;
   const count = ((database.prepare('SELECT COUNT(*) AS c FROM efiling_tickets').get() as any)?.c || 0) + 1;
-  const trackingNumber = `DTI-SC-${new Date().getFullYear()}-${String(count).padStart(4, '0')}`;
+  const trackingNumber = `PREP-SC-${new Date().getFullYear()}-${String(count).padStart(4, '0')}`;
   const result = database.prepare(`
     INSERT INTO efiling_tickets
       (user_id, tracking_number, business_name, business_type, municipality,
@@ -1291,7 +1435,7 @@ app.post('/api/efiling/tickets', optionalAuthentication, (req: any, res) => {
     req.account.id, trackingNumber, data.businessName, data.businessType, data.municipality,
     data.filingStage, data.status || 'Draft', data.priority || 'standard',
     data.locationSketchDesc || '', JSON.stringify(data.documents || []),
-    data.notes || '', `DTI Negosyo Center Desk (${data.municipality})`
+    data.notes || '', `Registration Prep Desk (${data.municipality})`
   );
   res.status(201).json({ id: Number(result.lastInsertRowid), trackingNumber, success: true });
 });
@@ -1500,10 +1644,10 @@ app.post('/api/suppliers/:id/messages', optionalAuthentication, (req: any, res) 
   res.status(201).json({ id: Number(result.lastInsertRowid), success: true });
 });
 
-app.post('/api/boss-nana', requireAuthentication, submissionLimiter, async (req, res) => {
+app.post('/api/boss-nana', requireAuthentication, submissionLimiter, async (req: any, res) => {
   const data = parseBody(assistantSchema, req, res);
   if (!data) return;
-  const result = await createAssistantAnswer(data.question, data.history, data.language);
+  const result = await createAssistantAnswer(data.question, data.history, data.language, req.account);
   res.set('Cache-Control', 'no-store').json(result);
 });
 
@@ -1512,6 +1656,13 @@ app.post('/api/assistant', submissionLimiter, async (req, res) => {
   if (!data) return;
   const result = await createAssistantAnswer(data.question, data.history, data.language);
   res.set('Cache-Control', 'no-store').json(result);
+});
+
+app.post('/api/marketing/generate', optionalAuthentication, submissionLimiter, async (req: any, res) => {
+  const data = parseBody(marketingGenerateSchema, req, res);
+  if (!data) return;
+  const copy = await generateMarketingCopy(data);
+  res.json({ copy, success: true });
 });
 
 app.get('/api/suppliers', (_req, res) => {
@@ -1797,9 +1948,9 @@ function seedTicketsAndReviewsIfEmpty() {
     database.prepare(`
       INSERT INTO efiling_tickets (tracking_number, business_name, business_type, municipality, filing_stage, status, priority, location_sketch_desc, documents_json, notes, assigned_agent)
       VALUES
-        ('EF-SC-2026-8812', 'Matutum Highlands Roastery', 'Sole Proprietorship', 'Tupi', 'Mayor''s Permit / BPLO', 'Under Inspection', 'expedited', 'Poblacion National Highway, adjacent to Tupi Fruit Market.', '["DTI-BNRS-Certificate.pdf", "Barangay-Clearance-Tupi.pdf"]', 'Sanitary inspection scheduled with Tupi Municipal Health Office on Thursday morning.', 'DTI Negosyo Center Tupi Desk'),
-        ('EF-SC-2026-9041', 'Lake Sebu Loomweavers Artisans', 'Barangay Micro-Business (BMBE)', 'Lake Sebu', 'Business Name', 'Approved', 'standard', 'Sitio Tukoblog, Barangay Poblacion, Lake Sebu near Tourism Cultural Office.', '["DTI-BNRS-Scope-Provincial.pdf"]', 'DTI BNRS Certificate issued for Provincial Scope (South Cotabato). Now applying for BMBE tax exemption.', 'DTI Provincial MSMEDC Desk'),
-        ('EF-SC-2026-9214', 'Koronadal Eco-Pack Logistics', 'Corporation', 'City of Koronadal', 'Location & Zoning', 'Submitted to LGU', 'urgent_renewal', 'Block 4 Lot 9, General Santos Drive, Barangay Morales, Koronadal City.', '["SEC-Certificate.pdf", "Zoning-Clearance-Form.pdf"]', 'City Planning & Development Coordinator currently reviewing commercial setback guidelines.', 'Koronadal City BPLO Liaison')
+        ('PREP-SC-2026-8812', 'Matutum Highlands Coffee Roasters', 'Sole Proprietorship', 'City of Koronadal', 'Mayor''s Permit / BPLO', 'Document Prep', 'expedited', 'General Santos Drive near Koronadal City Public Market.', '["DTI-BNRS-Certificate.pdf", "Barangay-Clearance.pdf"]', 'Informational packet ready. Visit the Koronadal BPLO portal or municipal hall window to submit.', 'Registration Prep Desk (Koronadal)'),
+        ('PREP-SC-2026-9041', 'Matutum Highlands Coffee Roasters', 'Barangay Micro-Business (BMBE)', 'City of Koronadal', 'Business Name', 'Approved', 'standard', 'Sitio Upper Matutum, Barangay Crossing Palkan.', '["DTI-BNRS-Scope-Provincial.pdf"]', 'BNRS form details prepared. Ready for official filing at bnrs.dti.gov.ph.', 'Registration Prep Desk (Koronadal)'),
+        ('PREP-SC-2026-9214', 'Matutum Highlands Coffee Roasters', 'Sole Proprietorship', 'City of Koronadal', 'Location & Zoning', 'Draft', 'urgent_renewal', 'Block 4 Lot 9, General Santos Drive, Barangay Morales, Koronadal City.', '["Zoning-Clearance-Form.pdf"]', 'Zoning draft ready. Submit with sketch to City Planning & Development Coordinator.', 'Registration Prep Desk (Koronadal)')
     `).run();
   }
 

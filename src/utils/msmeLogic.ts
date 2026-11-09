@@ -192,3 +192,85 @@ export function calculatePaybackPeriod(requestedAmount: number, monthlyRevenue: 
   const months = Math.ceil(requestedAmount / estimatedMonthlyFreeCashFlow);
   return Math.max(3, Math.min(60, months));
 }
+
+export interface FinancialCheckupResult {
+  healthScore: number;
+  status: 'Strong' | 'Healthy' | 'Caution' | 'Vulnerable';
+  monthlyNetCash: number;
+  runwayMonths: number;
+  debtServiceRatioPercent: number;
+  actionItems: string[];
+}
+
+export function calculateFinancialHealth(
+  monthlySales: number,
+  monthlyExpenses: number,
+  monthlyDebtPayment: number = 0,
+  cashOnHand: number = 0
+): FinancialCheckupResult {
+  const sales = Math.max(0, monthlySales);
+  const expenses = Math.max(0, monthlyExpenses);
+  const debt = Math.max(0, monthlyDebtPayment);
+  const cash = Math.max(0, cashOnHand);
+
+  const monthlyNetCash = sales - expenses - debt;
+  const totalOutflows = expenses + debt;
+  const runwayMonths = totalOutflows > 0 ? Number((cash / totalOutflows).toFixed(1)) : 99;
+  const margin = sales > 0 ? (sales - expenses) / sales : 0;
+  const debtRatio = sales > 0 ? debt / sales : 0;
+  const debtServiceRatioPercent = Math.round(debtRatio * 100);
+
+  let score = 0;
+  // Margin component (40 pts)
+  if (margin >= 0.25) score += 40;
+  else if (margin >= 0.15) score += 30;
+  else if (margin > 0) score += 20;
+  else if (margin === 0) score += 10;
+
+  // Runway component (35 pts)
+  if (runwayMonths >= 6) score += 35;
+  else if (runwayMonths >= 3) score += 28;
+  else if (runwayMonths >= 1.5) score += 20;
+  else if (runwayMonths >= 1) score += 12;
+  else score += 5;
+
+  // Debt component (25 pts)
+  if (debtRatio <= 0.10) score += 25;
+  else if (debtRatio <= 0.25) score += 18;
+  else if (debtRatio <= 0.40) score += 10;
+
+  let status: FinancialCheckupResult['status'] = 'Vulnerable';
+  if (score >= 80) status = 'Strong';
+  else if (score >= 65) status = 'Healthy';
+  else if (score >= 45) status = 'Caution';
+
+  const actionItems: string[] = [];
+  if (runwayMonths < 3) {
+    const needed = Math.round(totalOutflows * 3);
+    actionItems.push(`Build a 3-month cash buffer (approx. ₱${needed.toLocaleString()} target) before non-essential purchases.`);
+  }
+  if (monthlyNetCash < 0) {
+    actionItems.push('Review unit production costs and supplier agreements to stop monthly cash loss.');
+  } else if (margin < 0.18) {
+    actionItems.push('Explore bulk buying with local South Cotabato suppliers to improve gross profit margins.');
+  }
+  if (debtRatio > 0.20) {
+    actionItems.push('Debt payments consume over 20% of sales. Consider refinancing or consulting SBCorp for low-rate consolidation.');
+  }
+  if (actionItems.length < 3) {
+    actionItems.push('Set aside 10% of weekly net earnings in a dedicated reserve account for quarterly BIR tax obligations.');
+  }
+  if (actionItems.length < 3) {
+    actionItems.push('Check eligibility for DOST SETUP or OTOP packaging subsidies to scale without high debt.');
+  }
+
+  return {
+    healthScore: Math.min(100, Math.max(0, score)),
+    status,
+    monthlyNetCash,
+    runwayMonths,
+    debtServiceRatioPercent,
+    actionItems: actionItems.slice(0, 3)
+  };
+}
+
