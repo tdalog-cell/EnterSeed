@@ -25,12 +25,12 @@ export const PHOTOS = {
     focus: '45% 85%'
   },
   planting: {
-    id: '1777045453456-fe90afaf5c29',
-    alt: 'A farmer in a green cap planting seedlings in a highland farm',
-    credit: 'Toffi Teraytay',
-    place: 'Tupi, South Cotabato',
-    href: 'https://unsplash.com/photos/ttA5K151bwU',
-    focus: '62% 18%'
+    id: 'philippine-hub-market',
+    src: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSYC9Bi5MzJu0UrFi54H_yQcjaq76jX5T1cR579zWcmHpg6n9KXLf8oeOyD&s=10',
+    alt: 'A customer and vendor browsing products at a Philippine Hub market stall',
+    credit: 'Philippine Hub',
+    place: 'Philippines',
+    href: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSYC9Bi5MzJu0UrFi54H_yQcjaq76jX5T1cR579zWcmHpg6n9KXLf8oeOyD&s=10'
   },
   fruitStand: {
     id: '1607100450047-de71c8f4814b',
