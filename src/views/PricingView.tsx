@@ -23,8 +23,8 @@ const PLANS = [
     name: 'Pro MSME',
     desc: 'A proposed plan for businesses ready for more tailored support.',
     icon: Leaf,
-    priceMonthly: 490,
-    priceYearly: 4900,
+    priceMonthly: 350,
+    priceYearly: 3500,
     features: [
       'Everything in Community',
       'Expanded AI advisory access',
@@ -38,7 +38,7 @@ const PLANS = [
     name: 'Cooperative',
     desc: 'A proposed plan for cooperatives and communities growing together.',
     icon: Users,
-    priceMonthly: 1490,
+    priceMonthly: 3500,
     priceYearly: 14900,
     features: [
       'Everything in Pro MSME',
