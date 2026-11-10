@@ -1152,9 +1152,10 @@ app.get('/api/user/export-data', requireAuthentication, (req: any, res) => {
   const userId = req.account.id;
   const profile = database.prepare('SELECT id, email, first_name AS firstName, last_name AS lastName, business_name AS business, municipality, role, preferred_language AS preferredLanguage, created_at AS createdAt FROM users WHERE id = ?').get(userId);
   const assessments = database.prepare('SELECT monthly_income, monthly_expenses, cash_on_hand, debt_outstanding, monthly_debt_payment, other_assets, other_liabilities, tax_standing, updated_at FROM finance_assessments WHERE user_id = ?').all(userId);
-  const tickets = database.prepare('SELECT id, tracking_number, business_name, business_type, municipality, filing_stage, status, created_at, updated_at FROM efiling_tickets WHERE user_id = ?').all(userId);
-  const documents = database.prepare('SELECT id, doc_type, title, business_name, municipality, summary_json, created_at FROM generated_documents WHERE user_id = ?').all(userId);
+  const tickets = database.prepare('SELECT * FROM efiling_tickets WHERE user_id = ?').all(userId);
+  const documents = database.prepare('SELECT id, doc_type, title, business_name, municipality, content_html, summary_json, created_at FROM generated_documents WHERE user_id = ?').all(userId);
   const messages = database.prepare('SELECT id, supplier_id, subject, message, status, reply, created_at FROM supplier_messages WHERE user_id = ?').all(userId);
+  const reviews = database.prepare('SELECT id, supplier_id, rating, review_text, verified_transaction, created_at FROM supplier_reviews WHERE user_id = ?').all(userId);
   const workspace = database.prepare('SELECT workspace_json FROM finance_workspaces WHERE user_id = ?').get(userId) as any;
   const draft = database.prepare('SELECT draft_json FROM registration_drafts WHERE user_id = ?').get(userId) as any;
 
@@ -1167,6 +1168,7 @@ app.get('/api/user/export-data', requireAuthentication, (req: any, res) => {
     tickets,
     documents,
     messages,
+    reviews,
     workspace: workspace ? JSON.parse(workspace.workspace_json) : null,
     registrationDraft: draft ? JSON.parse(draft.draft_json) : null
   });

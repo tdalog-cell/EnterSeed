@@ -148,14 +148,14 @@ export const AppShell: React.FC<AppShellProps> = ({ activePage, setActivePage, c
         onClick={() => setActivePage(item.id)}
         aria-current={active ? 'page' : undefined}
         className={cx(
-          'nav-link w-full flex items-center gap-3 min-h-11 px-3.5 rounded-xl text-[13px] transition-colors',
-          active ? 'bg-white/12 text-white font-semibold' : quiet ? 'text-white/55 hover:text-white hover:bg-white/6' : 'text-white/75 hover:text-white hover:bg-white/6'
+          'nav-link w-full flex items-center gap-3 min-h-11 px-3.5 rounded-md text-[13px] transition-colors',
+          active ? 'bg-brand-soft text-brand font-medium' : 'text-muted hover:text-ink hover:bg-sunken'
         )}
       >
         {item.id === 'boss-nana' ? (
           <img src="./logos/Narra.png" alt="" className="w-[18px] h-[18px] shrink-0 object-contain" />
         ) : (
-          <Icon className={cx('w-[18px] h-[18px] shrink-0', active ? 'text-accent' : 'opacity-80')} />
+          <Icon className={cx('w-[18px] h-[18px] shrink-0', active ? 'text-brand' : 'opacity-80')} />
         )}
         <span>{item.label}</span>
       </button>
@@ -168,14 +168,14 @@ export const AppShell: React.FC<AppShellProps> = ({ activePage, setActivePage, c
       <OnboardingModal />
 
       {/* Desktop sidebar */}
-      <aside className="workspace-sidebar hidden md:flex md:sticky md:top-0 md:h-screen w-60 lg:w-64 shrink-0 flex-col text-white">
+      <aside className="workspace-sidebar hidden md:flex md:sticky md:top-0 md:h-screen w-60 lg:w-64 shrink-0 flex-col text-ink">
         <div className="px-6 pt-8 pb-8">
-          <Logo tone="dark" onClick={() => setActivePage('dashboard')} />
-          <p className="mt-3 text-[9px] font-semibold tracking-[.18em] uppercase text-white/45">Small business. Big possibilities.</p>
+          <Logo onClick={() => setActivePage('dashboard')} />
+          <p className="mt-3 text-[9px] font-semibold tracking-[.18em] uppercase text-muted">Business workspace</p>
         </div>
 
         <nav className="flex-1 overflow-y-auto px-3 pb-4" aria-label={t('appShell.primaryNavigation')}>
-          <p className="px-3 mb-3 text-[9px] font-bold tracking-[.18em] uppercase text-white/40">Your workspace</p>
+          <p className="px-3 mb-3 text-[9px] font-bold tracking-[.18em] uppercase text-muted">Your workspace</p>
           <ul className="space-y-0.5">
             {workspace.map((item) => (
               <li key={item.id}>
@@ -184,7 +184,7 @@ export const AppShell: React.FC<AppShellProps> = ({ activePage, setActivePage, c
             ))}
           </ul>
 
-          <p className="mt-8 mb-3 px-3 text-[9px] uppercase tracking-[.18em] font-semibold text-white/45">{t('appShell.resources')}</p>
+          <p className="mt-8 mb-3 px-3 text-[9px] uppercase tracking-[.18em] font-semibold text-muted">{t('appShell.resources')}</p>
           <ul className="space-y-0.5">
             {resources.map((item) => (
               <li key={item.id}>
@@ -195,15 +195,15 @@ export const AppShell: React.FC<AppShellProps> = ({ activePage, setActivePage, c
         </nav>
 
         <div className="p-4">
-          <button type="button" onClick={() => setActivePage('boss-nana')} className="group w-full text-left rounded-2xl border border-white/10 bg-white/5 p-4 transition-colors hover:bg-white/10">
+          <button type="button" onClick={() => setActivePage('boss-nana')} className="group w-full text-left rounded-lg border border-line bg-surface p-3 transition-colors hover:bg-sunken">
             <img src="./logos/Narra.png" alt="" className="w-9 h-9 rounded-xl bg-white object-contain p-1" />
-            <span className="block mt-3 text-[13px] font-semibold">A little guidance goes a long way.</span>
-            <span className="block mt-1 text-xs leading-relaxed text-white/55">Talk things through with Boss Narra.</span>
+            <span className="block mt-3 text-[13px] font-semibold">Need a hand?</span>
+            <span className="block mt-1 text-xs leading-relaxed text-muted">Talk things through with Boss Narra.</span>
           </button>
-          <p className="flex items-center gap-2 mt-5 px-2 text-[10px] text-white/45"><Sprout className="w-4 h-4 text-accent/80" />Rooted in South Cotabato</p>
+          <p className="flex items-center gap-2 mt-5 px-2 text-[10px] text-muted"><Sprout className="w-4 h-4 text-accent/80" />Rooted in South Cotabato</p>
         </div>
         {isStaff && (
-          <div className="px-3 pb-4 border-t border-white/10 pt-3">
+          <div className="px-3 pb-4 border-t border-line pt-3">
             {sideLink(staff, true)}
           </div>
         )}
@@ -211,8 +211,8 @@ export const AppShell: React.FC<AppShellProps> = ({ activePage, setActivePage, c
 
       <div className="flex-1 min-w-0 flex flex-col">
         {/* Top bar */}
-        <header className="sticky top-0 z-40 bg-canvas/90 backdrop-blur-xl border-b border-line">
-          <div className="h-[72px] px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-3">
+        <header className="sticky top-0 z-40 bg-surface/95 backdrop-blur-sm border-b border-line">
+          <div className="h-16 px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-3">
             <div className="flex items-center gap-1 md:hidden">
               <button
                 type="button"
@@ -288,14 +288,14 @@ export const AppShell: React.FC<AppShellProps> = ({ activePage, setActivePage, c
               role="dialog"
               aria-modal="true"
               aria-label="Menu"
-              className="sheet-in absolute inset-y-0 left-0 w-[min(84vw,320px)] bg-night text-white flex flex-col shadow-[8px_0_40px_-12px_rgb(0_0_0/0.5)]"
+              className="sheet-in absolute inset-y-0 left-0 w-[min(84vw,320px)] bg-surface text-ink flex flex-col shadow-[8px_0_40px_-12px_rgb(0_0_0/0.5)]"
             >
               <div className="flex items-center justify-between px-4 h-16 shrink-0">
-                <Logo tone="dark" caption="South Cotabato MSMEs" />
+                <Logo caption="South Cotabato MSMEs" />
                 <button
                   type="button"
                   onClick={() => setDrawerOpen(false)}
-                  className="p-2 -mr-1 rounded-lg text-white/70 hover:text-white hover:bg-white/10"
+                  className="p-2 -mr-1 rounded-lg text-muted hover:text-ink hover:bg-sunken"
                   aria-label={t('appShell.closeMenu')}
                 >
                   <X className="w-5 h-5" />
@@ -308,7 +308,7 @@ export const AppShell: React.FC<AppShellProps> = ({ activePage, setActivePage, c
                     <li key={item.id}>{sideLink(item)}</li>
                   ))}
                 </ul>
-                <p className="mt-6 mb-2 px-3 text-xs font-semibold text-white/45">{t('appShell.resources')}</p>
+                <p className="mt-6 mb-2 px-3 text-xs font-semibold text-muted">{t('appShell.resources')}</p>
                 <ul className="space-y-0.5">
                   {[...resources, ...(isStaff ? [staff] : [])].map((item) => (
                     <li key={item.id}>{sideLink(item, true)}</li>
@@ -317,15 +317,15 @@ export const AppShell: React.FC<AppShellProps> = ({ activePage, setActivePage, c
               </nav>
 
               {user && (
-                <div className="border-t border-white/10 px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+                <div className="border-t border-line px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
                   <p className="text-sm font-semibold truncate">
                     {user.firstName ? `${user.firstName} ${user.lastName}` : user.email}
                   </p>
-                  {user.business && <p className="text-[13px] text-white/60 truncate">{user.business}</p>}
+                  {user.business && <p className="text-[13px] text-muted truncate">{user.business}</p>}
                   <button
                     type="button"
                     onClick={handleLogout}
-                    className="mt-3 w-full flex items-center justify-center gap-2 h-10 rounded-lg border border-white/15 text-sm font-semibold text-white/85 hover:bg-white/10"
+                    className="mt-3 w-full flex items-center justify-center gap-2 h-10 rounded-lg border border-line text-sm font-semibold text-ink hover:bg-sunken"
                   >
                     <LogOut className="w-4 h-4" />
                     {t('appShell.logout')}

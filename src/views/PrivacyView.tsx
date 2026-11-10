@@ -62,7 +62,7 @@ export const PrivacyView: React.FC = () => {
                   Export My Data (Portability)
                 </div>
                 <p className="text-xs text-muted mt-1 leading-relaxed">
-                  Download a complete JSON export of your profile, saved financial checkups, registration assistant tickets, and message history.
+                  Download your profile, financial checkups and ledger, registration drafts and tickets, full saved documents, supplier inquiries, and reviews as a JSON file.
                 </p>
               </div>
               <Button variant="secondary" size="sm" onClick={handleExport} busy={exporting} busyLabel="Preparing export…" className="mt-4 self-start">

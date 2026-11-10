@@ -87,7 +87,7 @@ const PORTALS = [
 ];
 
 export const EfilingView: React.FC = () => {
-  const { user } = useAuth();
+  const { user, isDemo } = useAuth();
 
   // Active top navigation tab (Exclusively for end-user business owner)
   const [activeTab, setActiveTab] = useState<'all-in-one' | 'referrals' | 'portals'>('all-in-one');
@@ -141,22 +141,22 @@ export const EfilingView: React.FC = () => {
   // Referral Engine state
   const [referralMode, setReferralMode] = useState<'subsidy' | 'credit'>('subsidy');
   const [subsidyForm, setSubsidyForm] = useState({
-    businessSector: 'Agri-Processing & Coffee Roasting',
-    annualSales: 1500000,
-    employeeCount: 5,
-    yearsOperating: 2,
+    businessSector: isDemo ? 'Agri-Processing & Coffee Roasting' : '',
+    annualSales: isDemo ? 1500000 : 0,
+    employeeCount: isDemo ? 5 : 0,
+    yearsOperating: isDemo ? 2 : 0,
     municipality: user?.municipality || 'City of Koronadal',
-    needsMachinery: true,
-    isWomenOrYouthLed: true,
-    hasExportPotential: true
+    needsMachinery: isDemo,
+    isWomenOrYouthLed: isDemo,
+    hasExportPotential: isDemo
   });
   const [subsidyResults, setSubsidyResults] = useState<SubsidyMatch[] | null>(null);
   const [evaluatingSubsidy, setEvaluatingSubsidy] = useState(false);
 
   const [creditForm, setCreditForm] = useState({
-    requestedAmount: 500000,
-    monthlyGrossRevenue: 120000,
-    creditTrackRecord: 'good' as const,
+    requestedAmount: isDemo ? 500000 : 0,
+    monthlyGrossRevenue: isDemo ? 120000 : 0,
+    creditTrackRecord: (isDemo ? 'good' : 'new_no_credit') as 'excellent' | 'good' | 'fair' | 'new_no_credit',
     hasCollateral: false,
     purpose: 'working_capital' as const
   });

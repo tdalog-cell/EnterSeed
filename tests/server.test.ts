@@ -104,6 +104,23 @@ test('configured cross-origin clients receive valid preflight headers', async ()
   expect(response.status).toBe(204);
   expect(response.headers.get('Access-Control-Allow-Origin')).toBe('https://preview.example');
 });
+test('data exports include full documents and saved work without exposing another account or credentials', async () => {
+  const response = await request('/api/user/export-data', tokenA);
+  expect(response.status).toBe(200);
+  expect(response.headers.get('Content-Disposition')).toContain('attachment');
+  const exported = await response.json();
+  expect(exported.documents[0].content_html).toBe('<p>Updated private plan</p>');
+  expect(exported.tickets[0].documents_json).toContain('checklist.pdf');
+  expect(exported.workspace.openingBalance).toBe(12500);
+  expect(exported.registrationDraft.businessName).toBe('Private business');
+  expect(exported.reviews).toEqual([]);
+  expect(JSON.stringify(exported)).not.toContain('password_hash');
+  const otherExport = await (await request('/api/user/export-data', tokenB)).json();
+  expect(otherExport.documents).toEqual([]);
+  expect(otherExport.tickets).toEqual([]);
+  expect((await request('/api/user/export-data')).status).toBe(401);
+});
+
 test('account deletion removes its workspace without affecting other accounts', async () => {
   expect((await request('/api/user/delete-data', tokenA, 'DELETE')).status).toBe(200);
   expect((await request('/api/auth/me', tokenA)).status).toBe(401);
