@@ -554,7 +554,7 @@ export const DocumentsView: React.FC = () => {
                   </p>
                   <div className="space-y-3">
                     {SAMPLE_OUTLINES[docType].sections.map((sec, idx) => (
-                      <div key={idx} className="bg-white p-3 rounded-lg border border-purple-100 shadow-2xs">
+                      <div key={idx} className="bg-surface p-3 rounded-lg border border-purple-100 shadow-2xs">
                         <strong className="text-xs font-bold text-ink block">{sec.name}</strong>
                         <span className="text-[11px] text-muted leading-relaxed block mt-0.5">{sec.desc}</span>
                       </div>

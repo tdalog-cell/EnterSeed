@@ -399,57 +399,26 @@ export const FinanceView: React.FC = () => {
       {notice && <Notice tone={notice.tone}>{notice.text}</Notice>}
       {loadingWorkspace && <div className="grid grid-cols-3 gap-4" aria-label="Loading finance workspace">{[1, 2, 3].map((key) => <div key={key} className="skeleton h-28 rounded-2xl" />)}</div>}
       <fieldset disabled={loadingWorkspace || savingWorkspace || !!workspaceError} className="min-w-0 space-y-6 disabled:opacity-60">
-      {/* Tabs on their own row below header (horizontally scrollable on mobile) */}
-      <div className="border-b border-line pb-2 overflow-x-auto">
-        <div className="flex items-center gap-2 min-w-max">
-          <Button
-            variant={activeTab === 'cash' ? 'primary' : 'secondary'}
-            size="md"
-            className="min-h-[44px] shrink-0"
-            onClick={() => setActiveTab('cash')}
-          >
-            <Wallet className="w-4 h-4 mr-1.5" />
-            Cash Management
-          </Button>
-          <Button
-            variant={activeTab === 'debt' ? 'primary' : 'secondary'}
-            size="md"
-            className="min-h-[44px] shrink-0"
-            onClick={() => setActiveTab('debt')}
-          >
-            <CreditCard className="w-4 h-4 mr-1.5" />
-            Debt Management
-          </Button>
-          <Button
-            variant={activeTab === 'tax' ? 'primary' : 'secondary'}
-            size="md"
-            className="min-h-[44px] shrink-0"
-            onClick={() => setActiveTab('tax')}
-          >
-            <FileCheck className="w-4 h-4 mr-1.5" />
-            Tax Checklist
-          </Button>
-          <Button
-            variant={activeTab === 'investment' ? 'primary' : 'secondary'}
-            size="md"
-            className="min-h-[44px] shrink-0"
-            onClick={() => setActiveTab('investment')}
-          >
-            <TrendingUp className="w-4 h-4 mr-1.5" />
-            Equipment ROI
-          </Button>
-          <Button
-            variant={activeTab === 'reports' ? 'primary' : 'secondary'}
-            size="md"
-            className="min-h-[44px] shrink-0"
-            onClick={() => setActiveTab('reports')}
-          >
-            <FileBarChart className="w-4 h-4 mr-1.5" />
-            Financial Summaries
-          </Button>
+      <section aria-labelledby="finance-tools-title" className="rounded-xl border border-line bg-surface overflow-hidden">
+        <div className="border-b border-line px-5 py-4"><h2 id="finance-tools-title" className="font-semibold">Choose a finance tool</h2><p className="text-sm text-muted mt-1">Select a row below to open its workspace.</p></div>
+        <div className="hidden sm:grid grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_100px] gap-4 px-5 py-2.5 bg-sunken text-xs font-semibold text-muted" aria-hidden="true"><span>Tool</span><span>What you can do</span><span className="text-right">Workspace</span></div>
+        <div className="divide-y divide-line">
+          {([
+            { id: 'cash', title: 'Cash Management', description: 'Record sales and expenses. Track available cash.', icon: Wallet },
+            { id: 'debt', title: 'Debt Management', description: 'Organize loans and plan your repayments.', icon: CreditCard },
+            { id: 'tax', title: 'Tax Checklist', description: 'Keep track of your tax preparation tasks.', icon: FileCheck },
+            { id: 'investment', title: 'Equipment ROI', description: 'Compare equipment costs and expected returns.', icon: TrendingUp },
+            { id: 'reports', title: 'Financial Summaries', description: 'Review your results and download reports.', icon: FileBarChart }
+          ] as const).map(({ id, title, description, icon: Icon }) => <button type="button" key={id}
+            aria-pressed={activeTab === id} aria-controls="finance-tool-content" onClick={() => setActiveTab(id)}
+            className={cx('finance-tool-row w-full grid grid-cols-[minmax(0,1fr)_auto] sm:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_100px] items-center gap-x-4 gap-y-1 px-4 sm:px-5 py-4 sm:py-5 text-left transition-colors', activeTab === id ? 'bg-brand-soft' : 'hover:bg-sunken')}>
+            <span className="flex items-center gap-3"><span className={cx('w-10 h-10 rounded-lg flex items-center justify-center shrink-0', activeTab === id ? 'finance-tool-icon bg-brand text-white' : 'bg-sunken text-brand')}><Icon className="w-5 h-5" /></span><span className="font-semibold text-sm sm:text-base">{title}</span></span>
+            <span className="text-xs sm:text-sm text-muted col-start-1 sm:col-start-auto pl-[52px] sm:pl-0">{description}</span>
+            <span className={cx('row-start-1 col-start-2 sm:row-auto sm:col-auto text-right text-xs font-semibold', activeTab === id ? 'text-brand' : 'text-muted')}>{activeTab === id ? <span className="inline-flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-accent" />Selected</span> : 'Open →'}</span>
+          </button>)}
         </div>
-      </div>
-
+      </section>
+      <div id="finance-tool-content" className="scroll-mt-24">
       {/* --- SUB-SECTION 1: CASH MANAGEMENT --- */}
       {activeTab === 'cash' && (
         <div className="space-y-6 view-enter">
@@ -1243,6 +1212,7 @@ export const FinanceView: React.FC = () => {
       )}
 
       {/* Edit Transaction Modal */}
+      </div>
       </fieldset>
       {editingTx && (
       <Modal

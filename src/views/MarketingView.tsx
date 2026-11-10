@@ -244,7 +244,7 @@ export const MarketingView: React.FC = () => {
                 onChange={(e) => setGeneratedText(e.target.value)}
                 className={cx(
                   textareaClass,
-                  'font-sans text-sm sm:text-base leading-relaxed bg-white border-line-strong p-4 focus:ring-2 focus:ring-brand'
+                  'font-sans text-sm sm:text-base leading-relaxed bg-surface border-line-strong p-4 focus:ring-2 focus:ring-brand'
                 )}
               />
 

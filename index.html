@@ -2,6 +2,14 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
+  <script>
+    try {
+      var preference = localStorage.getItem('enterseed_theme');
+      var dark = preference === 'dark' || (preference !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
+      document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+      document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
+    } catch (_) {}
+  </script>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Enterseed Platform</title>
   <meta name="description" content="MSME support platform for South Cotabato and SOCCSKSARGEN with Boss Narra AI advisor, financial checkup, marketing workspace, supplier directory, and document generation.">

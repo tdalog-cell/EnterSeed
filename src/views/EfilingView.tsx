@@ -501,7 +501,7 @@ export const EfilingView: React.FC = () => {
                   href="https://bnrs.dti.gov.ph/"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 text-xs font-bold text-purple-900 bg-white hover:bg-purple-100 border border-purple-200 px-3 py-1.5 rounded-lg transition-colors shadow-xs"
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-purple-900 bg-surface hover:bg-purple-100 border border-purple-200 px-3 py-1.5 rounded-lg transition-colors shadow-xs"
                 >
                   Go to official DTI BNRS portal <ArrowUpRight className="w-3.5 h-3.5" />
                 </a>
@@ -580,7 +580,7 @@ export const EfilingView: React.FC = () => {
                   href="https://southcotabato.gov.ph/services/"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-900 bg-white hover:bg-blue-100 border border-blue-200 px-3 py-1.5 rounded-lg transition-colors shadow-xs"
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-900 bg-surface hover:bg-blue-100 border border-blue-200 px-3 py-1.5 rounded-lg transition-colors shadow-xs"
                 >
                   South Cotabato LGU Barangay Directory <ArrowUpRight className="w-3.5 h-3.5" />
                 </a>
@@ -683,7 +683,7 @@ export const EfilingView: React.FC = () => {
                   href="https://southcotabato.gov.ph/services/"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-900 bg-white hover:bg-emerald-100 border border-emerald-200 px-3 py-1.5 rounded-lg transition-colors shadow-xs"
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-900 bg-surface hover:bg-emerald-100 border border-emerald-200 px-3 py-1.5 rounded-lg transition-colors shadow-xs"
                 >
                   Go to official South Cotabato LGU portal <ArrowUpRight className="w-3.5 h-3.5" />
                 </a>
@@ -781,7 +781,7 @@ export const EfilingView: React.FC = () => {
                   href="https://www.bir.gov.ph/"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-900 bg-white hover:bg-indigo-100 border border-indigo-200 px-3 py-1.5 rounded-lg transition-colors shadow-xs"
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-900 bg-surface hover:bg-indigo-100 border border-indigo-200 px-3 py-1.5 rounded-lg transition-colors shadow-xs"
                 >
                   Go to official BIR eServices portal <ArrowUpRight className="w-3.5 h-3.5" />
                 </a>
@@ -904,7 +904,7 @@ export const EfilingView: React.FC = () => {
       {/* TAB 2: SMART REFERRAL ENGINE */}
       {activeTab === 'referrals' && (
         <div className="space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-line shadow-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-surface p-4 rounded-2xl border border-line shadow-xs">
             <div>
               <h2 className="text-lg font-bold text-ink">Smart Referral Engine</h2>
               <p className="text-xs text-muted">Automated qualification assessment for South Cotabato government grants and local bank credit windows.</p>

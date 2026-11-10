@@ -78,7 +78,7 @@ export const AboutView: React.FC = () => {
         <div className="relative pb-5 pr-5">
           <div className="absolute bottom-0 right-0 top-5 left-5 rounded-[1.75rem] bg-accent-soft" aria-hidden="true" />
           <PhotoImg photo={PHOTOS.market} sizes="(min-width: 768px) 50vw, 100vw" className="h-64 sm:h-80 rounded-[1.75rem]" eager />
-          <span className="absolute bottom-0 left-5 inline-flex items-center gap-2 rounded-xl border border-line bg-white px-4 py-3 text-xs font-semibold text-ink shadow-sm"><MapPin className="w-4 h-4 text-brand" /> Local roots. Shared possibilities.</span>
+          <span className="absolute bottom-0 left-5 inline-flex items-center gap-2 rounded-xl border border-line bg-surface px-4 py-3 text-xs font-semibold text-ink shadow-sm"><MapPin className="w-4 h-4 text-brand" /> Local roots. Shared possibilities.</span>
         </div>
       </section>
 

@@ -1,6 +1,7 @@
 import React, { lazy, Suspense, useCallback, useState, useEffect } from 'react';
 import { ViewBoundary, ViewLoading } from './components/ViewBoundary';
 import { LanguageProvider } from './context/LanguageContext';
+import { ThemeProvider } from './context/ThemeContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { AppShell, ActivePage } from './components/AppShell';
 
@@ -14,6 +15,7 @@ const EfilingView = lazy(() => import('./views/EfilingView').then(module => ({ d
 const PricingView = lazy(() => import('./views/PricingView').then(module => ({ default: module.PricingView })));
 const AboutView = lazy(() => import('./views/AboutView').then(module => ({ default: module.AboutView })));
 const PrivacyView = lazy(() => import('./views/PrivacyView').then(module => ({ default: module.PrivacyView })));
+const SettingsView = lazy(() => import('./views/SettingsView').then(module => ({ default: module.SettingsView })));
 const AdminView = lazy(() => import('./views/AdminView').then(module => ({ default: module.AdminView })));
 import { AuthView } from './views/AuthView';
 import { LanguageMenu } from './components/LanguageMenu';
@@ -25,7 +27,8 @@ const protectedPages: ActivePage[] = [
   'marketing',
   'suppliers',
   'documents',
-  'boss-nana'
+  'boss-nana',
+  'settings'
 ];
 const validPages = [...protectedPages, 'efiling', 'pricing', 'about', 'privacy', 'admin', 'login', 'register'];
 
@@ -35,7 +38,7 @@ const MainRouter: React.FC = () => {
     const hash = window.location.hash.replace('#', '') as ActivePage;
     if (hash && [
       'dashboard', 'finance', 'marketing', 'suppliers', 'documents', 'boss-nana',
-      'efiling', 'pricing', 'about', 'privacy', 'admin', 'login', 'register'
+      'efiling', 'pricing', 'about', 'privacy', 'settings', 'admin', 'login', 'register'
     ].includes(hash)) {
       return hash;
     }
@@ -166,6 +169,8 @@ const MainRouter: React.FC = () => {
         return <AboutView />;
       case 'privacy':
         return <PrivacyView />;
+      case 'settings':
+        return <SettingsView />;
       case 'admin':
         if (!isStaff) {
           return (
@@ -195,11 +200,11 @@ const MainRouter: React.FC = () => {
 
 export function App() {
   return (
-    <LanguageProvider>
+    <ThemeProvider><LanguageProvider>
       <AuthProvider>
         <MainRouter />
       </AuthProvider>
-    </LanguageProvider>
+    </LanguageProvider></ThemeProvider>
   );
 }
 

@@ -25,7 +25,8 @@ import {
   Search,
   ChevronRight,
   Sprout,
-  FlaskConical
+  FlaskConical,
+  Settings
 } from 'lucide-react';
 
 export type ActivePage =
@@ -39,6 +40,7 @@ export type ActivePage =
   | 'pricing'
   | 'about'
   | 'privacy'
+  | 'settings'
   | 'admin'
   | 'login'
   | 'register';
@@ -123,6 +125,7 @@ export const AppShell: React.FC<AppShellProps> = ({ activePage, setActivePage, c
   ];
 
   const resources: NavItem[] = [
+    { id: 'settings', label: 'Settings', icon: Settings },
     { id: 'pricing', label: t('appShell.pricing'), icon: Tag },
     { id: 'about', label: t('appShell.about'), icon: Info },
     { id: 'privacy', label: 'Privacy (RA 10173)', icon: ShieldCheck }
@@ -262,6 +265,9 @@ export const AppShell: React.FC<AppShellProps> = ({ activePage, setActivePage, c
                       <p className="text-[13px] text-muted truncate">{user.email}</p>
                     </div>
                     <div className="my-1 border-t border-line" />
+                    <button type="button" role="menuitem" onClick={() => { setProfileOpen(false); setActivePage('settings'); }} className="w-full flex items-center gap-2 h-9 px-2.5 rounded-lg text-sm text-ink hover:bg-sunken">
+                      <Settings className="w-4 h-4" />Settings
+                    </button>
                     <button
                       type="button"
                       role="menuitem"
