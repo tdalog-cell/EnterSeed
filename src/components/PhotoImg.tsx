@@ -31,7 +31,7 @@ export const PhotoImg: React.FC<{
     ) : <img
       key={photo.id}
       src={photoSrc(photo, 1400)}
-      srcSet={photoSrcSet(photo)}
+      srcSet={photo.src ? undefined : photoSrcSet(photo)}
       sizes={sizes}
       alt={photo.alt}
       loading={eager ? 'eager' : 'lazy'}

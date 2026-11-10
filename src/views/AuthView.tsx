@@ -93,7 +93,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ initialMode, setActivePage }
     <div className="min-h-screen bg-canvas lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(480px,560px)] xl:grid-cols-[minmax(0,1fr)_600px]">
       {/* Photo side */}
       <aside className="relative h-[21rem] sm:h-[27rem] lg:h-screen lg:sticky lg:top-0 overflow-hidden bg-night">
-        <PhotoImg photo={PHOTOS.carabao} sizes="(min-width: 1024px) 60vw, 100vw" fill eager />
+        <PhotoImg photo={PHOTOS.carabao} sizes="(min-width: 1024px) 60vw, 100vw" fill eager credit="none" />
         <div className="absolute inset-0 bg-gradient-to-t from-[#1F102E]/95 via-[#24172B]/40 to-[#24172B]/35 pointer-events-none" />
         <div className="relative h-full flex flex-col justify-between p-6 sm:p-9 lg:p-12 xl:p-16 pointer-events-none">
           <div className="flex items-start justify-between gap-3">

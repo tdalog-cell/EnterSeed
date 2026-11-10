@@ -5,6 +5,7 @@
  */
 export interface Photo {
   id: string;
+  src?: string;
   alt: string;
   credit: string;
   place: string;
@@ -15,11 +16,12 @@ export interface Photo {
 
 export const PHOTOS = {
   carabao: {
-    id: '1630192226649-1934968dca48',
-    alt: 'A farmer rides a carabao along a road between rice fields and coconut palms',
-    credit: 'Rogel Tura',
-    place: 'Koronadal, South Cotabato',
-    href: 'https://unsplash.com/photos/uSZuoz9zo6E',
+    id: 'pids-market',
+    src: 'https://serp-p.pids.gov.ph/media/featured-image/1685338051_647437c361ed2.jpeg',
+    alt: 'A vendor arranging prepared food and drinks at a market stall, viewed from above',
+    credit: 'PIDS',
+    place: 'Philippines',
+    href: 'https://serp-p.pids.gov.ph/media/featured-image/1685338051_647437c361ed2.jpeg',
     focus: '45% 85%'
   },
   planting: {
@@ -57,7 +59,7 @@ export const PHOTOS = {
 } satisfies Record<string, Photo>;
 
 export const photoSrc = (p: Photo, width: number) =>
-  `https://images.unsplash.com/photo-${p.id}?auto=format&fit=crop&q=70&w=${width}`;
+  p.src ?? `https://images.unsplash.com/photo-${p.id}?auto=format&fit=crop&q=70&w=${width}`;
 
 export const photoSrcSet = (p: Photo, widths = [640, 960, 1400, 2000]) =>
   widths.map((w) => `${photoSrc(p, w)} ${w}w`).join(', ');
