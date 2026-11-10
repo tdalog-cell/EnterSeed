@@ -30,6 +30,8 @@ jobs:
         run: npm install
 
       - name: Build static site
+        env:
+          VITE_DEMO_MODE: 'true'
         run: npm run build
 
       - name: Upload site artifact

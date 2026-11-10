@@ -255,10 +255,10 @@ export function calculateFinancialHealth(
     actionItems.push('Explore bulk buying with local South Cotabato suppliers to improve gross profit margins.');
   }
   if (debtRatio > 0.20) {
-    actionItems.push('Debt payments consume over 20% of sales. Consider refinancing or consulting SBCorp for low-rate consolidation.');
+    actionItems.push('Debt payments consume over 20% of sales. Review repayment commitments and discuss available options with your lender.');
   }
   if (actionItems.length < 3) {
-    actionItems.push('Set aside 10% of weekly net earnings in a dedicated reserve account for quarterly BIR tax obligations.');
+    actionItems.push('Include expected tax obligations in your cash-flow plan and verify the amounts with your accountant.');
   }
   if (actionItems.length < 3) {
     actionItems.push('Check eligibility for DOST SETUP or OTOP packaging subsidies to scale without high debt.');

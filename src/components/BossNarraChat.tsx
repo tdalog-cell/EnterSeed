@@ -100,7 +100,7 @@ export const ChatThread: React.FC<{
   const [feedback, setFeedback] = useState<Record<number, 'helpful' | 'unhelpful'>>({});
 
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    endRef.current?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'end' });
   }, [messages, loading]);
 
   const handleFeedback = (idx: number, type: 'helpful' | 'unhelpful') => {
@@ -143,7 +143,7 @@ export const ChatThread: React.FC<{
                             </button>
                           ) : (
                             <a
-                              href={src.url}
+                              href={/^https?:\/\//i.test(src.url) ? src.url : undefined}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="inline-flex items-center gap-1 h-7 px-2.5 rounded-full border border-line-strong text-xs font-medium text-brand hover:bg-brand-soft transition-colors"

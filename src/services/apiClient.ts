@@ -195,7 +195,7 @@ function handleDemoRequest(endpoint: string, options: RequestInit): Response {
     return demoResponse(200, { preferredLanguage: body.language });
   }
   if (endpoint === '/api/user/export-data') {
-    return demoResponse(200, { profile: user, exportedAt: new Date().toISOString(), assessment: demoRead('finance', null), workspace: demoRead('finance_workspace', null), tickets: demoRead('tickets', []), documents: demoRead('documents', []) });
+    return demoResponse(200, { profile: user, exportedAt: new Date().toISOString(), assessment: demoRead('finance', null), workspace: demoRead('finance_workspace', null), registrationDraft: demoRead('registration_draft', null), tickets: demoRead('tickets', []), documents: demoRead('documents', []) });
   }
   if (endpoint === '/api/user/delete-data' && method === 'DELETE') {
     const prefix = demoKey('');
@@ -203,6 +203,10 @@ function handleDemoRequest(endpoint: string, options: RequestInit): Response {
     keys.forEach((key) => localStorage.removeItem(key!));
     endDemoSession();
     return demoResponse(200, { success: true });
+  }
+  if (endpoint === '/api/registration/draft') {
+    if (method === 'GET') return demoResponse(200, { draft: demoRead('registration_draft', null) });
+    if (method === 'PUT') { demoWrite('registration_draft', body.draft); return demoResponse(200, { saved: true, draft: body.draft }); }
   }
   if (endpoint === '/api/finance/assessment' || endpoint === '/api/finance/workspace') {
     const workspace = endpoint.endsWith('/workspace');
@@ -404,14 +408,14 @@ export async function saveDocumentToLibrary(doc: GeneratedDocument): Promise<Gen
 
 export async function fetchGeneratedDocs(): Promise<GeneratedDocument[]> {
   const res = await apiFetch('/api/ai/documents');
-  if (!res.ok) return [];
+  if (!res.ok) throw new Error((await res.json()).error || 'Your document library could not load. Please retry.');
   const data = await res.json();
   return data.documents || [];
 }
 
 export async function fetchSupplierReviews(supplierId: number): Promise<SupplierReview[]> {
   const res = await apiFetch(`/api/suppliers/${supplierId}/reviews`);
-  if (!res.ok) return [];
+  if (!res.ok) throw new Error((await res.json()).error || 'Reviews could not load. Please retry.');
   const data = await res.json();
   return data.reviews || [];
 }
@@ -430,7 +434,7 @@ export async function submitSupplierReview(supplierId: number, review: { rating:
 
 export async function fetchSupplierMessages(): Promise<SupplierMessage[]> {
   const res = await apiFetch('/api/suppliers/messages');
-  if (!res.ok) return [];
+  if (!res.ok) throw new Error((await res.json()).error || 'Your messages could not load. Please retry.');
   const data = await res.json();
   return data.messages || [];
 }

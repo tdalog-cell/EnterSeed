@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useUnsavedChanges } from '../utils/useUnsavedChanges';
 import {
+  apiFetch,
   runSubsidyCheck,
   runCreditMatch,
   SubsidyMatch,
@@ -92,43 +94,47 @@ export const EfilingView: React.FC = () => {
 
   // Single-Page AI Form State (Consolidates all 5 statutory registration stages)
   const [formData, setFormData] = useState<ConsolidatedFilingData>({
-    trackingNumber: `PREP-SC-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
-    businessName: user?.business || 'Matutum Highlands Coffee Roasters',
-    businessType: 'Sole Proprietorship',
-    municipality: user?.municipality || 'City of Koronadal',
-    applicantName: user ? `${user.firstName} ${user.lastName}` : 'Maria Elena Santos',
-    applicantEmail: user?.email || 'msme.owner@southcotabato.ph',
-
-    // Section 1: BNRS
-    bnrsScope: 'Regional Scope (Region XII SOCCSKSARGEN)',
-    bnrsLineOfBusiness: 'Specialty Coffee Processing, Roasting & Agri-Tourism Retail',
-    bnrsDominantName: 'Matutum Highlands',
-
-    // Section 2: Barangay Clearance
-    barangayName: 'Barangay Zone III',
-    barangayPurpose: 'Commercial Manufacturing & Retail Operation Clearance',
-    propertyOwnership: 'Owned Commercial Agricultural Lot (Tax Dec No. 2024-04-1182)',
-
-    // Section 3: Mayor's Permit / BPLO
-    permitType: 'New Business Permit Application',
-    capitalInvestment: 450000,
-    employeeCount: 4,
-    sanitaryCompliance: 'Compliant (4 staff completed Municipal Health Office sanitary exams)',
-    fireSafetyStatus: 'Inspection Requested (Bureau of Fire Protection Koronadal Sub-station)',
-
-    // Section 4: BIR Form 1901
-    tinNumber: '742-891-304-000',
-    taxRegime: '8% Flat Gross Income Tax Regime (in lieu of graduated income tax and 3% percentage tax)',
-    booksOfAccounts: 'Manual Bound Books (General Journal, Cash Receipts, Cash Disbursements, General Ledger)',
-    atpStatus: 'Authority to Print Official Invoices in progress with BIR RDO 110 General Santos / Koronadal',
-
-    // Section 5: Location & Zoning
-    locationAddress: 'Km 14, General Santos Highway, Crossing Matutum, Barangay Zone III, City of Koronadal, South Cotabato',
-    zoningClassification: 'Commercial C-1 / Light Agro-Processing Zone',
-    locationSketchDesc: 'Situated 150 meters north of Koronadal Fruit & Agro Terminal, fronting Municipal Agricultural Demo Plot, adjacent to SOCOTECO II hub.',
-    notes: 'Prioritized under DTI OTOP Next Gen Coffee Value Chain and South Cotabato Provincial Micro-Enterprise Development Council.'
+    trackingNumber: `DRAFT-${new Date().getFullYear()}-${crypto.randomUUID().slice(0, 8).toUpperCase()}`,
+    businessName: user?.business || '', businessType: 'Sole Proprietorship', municipality: user?.municipality || 'City of Koronadal',
+    applicantName: user ? `${user.firstName} ${user.lastName}`.trim() : '', applicantEmail: user?.email || '',
+    bnrsScope: '', bnrsLineOfBusiness: '', bnrsDominantName: '', barangayName: '', barangayPurpose: '', propertyOwnership: '',
+    permitType: 'New Business Permit Application', capitalInvestment: 0, employeeCount: 0, sanitaryCompliance: '', fireSafetyStatus: '',
+    tinNumber: '', taxRegime: '', booksOfAccounts: '', atpStatus: '', locationAddress: '', zoningClassification: '', locationSketchDesc: '', notes: ''
   });
-
+  const [savingDraft, setSavingDraft] = useState(false);
+  const [loadingDraft, setLoadingDraft] = useState(Boolean(user));
+  const [draftLoadError, setDraftLoadError] = useState(false);
+  const [savedDraftSnapshot, setSavedDraftSnapshot] = useState(() => JSON.stringify(formData));
+  useUnsavedChanges(!loadingDraft && !draftLoadError && JSON.stringify(formData) !== savedDraftSnapshot);
+  useEffect(() => {
+    if (!user) { setLoadingDraft(false); return; }
+    let active = true;
+    const load = async () => {
+      try {
+        const response = await apiFetch('/api/registration/draft');
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error);
+        if (active && result.draft) { setFormData(result.draft); setSavedDraftSnapshot(JSON.stringify(result.draft)); }
+      } catch {
+        if (active) { setDraftLoadError(true); setConsolidatedNotice({ tone: 'error', text: 'Your saved draft could not load. Reload this page before editing or saving.' }); }
+      } finally { if (active) setLoadingDraft(false); }
+    };
+    void load();
+    return () => { active = false; };
+  }, [user?.email]);
+  const handleSaveDraft = async () => {
+    if (!user) { setConsolidatedNotice({ tone: 'info', text: 'Sign in or open the demo workspace to save your draft. You can still download a preparation copy.' }); return; }
+    if (loadingDraft || draftLoadError || savingDraft) return;
+    setSavingDraft(true);
+    try {
+      const response = await apiFetch('/api/registration/draft', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ draft: formData }) });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'The draft could not be saved.');
+      setSavedDraftSnapshot(JSON.stringify(formData));
+      setConsolidatedNotice({ tone: 'success', text: 'Your preparation draft is saved. No government application has been submitted.' });
+    } catch (error) { setConsolidatedNotice({ tone: 'error', text: error instanceof Error ? error.message : 'Saving failed. Your entries are still here.' }); }
+    finally { setSavingDraft(false); }
+  };
   const [aiPopulating, setAiPopulating] = useState(false);
   const [consolidatedNotice, setConsolidatedNotice] = useState<{ tone: 'success' | 'error' | 'info'; text: string } | null>(null);
 
@@ -162,80 +168,12 @@ export const EfilingView: React.FC = () => {
    * using municipality and sector-specific South Cotabato intelligence.
    */
   const handleAiAutoPopulate = () => {
-    setAiPopulating(true);
-    setConsolidatedNotice(null);
-
-    setTimeout(() => {
-      const muni = formData.municipality || 'City of Koronadal';
-      const name = formData.businessName || 'Highland Organics & Artisan Crafts';
-
-      let brgy = 'Barangay Zone IV';
-      let scope = 'Regional Scope (Region XII SOCCSKSARGEN)';
-      let line = 'Food Manufacturing, Coffee Value Chain & Local Trade';
-      let sketch = `Located along the primary commercial artery of ${muni}, 100 meters from the Municipal Town Hall, adjacent to the Public Transport Terminal.`;
-      let dominant = name.split(' ')[0] || 'Highland';
-
-      if (muni === 'Tupi') {
-        brgy = 'Barangay Crossing Palkan';
-        scope = 'Regional Scope (Region XII)';
-        line = 'Highland Fruit & Coffee Processing, Packaging & Tourism Retail';
-        sketch = 'Located along General Santos Highway in Tupi, 200m from Mt. Matutum scenic viewpoint, fronting municipal fruit cooperative stall.';
-        dominant = 'Matutum Brew';
-      } else if (muni === 'Lake Sebu') {
-        brgy = 'Barangay Poblacion (Punta Isla area)';
-        scope = 'Provincial Scope (South Cotabato)';
-        line = 'Indigenous T’nalak Weaving, Brassware Casting & Eco-Tourism Souvenirs';
-        sketch = 'Situated on Lake Sebu scenic lakeside road, 300 meters from Seven Falls Gate 1, adjacent to NCIP Cultural Weaving Hall.';
-        dominant = 'Lake Sebu Heritage';
-      } else if (muni === 'Polomolok') {
-        brgy = 'Barangay Cannery Site';
-        scope = 'National Scope';
-        line = 'Agri-Processing, Pineapple Fiber Products & Cold Chain Logistics';
-        sketch = 'Located along Polomolok-General Santos Highway, 500m from Dole Pineapple Plantation main gate, adjacent to commercial gas station.';
-        dominant = 'Polomolok Fresh';
-      } else if (muni === 'Surallah') {
-        brgy = 'Barangay Libertad';
-        scope = 'Provincial Scope (South Cotabato)';
-        line = 'Grain Milling, Commercial Tilapia Feed Production & Agri-Supply';
-        sketch = 'Corner National Highway and Municipal Market Road, fronting Surallah Grand Stand, Surallah, South Cotabato.';
-        dominant = 'Surallah Harvest';
-      }
-
-      setFormData((prev) => ({
-        ...prev,
-        bnrsDominantName: dominant,
-        bnrsScope: scope,
-        bnrsLineOfBusiness: line,
-        barangayName: brgy,
-        barangayPurpose: `Statutory Commercial Establishment Clearance for ${muni}`,
-        propertyOwnership: 'Commercial Lease Agreement (3-Year Term with Option to Renew)',
-        permitType: 'New Business Permit Application',
-        capitalInvestment: prev.capitalInvestment || 350000,
-        employeeCount: prev.employeeCount || 4,
-        sanitaryCompliance: 'Certified Compliant with Municipal Health Office requirements',
-        fireSafetyStatus: `FSIC Inspection Requested at BFP ${muni} Station`,
-        tinNumber: prev.tinNumber || '923-451-872-000',
-        taxRegime: '8% Flat Gross Income Tax Regime (in lieu of graduated income tax and 3% percentage tax)',
-        booksOfAccounts: 'Manual Bound Books (General Ledger, Cash Receipts, General Journal)',
-        atpStatus: 'Authority to Print Official Invoices submitted to BIR District Office',
-        locationAddress: `Lot 12, Block 3, Commercial Center, ${brgy}, ${muni}, South Cotabato`,
-        zoningClassification: 'Commercial C-1 / Mixed Agri-Commercial Zone',
-        locationSketchDesc: sketch,
-        notes: `Validated against ${muni} local zoning ordinance and DTI Region 12 Ease of Doing Business standards.`
-      }));
-
-      setAiPopulating(false);
-      setConsolidatedNotice({
-        tone: 'success',
-        text: `Boss Narra AI has auto-populated statutory requirements tailored for ${muni}! Review entries below and download your finalized PDF.`
-      });
-    }, 400);
+    if (!user) { setConsolidatedNotice({ tone: 'info', text: 'Sign in to fill your saved business profile, or enter your details below.' }); return; }
+    setFormData(previous => ({ ...previous, businessName: user.business, municipality: user.municipality || previous.municipality, applicantName: `${user.firstName} ${user.lastName}`.trim(), applicantEmail: user.email }));
+    setConsolidatedNotice({ tone: 'info', text: 'Business and contact details filled from your profile. Enter your own TIN, address, and permit information. Confirm requirements with the official agencies.' });
   };
-
-  /**
-   * Exports the completed single-page application strictly as a .pdf file.
-   */
   const handleDownloadConsolidatedPdf = () => {
+    if (!formData.businessName.trim() || !formData.applicantName.trim() || !formData.applicantEmail.trim()) { setConsolidatedNotice({ tone: 'error', text: 'Add your business name, applicant name, and email before exporting.' }); return; }
     exportConsolidatedEfilingPdf(formData);
     setConsolidatedNotice({
       tone: 'success',
@@ -250,7 +188,7 @@ export const EfilingView: React.FC = () => {
       const matches = await runSubsidyCheck(subsidyForm);
       setSubsidyResults(matches);
     } catch (err) {
-      console.warn(err);
+      setConsolidatedNotice({ tone: 'error', text: err instanceof Error ? err.message : 'The program search failed. Please try again.' });
     } finally {
       setEvaluatingSubsidy(false);
     }
@@ -263,7 +201,7 @@ export const EfilingView: React.FC = () => {
       const matches = await runCreditMatch(creditForm);
       setCreditResults(matches);
     } catch (err) {
-      console.warn(err);
+      setConsolidatedNotice({ tone: 'error', text: err instanceof Error ? err.message : 'The program search failed. Please try again.' });
     } finally {
       setEvaluatingCredit(false);
     }
@@ -273,7 +211,8 @@ export const EfilingView: React.FC = () => {
     <div className="space-y-6 sm:space-y-8">
       {/* Page Header */}
       <PageHeader
-        title="Registration Assistant & Compliance Preparation"
+        eyebrow="Prepare with confidence"
+        title="Your next step toward registration"
         lead="Organize your statutory business registration requirements and export a clean dossier. Enterseed is an information preparation tool and does not submit filings directly to government offices."
         actions={
           <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
@@ -322,6 +261,7 @@ export const EfilingView: React.FC = () => {
       </div>
 
       {/* Notification banner */}
+      <div className="flex flex-wrap justify-between items-center gap-3 rounded-xl bg-brand-soft/60 px-4 py-3"><p className="text-xs text-brand">Your personal preparation draft. Enter only details you have verified.</p><Button onClick={handleSaveDraft} busy={savingDraft} busyLabel="Saving draft…" disabled={loadingDraft || draftLoadError}>Save preparation draft</Button></div>
       {consolidatedNotice && (
         <Notice tone={consolidatedNotice.tone}>
           <span>{consolidatedNotice.text}</span>
@@ -329,7 +269,9 @@ export const EfilingView: React.FC = () => {
       )}
 
       {/* TAB 1: ALL-IN-ONE CONSOLIDATED SINGLE-PAGE E-FILING FORM */}
-      {activeTab === 'all-in-one' && (
+      {loadingDraft && <div role="status" className="skeleton h-48 rounded-2xl"><span className="sr-only">Loading your draft…</span></div>}
+      {draftLoadError && <Button onClick={() => window.location.reload()}>Reload saved draft</Button>}
+      {activeTab === 'all-in-one' && !loadingDraft && !draftLoadError && (
         <div className="space-y-6">
           {/* Statutory Registration Banner */}
           <div className="bg-gradient-to-r from-purple-950 via-purple-900 to-indigo-950 text-white rounded-2xl p-6 sm:p-7 shadow-sm border border-purple-800/40">
@@ -357,7 +299,7 @@ export const EfilingView: React.FC = () => {
                   className="shadow-md"
                 >
                   <Sparkles className="w-4 h-4 mr-1.5" />
-                  {aiPopulating ? 'Populating with AI...' : 'Auto-Populate with Boss Narra AI'}
+                  Fill from my profile
                 </Button>
                 <Button
                   variant="secondary"
@@ -527,6 +469,7 @@ export const EfilingView: React.FC = () => {
                       onChange={(e) => setFormData({ ...formData, bnrsScope: e.target.value })}
                       className={inputClass}
                     >
+                      <option value="">Choose a registration scope</option>
                       <option value="Barangay Scope (Barangay Level)">Barangay Scope</option>
                       <option value="City / Municipality Scope">City / Municipality Scope</option>
                       <option value="Regional Scope (Region XII SOCCSKSARGEN)">Regional Scope (Region XII)</option>
@@ -605,6 +548,7 @@ export const EfilingView: React.FC = () => {
                       onChange={(e) => setFormData({ ...formData, propertyOwnership: e.target.value })}
                       className={inputClass}
                     >
+                      <option value="">Choose your property arrangement</option>
                       <option value="Owned Commercial Property">Owned Commercial Property</option>
                       <option value="Commercial Lease Agreement">Commercial Lease Agreement</option>
                       <option value="Public Market Stall Award">Public Market Stall Award</option>
@@ -786,6 +730,7 @@ export const EfilingView: React.FC = () => {
                       onChange={(e) => setFormData({ ...formData, taxRegime: e.target.value })}
                       className={inputClass}
                     >
+                      <option value="">Choose your confirmed tax regime</option>
                       <option value="8% Flat Gross Income Tax Regime (in lieu of graduated income tax and 3% percentage tax)">
                         8% Flat Gross Income Tax (Recommended for MSMEs &lt; ₱3M turnover)
                       </option>
@@ -883,6 +828,7 @@ export const EfilingView: React.FC = () => {
                       onChange={(e) => setFormData({ ...formData, zoningClassification: e.target.value })}
                       className={inputClass}
                     >
+                      <option value="">Choose your confirmed zoning classification</option>
                       <option value="Commercial C-1 / Mixed Agri-Commercial Zone">Commercial C-1 / Mixed Agri-Commercial</option>
                       <option value="Light Agro-Processing & Light Industrial Zone">Light Agro-Processing & Light Industrial</option>
                       <option value="Tourism & Eco-Cultural Heritage Zone">Tourism & Eco-Cultural Heritage</option>

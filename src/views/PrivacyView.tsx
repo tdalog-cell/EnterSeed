@@ -8,6 +8,14 @@ export const PrivacyView: React.FC = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState('');
+  const handleExport = async () => {
+    setExporting(true); setExportError('');
+    try { await exportUserData(); }
+    catch (error) { setExportError(error instanceof Error ? error.message : 'Your data could not be exported. Please retry.'); }
+    finally { setExporting(false); }
+  };
 
   const handleDelete = async () => {
     setDeleting(true);
@@ -22,10 +30,12 @@ export const PrivacyView: React.FC = () => {
   return (
     <div className="space-y-6 sm:space-y-8 max-w-4xl mx-auto">
       <PageHeader
-        title="Privacy Policy & Data Protection (RA 10173)"
+        eyebrow="Your business. Your information."
+        title="Privacy & your data"
         lead="How Enterseed handles your business records, financial figures, and identity in compliance with the Philippine Data Privacy Act of 2012 (Republic Act No. 10173)."
       />
 
+      {exportError && <Notice tone="error">{exportError}</Notice>}
       {/* Trust Notice */}
       <div className="p-4 sm:p-5 rounded-2xl bg-amber-50/70 border border-amber-200 text-amber-950 text-sm leading-relaxed flex items-start gap-3">
         <ShieldCheck className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
@@ -55,7 +65,7 @@ export const PrivacyView: React.FC = () => {
                   Download a complete JSON export of your profile, saved financial checkups, registration assistant tickets, and message history.
                 </p>
               </div>
-              <Button variant="secondary" size="sm" onClick={exportUserData} className="mt-4 self-start">
+              <Button variant="secondary" size="sm" onClick={handleExport} busy={exporting} busyLabel="Preparing export…" className="mt-4 self-start">
                 <Download className="w-3.5 h-3.5 mr-1" />
                 Export My Data
               </Button>

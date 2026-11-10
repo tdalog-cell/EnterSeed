@@ -12,21 +12,21 @@ const FacebookIcon: React.FC<{ className?: string }> = ({ className }) => (
 );
 
 export const MarketingView: React.FC = () => {
-  const { user } = useAuth();
+  const { user, isDemo } = useAuth();
   const { language } = useLanguage();
 
   const [toolType, setToolType] = useState<'facebook_post' | 'promo_text' | 'price_list'>('facebook_post');
   const [businessName, setBusinessName] = useState(user?.business || 'Matutum Highlands Coffee');
-  const [productOrOffer, setProductOrOffer] = useState('Freshly Roasted Mt. Matutum Arabica & Robusta Coffee Beans');
-  const [targetAudience, setTargetAudience] = useState('Coffee lovers, local cafe owners, and families in South Cotabato');
+  const [productOrOffer, setProductOrOffer] = useState(isDemo ? 'Freshly Roasted Mt. Matutum Arabica & Robusta Coffee Beans' : '');
+  const [targetAudience, setTargetAudience] = useState(isDemo ? 'Coffee lovers, local cafe owners, and families in South Cotabato' : '');
   const [tone, setTone] = useState<'friendly' | 'professional' | 'festive' | 'urgent'>('friendly');
-  const [contentLanguage, setContentLanguage] = useState<'fil' | 'en' | 'ceb' | 'hil'>('fil');
-  const [keyDetails, setKeyDetails] = useState('250g whole beans at ₱280, free delivery within Koronadal for orders above ₱500.');
+  const [contentLanguage, setContentLanguage] = useState<'fil' | 'en' | 'ceb' | 'hil'>(language);
+  const [keyDetails, setKeyDetails] = useState(isDemo ? '250g whole beans at ₱280, free delivery within Koronadal for orders above ₱500.' : '');
 
   const [generating, setGenerating] = useState(false);
-  const [generatedText, setGeneratedText] = useState(
+  const [generatedText, setGeneratedText] = useState(isDemo ? (
     `☕ Magandang araw mga suki at kapwa taga-South Cotabato!\n\nIpinagmamalaki ng Matutum Highlands Coffee ang aming: Freshly Roasted Mt. Matutum Arabica & Robusta Coffee Beans!\n\n✨ Bakit mo magugustuhan ito:\n• Sariwa at de-kalidad mula sa lokal na produksyon sa paanan ng Mt. Matutum\n• Abot-kayang presyo para sa inyong pamilya at negosyo (₱280 per 250g bag)\n• May libreng delivery sa Koronadal para sa orders mula ₱500 pataas\n\n📩 Mag-iwan ng mensahe (PM) o mag-comment sa ibaba para magpa-reserve o mag-order ngayon!\n\n#SouthCotabatoMSME #SupportLocal #MatutumHighlandsCoffee #GawangLokal`
-  );
+  ) : '');
   const [copied, setCopied] = useState(false);
   const [errorNotice, setErrorNotice] = useState<string | null>(null);
 
@@ -50,8 +50,8 @@ export const MarketingView: React.FC = () => {
         })
       });
 
-      if (!res.ok) throw new Error('Could not generate marketing content.');
       const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Could not generate marketing content.');
       if (data.copy) {
         setGeneratedText(data.copy);
       }
@@ -68,14 +68,15 @@ export const MarketingView: React.FC = () => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
     } catch {
-      // Fallback
+      setErrorNotice('Clipboard access is unavailable. Select the draft text and copy it manually.');
     }
   };
 
   return (
     <div className="space-y-6 sm:space-y-8">
       <PageHeader
-        title="Marketing Workspace"
+        eyebrow="Make your next impression count"
+        title="Good words. Better connections."
         lead="Generate customer-ready Facebook captions, promotional blasts, and price lists in Filipino, English, or Bisaya tailored for your local audience."
       />
 
@@ -216,10 +217,10 @@ export const MarketingView: React.FC = () => {
         <div className="lg:col-span-7 space-y-4">
           <Panel>
             <PanelHeader
-              title="Ready-to-Publish Preview & Editor"
+              title="Your draft, your voice"
               description="Review and tweak the draft below. Click Copy to paste directly into Facebook or Messenger."
               action={
-                <Button variant="secondary" size="sm" onClick={handleCopy}>
+                <Button variant="secondary" size="sm" onClick={handleCopy} disabled={!generatedText.trim()}>
                   {copied ? (
                     <>
                       <Check className="w-4 h-4 text-good mr-1" />
@@ -237,6 +238,7 @@ export const MarketingView: React.FC = () => {
 
             <div className="space-y-4 pt-2">
               <textarea
+                aria-label="Your editable marketing draft"
                 rows={11}
                 value={generatedText}
                 onChange={(e) => setGeneratedText(e.target.value)}
@@ -248,7 +250,7 @@ export const MarketingView: React.FC = () => {
 
               <div className="flex flex-wrap items-center justify-between text-xs text-muted">
                 <span>{generatedText.length} characters · {generatedText.split(/\s+/).filter(Boolean).length} words</span>
-                <span className="text-brand font-medium">Ready for Facebook Post, Group, or SMS blast</span>
+                <span className="text-brand font-medium">Review your draft before sharing</span>
               </div>
             </div>
           </Panel>

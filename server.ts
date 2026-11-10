@@ -121,6 +121,16 @@ database.exec(`
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
   );
+  CREATE TABLE IF NOT EXISTS finance_workspaces (
+    user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    workspace_json TEXT NOT NULL,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE TABLE IF NOT EXISTS registration_drafts (
+    user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    draft_json TEXT NOT NULL,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
   CREATE TABLE IF NOT EXISTS generated_documents (
     id INTEGER PRIMARY KEY,
     user_id INTEGER,
@@ -205,14 +215,27 @@ retentionTimer.unref();
 
 const app = express();
 app.disable('x-powered-by');
-app.set('trust proxy', 1);
+app.set('trust proxy', process.env.TRUST_PROXY === 'true' ? 1 : false);
 
 // Security headers with Helmet (permissive enough for Dev and Leaflet maps)
 app.use(helmet({
   crossOriginEmbedderPolicy: false,
   contentSecurityPolicy: false,
 }));
-app.use(express.json({ limit: '24kb' }));
+app.use(express.json({ limit: '1mb' }));
+const allowedOrigins = new Set((process.env.FRONTEND_ORIGINS || '').split(',').map(value => value.trim()).filter(Boolean));
+app.use('/api', (req, res, next) => {
+  const origin = req.get('Origin');
+  res.vary('Origin');
+  if (origin && allowedOrigins.has(origin)) {
+    res.set('Access-Control-Allow-Origin', origin);
+    res.set('Access-Control-Allow-Credentials', 'true');
+    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+  }
+  if (req.method === 'OPTIONS') { res.sendStatus(origin && allowedOrigins.has(origin) ? 204 : 403); return; }
+  next();
+});
 
 // Rate limiters with disabled X-Forwarded-For validation for cloud proxy environments
 const rateLimitValidateConfig = {
@@ -608,7 +631,7 @@ async function generateDocumentWithAI(data: z.infer<typeof documentGenerateSchem
 
   if (gemini) {
     try {
-      const prompt = `You are a certified Philippine DTI Business Counselor and financial analyst in South Cotabato, Philippines.
+      const prompt = `You are an independent business drafting assistant. Do not claim government certification or endorsement.
 Generate a formal, publication-grade ${docTypeLabels[data.docType]} for the following MSME:
 - Business Name: ${data.businessName}
 - Municipality: ${data.municipality}, South Cotabato, Philippines
@@ -626,9 +649,9 @@ Include:
 2. Business Description & Regulatory Classification (BMBE / Sole Proprietorship)
 3. South Cotabato & SOCCSKSARGEN Market Analysis & Competitive Advantage
 4. Technical & Operational Plan (Raw materials, packaging, logistics)
-5. 3-Year Financial Projections (Sales, Expenses, Net Margins, Payback Period)
+5. Financial assumptions: use only supplied figures. Leave expenses, profit, growth, and payback uncalculated when inputs are missing.
 6. Statutory Compliance & Risk Management (DTI BNRS, Mayor's Permit, BIR Form 1901)
-7. Endorsement Block for LGU BPLO / SBCorp / LandBank review.`;
+7. A checklist of evidence and unanswered questions for the owner to verify. Never invent approvals, tax IDs, addresses, costs, or endorsements.`;
 
       const response = await gemini.models.generateContent({
         model: 'gemini-flash-latest',
@@ -645,7 +668,7 @@ Include:
             municipality: data.municipality,
             sector: data.sector,
             projectedRevenue: data.monthlyRevenue * 12,
-            paybackMonths: data.requestedAmount > 0 && data.monthlyRevenue > 0 ? Math.round(data.requestedAmount / (data.monthlyRevenue * 0.25)) : 18
+            paybackMonths: 0
           }
         };
       }
@@ -654,143 +677,21 @@ Include:
     }
   }
 
-  // Local grounded template generator
-  const annualRev = data.monthlyRevenue * 12;
-  const netMargin = Math.round(annualRev * 0.28);
-  const breakEvenMonths = data.requestedAmount > 0 && data.monthlyRevenue > 0 ? Math.max(6, Math.min(48, Math.round(data.requestedAmount / (data.monthlyRevenue * 0.3)))) : 14;
-
-  const contentHtml = `
-    <div class="doc-container p-6 sm:p-10 font-sans text-slate-800 bg-white">
-      <div class="border-b-2 border-purple-900 pb-4 mb-6">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-xs font-bold uppercase tracking-widest text-purple-900">Enterseed MSME Workspace · South Cotabato</p>
-            <h1 class="text-2xl font-extrabold text-slate-900 mt-1">${title}</h1>
-            <p class="text-xs text-slate-500 mt-0.5">Independent MSME Planning Draft · Prepared for: ${account.firstName} ${account.lastName}</p>
-          </div>
-          <div class="text-right text-xs text-slate-500">
-            <p><strong>Ref Code:</strong> DOC-SC-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}</p>
-            <p><strong>Date Generated:</strong> ${new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
-          </div>
-        </div>
-      </div>
-
-      <section class="mb-6">
-        <h2 class="text-lg font-bold text-purple-900 border-b border-purple-100 pb-1 mb-2">1. Executive Summary</h2>
-        <p class="text-sm leading-relaxed mb-3">
-          <strong>${data.businessName}</strong> is an enterprise established within <strong>${data.municipality}, South Cotabato</strong>, operating within the <strong>${data.sector}</strong> sector. This document formalizes the commercial viability, operational strategy, and financial forecast in support of enterprise scaling, statutory registration with the Department of Trade and Industry (DTI), and credit access through local institutional partners.
-        </p>
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50 p-3 rounded-lg text-xs border border-slate-200">
-          <div><span class="text-slate-500 block">Location:</span><strong>${data.municipality}, South Cotabato</strong></div>
-          <div><span class="text-slate-500 block">Industry Sector:</span><strong>${data.sector}</strong></div>
-          <div><span class="text-slate-500 block">Target Capital:</span><strong>₱${data.requestedAmount.toLocaleString()}</strong></div>
-          <div><span class="text-slate-500 block">Est. Annual Turnover:</span><strong>₱${annualRev.toLocaleString()}</strong></div>
-        </div>
-      </section>
-
-      <section class="mb-6">
-        <h2 class="text-lg font-bold text-purple-900 border-b border-purple-100 pb-1 mb-2">2. Business Profile & Legal Structure</h2>
-        <p class="text-sm leading-relaxed mb-2">
-          The enterprise operates under Philippine MSME regulatory frameworks (Republic Act No. 9178 / Barangay Micro Business Enterprises Act). Statutory filings include DTI Business Name Registration (BNRS), Barangay Commercial Clearance, Mayor's Permit with ${data.municipality} BPLO, and BIR Registration (Form 1901) qualifying for the 8% preferential gross income tax regime.
-        </p>
-      </section>
-
-      <section class="mb-6">
-        <h2 class="text-lg font-bold text-purple-900 border-b border-purple-100 pb-1 mb-2">3. Market Analysis & Target Customers</h2>
-        <p class="text-sm leading-relaxed mb-2">
-          <strong>Primary Target Market:</strong> ${data.targetMarket}.
-        </p>
-        <p class="text-sm leading-relaxed mb-3">
-          The business leverages South Cotabato's strategic role as an agricultural and commercial hub in Region 12 (SOCCSKSARGEN). Proximity to General Santos City seaport and airport facilities enables efficient cargo dispatch and inter-provincial trade corridors.
-        </p>
-      </section>
-
-      <section class="mb-6">
-        <h2 class="text-lg font-bold text-purple-900 border-b border-purple-100 pb-1 mb-2">4. Supply Chain & Operational Sourcing</h2>
-        <p class="text-sm leading-relaxed mb-2">
-          <strong>Local Supply Integration:</strong> ${data.supplyChainNotes || 'Sourced directly from verified South Cotabato producers, cooperative hubs, and regional packaging suppliers.'}
-        </p>
-        <p class="text-sm leading-relaxed">
-          The enterprise minimizes procurement risk by participating in the local South Cotabato supplier network, securing bulk price stability for packaging and raw materials across Polomolok, Tupi, and Koronadal.
-        </p>
-      </section>
-
-      <section class="mb-6">
-        <h2 class="text-lg font-bold text-purple-900 border-b border-purple-100 pb-1 mb-2">5. 3-Year Financial Forecast & Viability Metrics</h2>
-        <table class="w-full text-xs text-left border-collapse border border-slate-200 mb-3">
-          <thead>
-            <tr class="bg-purple-900 text-white">
-              <th class="p-2 border border-slate-300">Financial Metric (PHP)</th>
-              <th class="p-2 border border-slate-300 text-right">Year 1</th>
-              <th class="p-2 border border-slate-300 text-right">Year 2 (+18%)</th>
-              <th class="p-2 border border-slate-300 text-right">Year 3 (+25%)</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr class="border-b border-slate-200">
-              <td class="p-2 font-medium">Gross Sales Revenue</td>
-              <td class="p-2 text-right">₱${annualRev.toLocaleString()}</td>
-              <td class="p-2 text-right">₱${Math.round(annualRev * 1.18).toLocaleString()}</td>
-              <td class="p-2 text-right">₱${Math.round(annualRev * 1.475).toLocaleString()}</td>
-            </tr>
-            <tr class="border-b border-slate-200 bg-slate-50">
-              <td class="p-2 font-medium">Cost of Goods Sold (COGS)</td>
-              <td class="p-2 text-right">₱${Math.round(annualRev * 0.48).toLocaleString()}</td>
-              <td class="p-2 text-right">₱${Math.round(annualRev * 1.18 * 0.46).toLocaleString()}</td>
-              <td class="p-2 text-right">₱${Math.round(annualRev * 1.475 * 0.45).toLocaleString()}</td>
-            </tr>
-            <tr class="border-b border-slate-200">
-              <td class="p-2 font-medium">Operating Expenses (Rent, Utilities, Wages)</td>
-              <td class="p-2 text-right">₱${Math.round(annualRev * 0.24).toLocaleString()}</td>
-              <td class="p-2 text-right">₱${Math.round(annualRev * 1.18 * 0.23).toLocaleString()}</td>
-              <td class="p-2 text-right">₱${Math.round(annualRev * 1.475 * 0.22).toLocaleString()}</td>
-            </tr>
-            <tr class="bg-purple-50 font-bold text-purple-900">
-              <td class="p-2">Net Operating Margin</td>
-              <td class="p-2 text-right">₱${netMargin.toLocaleString()} (28%)</td>
-              <td class="p-2 text-right">₱${Math.round(netMargin * 1.25).toLocaleString()} (31%)</td>
-              <td class="p-2 text-right">₱${Math.round(netMargin * 1.62).toLocaleString()} (33%)</td>
-            </tr>
-          </tbody>
-        </table>
-        <p class="text-xs text-slate-500">
-          Estimated payback period for capital investment: <strong>${breakEvenMonths} months</strong> based on conservative cash flow retention.
-        </p>
-      </section>
-
-      <section class="mb-8">
-        <h2 class="text-lg font-bold text-purple-900 border-b border-purple-100 pb-1 mb-2">6. Proponent Certification & Submission Notice</h2>
-        <div class="grid grid-cols-2 gap-8 pt-4 text-xs">
-          <div>
-            <p class="text-slate-500 mb-8">Prepared and Certified by:</p>
-            <p class="border-t border-slate-400 pt-1 font-bold text-slate-900">${account.firstName} ${account.lastName}</p>
-            <p class="text-slate-500">Owner / Authorized Representative</p>
-            <p class="text-slate-500">${data.businessName}</p>
-          </div>
-          <div>
-            <p class="text-slate-500 mb-8">Independent MSME Support Tool Notice:</p>
-            <p class="border-t border-slate-400 pt-1 font-medium text-slate-700">Enterseed Advisory Workspace</p>
-            <p class="text-slate-500">This document is a commercial planning draft. Always confirm official statutory requirements directly with DTI, your LGU BPLO, and BIR.</p>
-          </div>
-        </div>
-      </section>
-    </div>
-  `;
-
-  return {
-    title,
-    contentHtml,
-    summary: {
-      businessName: data.businessName,
-      municipality: data.municipality,
-      sector: data.sector,
-      projectedRevenue: annualRev,
-      paybackMonths: breakEvenMonths
-    }
-  };
+  // A useful local draft preserves the user's inputs and leaves unknown assumptions open.
+  const escape = (value: unknown) => String(value ?? '').replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]!));
+  const annualRevenue = data.monthlyRevenue * 12;
+  const contentHtml = `<article>
+    <h1>${escape(title)}</h1><p>Planning draft · Prepared from your inputs · Review before sharing.</p>
+    <h2>1. Business overview</h2><p>${escape(data.businessName)} operates in ${escape(data.sector)} in ${escape(data.municipality)}. Owner: ${escape(account.firstName)} ${escape(account.lastName)}.</p>
+    <p>Add your business purpose, products, operating history, and the goal of this plan.</p>
+    <h2>2. Customers and market</h2><p>Target customers: ${escape(data.targetMarket)}.</p><p>Validate demand through customer interviews, sales records, and competitor research. Record the evidence behind your pricing and volume assumptions.</p>
+    <h2>3. Operations and suppliers</h2><p>${escape(data.supplyChainNotes || 'Add sourcing, production capacity, delivery arrangements, and supplier quotations.')}</p><ul><li>List the equipment, staffing, and facilities required.</li><li>Document quality checks and alternative suppliers.</li><li>Confirm registration requirements through the official agencies.</li></ul>
+    <h2>4. Financial assumptions</h2><table><thead><tr><th>Input</th><th>Amount (PHP)</th></tr></thead><tbody><tr><td>Monthly sales supplied</td><td>${data.monthlyRevenue.toLocaleString('en-PH')}</td></tr><tr><td>Annual sales at that same monthly level</td><td>${annualRevenue.toLocaleString('en-PH')}</td></tr><tr><td>Funding requested</td><td>${data.requestedAmount.toLocaleString('en-PH')}</td></tr></tbody></table><p>The annual amount is monthly sales multiplied by 12, with no growth assumed. Add operating costs, taxes, loan payments, seasonality, and cash reserves. Profit and payback cannot be calculated from sales alone.</p>
+    <h2>5. Funding and implementation</h2><p>Itemize the intended use of funds, supporting quotations, milestones, and the person responsible for each step. Add repayment assumptions only after checking actual lender terms.</p>
+    <h2>6. Risks and next steps</h2><ul><li>Test how lower sales or higher costs affect cash flow.</li><li>Attach records supporting your projections.</li><li>Verify requirements directly with DTI, the relevant LGU, BIR, or your lender.</li></ul><p>This draft is not an approval, certification, endorsement, or submitted application.</p>
+  </article>`;
+  return { title, contentHtml, summary: { businessName: data.businessName, municipality: data.municipality, sector: data.sector, projectedRevenue: annualRevenue, paybackMonths: 0 } };
 }
-
-
 const referenceSources = [
   { label: 'DTI Business Name Registration System', url: 'https://bnrs.dti.gov.ph/', lastLinkChecked: '2026-10-19', reviewNote: 'Official portal; automated access was rate-limited. Confirm current requirements and fees directly.' },
   { label: 'DTI business-name registration FAQ', url: 'https://www.dti.gov.ph/resources/faq/business-name-registration/', lastLinkChecked: '2026-10-19', reviewNote: 'Official DTI page; content could not be independently fetched during this review.' },
@@ -919,14 +820,17 @@ async function indexDocumentChunks(documentId: number, title: string, contentHtm
   }
 }
 
-async function retrieveRagContext(question: string) {
+async function retrieveRagContext(question: string, userId?: number) {
+  if (!userId) return { contextText: '', sources: [] };
   try {
     const dbChunks = database.prepare(`
       SELECT c.doc_title AS docTitle, c.chunk_text AS chunkText, c.embedding_json AS embeddingJson
       FROM document_chunks c
+      JOIN generated_documents d ON d.id = c.document_id
+      WHERE d.user_id = ?
       ORDER BY c.id DESC
       LIMIT 100
-    `).all() as any[];
+    `).all(userId) as any[];
 
     if (!dbChunks || dbChunks.length === 0) return { contextText: '', sources: [] };
 
@@ -975,7 +879,7 @@ async function createAssistantAnswer(question: string, history: any[] = [], lang
   const defaultSources = getAssistantReferences(question);
 
   // Retrieve RAG context from the user's saved Document Library
-  const ragResult = await retrieveRagContext(question);
+  const ragResult = await retrieveRagContext(question, account?.id);
   const sources = [...ragResult.sources, ...defaultSources];
 
   const businessContext = account?.business
@@ -1038,7 +942,7 @@ Generate ready-to-publish ${data.type.replace('_', ' ')} for:
 
 Include engaging emojis, local cultural warmth, clear call to action (e.g. sending a PM, visiting the shop or pickup point in South Cotabato), and relevant hashtags (#SouthCotabatoMSME #SupportLocal).`;
       const res = await ai.models.generateContent({
-        model: 'gemini-3.8-flash',
+        model: process.env.GEMINI_MODEL || 'gemini-flash-latest',
         contents: prompt
       });
       if (res.text) return res.text;
@@ -1047,26 +951,13 @@ Include engaging emojis, local cultural warmth, clear call to action (e.g. sendi
     }
   }
 
-  // Grounded local template fallback
-  if (data.type === 'facebook_post') {
-    if (data.language === 'fil') {
-      return `☕ Magandang araw mga suki at kapwa taga-South Cotabato!\n\nIpinagmamalaki ng ${data.businessName} ang aming: ${data.productOrOffer}!\n\n✨ Bakit mo magugustuhan ito:\n• Sariwa at de-kalidad mula sa lokal na produksyon\n• Abot-kayang presyo para sa inyong pamilya at negosyo\n• Available para sa pickup o delivery sa Koronadal, Tupi, Polomolok, at karatig-bayan\n\n${data.keyDetails ? `📌 Mahahalagang detalye: ${data.keyDetails}\n\n` : ''}📩 Mag-iwan ng mensahe (PM) o mag-comment sa ibaba para magpa-reserve o mag-order ngayon!\n\n#SouthCotabatoMSME #SupportLocal #${data.businessName.replace(/[^a-zA-Z0-9]/g, '')} #GawangLokal`;
-    } else if (data.language === 'ceb') {
-      return `☕ Maayong adlaw mga suki sa South Cotabato!\n\nGarbo sa ${data.businessName} ang paghatod sa: ${data.productOrOffer}!\n\n✨ Nganong angayan nimong sulayan:\n• Lab-as ug taas nga kalidad gikan sa lokal nga mag-uuma\n• Barato ug sulit kaayo alang sa inyong pamilya\n• Paspas nga delivery sa Koronadal, Polomolok, ug Tupi\n\n${data.keyDetails ? `📌 Dugang detalye: ${data.keyDetails}\n\n` : ''}📩 I-PM mi karon o i-comment imong order sa ubos!\n\n#SouthCotabatoMSME #SupportLocalBisaya #${data.businessName.replace(/[^a-zA-Z0-9]/g, '')}`;
-    } else {
-      return `☕ Fresh from South Cotabato! ${data.businessName} is proud to bring you: ${data.productOrOffer}.\n\n✨ Highlights:\n• Premium quality locally crafted with passion\n• Direct-from-source freshness supporting regional farmers\n• Available for delivery across Koronadal, Polomolok, and Tupi\n\n${data.keyDetails ? `📌 Special Notes: ${data.keyDetails}\n\n` : ''}📩 Send us a direct message (PM) or comment below to order yours today!\n\n#SouthCotabatoMSME #SupportLocal #${data.businessName.replace(/[^a-zA-Z0-9]/g, '')}`;
-    }
-  } else if (data.type === 'promo_text') {
-    if (data.language === 'fil') {
-      return `🎉 SPECIAL PROMO ng ${data.businessName}!\n\nSulit deals para sa ating mga suki! Kunin ang ${data.productOrOffer} sa espesyal na discount ngayong linggo.\n\n${data.keyDetails ? `Promo terms: ${data.keyDetails}\n` : ''}Huwag magpahuli, limited stocks lamang! I-message kami agad para i-claim ang iyong promo voucher.`;
-    } else {
-      return `🎉 EXCLUSIVE PROMO from ${data.businessName}!\n\nEnjoy special pricing on ${data.productOrOffer} for a limited time only!\n\n${data.keyDetails ? `Terms & Details: ${data.keyDetails}\n` : ''}DM us now to place your order or visit our Koronadal location. Hurry while supplies last!`;
-    }
-  } else {
-    return `📋 ${data.businessName.toUpperCase()} — OFFICIAL PRICE LIST\n\nProduct / Offer: ${data.productOrOffer}\n${data.keyDetails ? `Pricing & Packages:\n${data.keyDetails}\n` : '• Retail Pack: ₱250\n• Wholesale Bundle (5+ units): ₱220 each\n• Institutional / Bulk Order: Custom quotation on request\n'}\n📍 Location: Koronadal City, South Cotabato\n🚚 Delivery: Courier delivery across SOCCSKSARGEN\n💳 Payment: GCash, Bank Transfer, or Cash upon Pickup\n\nPM us to confirm your order!`;
-  }
+  const greetings: Record<string, string> = { en: 'Discover', fil: 'Kilalanin', ceb: 'Ilailaha', hil: 'Kilalaha' };
+  const actions: Record<string, string> = { en: 'Message us for details and availability.', fil: 'Mag-message para sa mga detalye at availability.', ceb: 'Pag-message alang sa mga detalye ug availability.', hil: 'Mag-message para sa mga detalye kag availability.' };
+  const intro = `${greetings[data.language] || greetings.en} ${data.productOrOffer} — ${data.businessName}.`;
+  const details = data.keyDetails || '[Add your prices, offer terms, and contact information before posting.]';
+  if (data.type === 'price_list') return `${data.businessName} · Product and price list draft\n\n${data.productOrOffer}\n${details}\n\n${actions[data.language] || actions.en}`;
+  return `${intro}\n\n${details}\n\n${actions[data.language] || actions.en}${data.type === 'facebook_post' ? '\n\n#SupportLocal #SouthCotabatoMSME' : ''}`;
 }
-
 // Password hashing & session auth
 const sessionCookieName = 'enterseed_session';
 const sessionLifetimeSeconds = 7 * 24 * 60 * 60;
@@ -1148,19 +1039,8 @@ function requireAuthentication(request: any, response: Response, next: NextFunct
 }
 
 function optionalAuthentication(request: any, response: Response, next: NextFunction) {
-  const account = findAuthenticatedAccount(request, response);
-  request.account = account || {
-    id: 1,
-    email: 'maria.santos@matutumcoffee.ph',
-    firstName: 'Maria Elena',
-    lastName: 'Santos',
-    business: 'Matutum Highlands Coffee',
-    municipality: 'City of Koronadal',
-    role: 'owner',
-    preferredLanguage: 'en'
-  };
-  response.set('Cache-Control', 'no-store');
-  next();
+  // Personal workspaces always require a real session. Demonstrations stay in the browser.
+  return requireAuthentication(request, response, next);
 }
 
 function requireAdmin(request: any, response: Response, next: NextFunction) {
@@ -1275,6 +1155,8 @@ app.get('/api/user/export-data', requireAuthentication, (req: any, res) => {
   const tickets = database.prepare('SELECT id, tracking_number, business_name, business_type, municipality, filing_stage, status, created_at, updated_at FROM efiling_tickets WHERE user_id = ?').all(userId);
   const documents = database.prepare('SELECT id, doc_type, title, business_name, municipality, summary_json, created_at FROM generated_documents WHERE user_id = ?').all(userId);
   const messages = database.prepare('SELECT id, supplier_id, subject, message, status, reply, created_at FROM supplier_messages WHERE user_id = ?').all(userId);
+  const workspace = database.prepare('SELECT workspace_json FROM finance_workspaces WHERE user_id = ?').get(userId) as any;
+  const draft = database.prepare('SELECT draft_json FROM registration_drafts WHERE user_id = ?').get(userId) as any;
 
   res.set('Content-Disposition', `attachment; filename="enterseed-msme-data-${userId}.json"`);
   res.json({
@@ -1284,7 +1166,9 @@ app.get('/api/user/export-data', requireAuthentication, (req: any, res) => {
     assessments,
     tickets,
     documents,
-    messages
+    messages,
+    workspace: workspace ? JSON.parse(workspace.workspace_json) : null,
+    registrationDraft: draft ? JSON.parse(draft.draft_json) : null
   });
 });
 
@@ -1294,6 +1178,7 @@ app.delete('/api/user/delete-data', requireAuthentication, (req: any, res) => {
   try {
     database.prepare('DELETE FROM finance_assessments WHERE user_id = ?').run(userId);
     database.prepare('DELETE FROM efiling_tickets WHERE user_id = ?').run(userId);
+    database.prepare('DELETE FROM document_chunks WHERE document_id IN (SELECT id FROM generated_documents WHERE user_id = ?)').run(userId);
     database.prepare('DELETE FROM generated_documents WHERE user_id = ?').run(userId);
     database.prepare('DELETE FROM supplier_messages WHERE user_id = ?').run(userId);
     database.prepare('DELETE FROM supplier_reviews WHERE user_id = ?').run(userId);
@@ -1320,6 +1205,39 @@ app.post('/api/auth/logout', requireAuthentication, (req: any, res) => {
   database.prepare('DELETE FROM auth_sessions WHERE token_hash = ?').run(tokenHash);
   clearSessionCookie(res);
   res.status(204).end();
+});
+
+const moneySchema = z.number().finite().min(0).max(1_000_000_000);
+const registrationDraftSchema = z.object({ draft: z.record(z.string().max(60), z.union([z.string().max(10000), moneySchema])).refine(value => Object.keys(value).length <= 40 && typeof value.businessName === 'string', 'A business preparation draft is required.') });
+app.get('/api/registration/draft', requireAuthentication, (req: any, res) => {
+  const row = database.prepare('SELECT draft_json FROM registration_drafts WHERE user_id = ?').get(req.account.id) as any;
+  res.json({ draft: row ? JSON.parse(row.draft_json) : null });
+});
+app.put('/api/registration/draft', requireAuthentication, (req: any, res) => {
+  const data = parseBody(registrationDraftSchema, req, res);
+  if (!data) return;
+  database.prepare(`INSERT INTO registration_drafts (user_id, draft_json) VALUES (?, ?)
+    ON CONFLICT(user_id) DO UPDATE SET draft_json = excluded.draft_json, updated_at = CURRENT_TIMESTAMP`).run(req.account.id, JSON.stringify(data.draft));
+  res.json({ saved: true, draft: data.draft });
+});
+const investmentSchema = z.object({ name: z.string().max(200), cost: moneySchema, monthlyBenefit: moneySchema, usefulLifeMonths: z.number().int().min(1).max(1200) });
+const financeWorkspaceSchema = z.object({ workspace: z.object({
+  openingBalance: moneySchema,
+  transactions: z.array(z.object({ id: z.string().min(1).max(100), type: z.enum(['in', 'out']), category: z.string().max(120), description: z.string().trim().min(1).max(1000), amount: moneySchema.positive(), date: z.iso.date() })).max(2000),
+  debts: z.array(z.object({ id: z.string().min(1).max(100), lender: z.string().trim().min(1).max(200), principal: moneySchema, monthlyPayment: moneySchema, dueDate: z.string().max(100), interestRate: z.string().max(100), notes: z.string().max(2000) })).max(200),
+  taxChecklist: z.record(z.string().max(100), z.boolean()),
+  investA: investmentSchema, investB: investmentSchema
+}).strict() }).strict();
+app.get('/api/finance/workspace', requireAuthentication, (req: any, res) => {
+  const row = database.prepare('SELECT workspace_json FROM finance_workspaces WHERE user_id = ?').get(req.account.id) as any;
+  res.json({ workspace: row ? JSON.parse(row.workspace_json) : null });
+});
+app.put('/api/finance/workspace', requireAuthentication, (req: any, res) => {
+  const data = parseBody(financeWorkspaceSchema, req, res);
+  if (!data) return;
+  database.prepare(`INSERT INTO finance_workspaces (user_id, workspace_json) VALUES (?, ?)
+    ON CONFLICT(user_id) DO UPDATE SET workspace_json = excluded.workspace_json, updated_at = CURRENT_TIMESTAMP`).run(req.account.id, JSON.stringify(data.workspace));
+  res.json({ saved: true, workspace: data.workspace });
 });
 
 app.get('/api/finance/assessment', optionalAuthentication, (req: any, res) => {
@@ -1395,18 +1313,7 @@ app.get('/api/efiling/tickets', optionalAuthentication, (req: any, res) => {
     ORDER BY updated_at DESC
   `).all(req.account.id) as any[];
 
-  if (tickets.length === 0) {
-    tickets = database.prepare(`
-      SELECT id, tracking_number AS trackingNumber, business_name AS businessName,
-             business_type AS businessType, municipality, filing_stage AS filingStage,
-             status, priority, location_sketch_desc AS locationSketchDesc,
-             documents_json AS documentsJson, notes, assigned_agent AS assignedAgent,
-             created_at AS createdAt, updated_at AS updatedAt
-      FROM efiling_tickets
-      ORDER BY updated_at DESC
-    `).all() as any[];
-  }
-  res.json({ tickets });
+  res.json({ tickets: tickets.map(({ documentsJson, ...ticket }) => ({ ...ticket, documents: JSON.parse(documentsJson || '[]') })) });
 });
 
 app.post('/api/efiling/tickets', optionalAuthentication, (req: any, res) => {
@@ -1424,8 +1331,7 @@ app.post('/api/efiling/tickets', optionalAuthentication, (req: any, res) => {
 
   const data = parseBody(ticketSchema, req, res);
   if (!data) return;
-  const count = ((database.prepare('SELECT COUNT(*) AS c FROM efiling_tickets').get() as any)?.c || 0) + 1;
-  const trackingNumber = `PREP-SC-${new Date().getFullYear()}-${String(count).padStart(4, '0')}`;
+  const trackingNumber = `PREP-SC-${new Date().getFullYear()}-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
   const result = database.prepare(`
     INSERT INTO efiling_tickets
       (user_id, tracking_number, business_name, business_type, municipality,
@@ -1437,14 +1343,14 @@ app.post('/api/efiling/tickets', optionalAuthentication, (req: any, res) => {
     data.locationSketchDesc || '', JSON.stringify(data.documents || []),
     data.notes || '', `Registration Prep Desk (${data.municipality})`
   );
-  res.status(201).json({ id: Number(result.lastInsertRowid), trackingNumber, success: true });
+  res.status(201).json({ ticket: { ...data, id: Number(result.lastInsertRowid), trackingNumber, documents: data.documents || [], assignedAgent: 'Personal preparation workspace', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() } });
 });
 
 app.patch('/api/efiling/tickets/:id', optionalAuthentication, (req: any, res) => {
   const id = Number(req.params.id);
   const data = parseBody(ticketUpdateSchema, req, res);
   if (!data) return;
-  const existing = database.prepare('SELECT id FROM efiling_tickets WHERE id = ?').get(id);
+  const existing = database.prepare('SELECT id FROM efiling_tickets WHERE id = ? AND user_id = ?').get(id, req.account.id);
   if (!existing) return res.status(404).json({ error: 'Filing ticket not found.' });
 
   database.prepare(`
@@ -1453,15 +1359,16 @@ app.patch('/api/efiling/tickets/:id', optionalAuthentication, (req: any, res) =>
         filing_stage = COALESCE(?, filing_stage),
         notes = COALESCE(?, notes),
         updated_at = CURRENT_TIMESTAMP
-    WHERE id = ?
-  `).run(data.status || null, data.filingStage || null, data.notes || null, id);
+    WHERE id = ? AND user_id = ?
+  `).run(data.status ?? null, data.filingStage ?? null, data.notes ?? null, id, req.account.id);
 
-  res.json({ success: true });
+  const updated = database.prepare('SELECT id, tracking_number AS trackingNumber, business_name AS businessName, business_type AS businessType, municipality, filing_stage AS filingStage, status, priority, location_sketch_desc AS locationSketchDesc, documents_json AS documentsJson, notes, assigned_agent AS assignedAgent, created_at AS createdAt, updated_at AS updatedAt FROM efiling_tickets WHERE id = ? AND user_id = ?').get(id, req.account.id) as any;
+  res.json({ ticket: { ...updated, documents: JSON.parse(updated.documentsJson || '[]') } });
 });
 
 app.delete('/api/efiling/tickets/:id', optionalAuthentication, (req: any, res) => {
   const id = Number(req.params.id);
-  database.prepare('DELETE FROM efiling_tickets WHERE id = ?').run(id);
+  database.prepare('DELETE FROM efiling_tickets WHERE id = ? AND user_id = ?').run(id, req.account.id);
   res.status(204).end();
 });
 
@@ -1531,12 +1438,20 @@ app.post('/api/ai/generate-doc', optionalAuthentication, async (req: any, res) =
 });
 
 app.post('/api/ai/save-doc', optionalAuthentication, async (req: any, res) => {
-  const body = req.body;
-  if (!body || !body.title || !body.contentHtml) {
-    return res.status(400).json({ error: 'Missing document content to save.' });
-  }
-
-  const result = database.prepare(`
+  const parsed = z.object({
+    id: z.number().int().positive().optional(), docType: z.enum(['business_plan', 'feasibility_study', 'grant_loan_proposal']).default('business_plan'),
+    title: z.string().trim().min(1).max(400), businessName: z.string().max(200).default('MSME Enterprise'), municipality: z.string().max(100).default('South Cotabato'),
+    contentHtml: z.string().min(1).max(500000), summary: z.record(z.string(), z.unknown()).default({})
+  }).safeParse(req.body?.doc || req.body);
+  if (!parsed.success) return res.status(400).json({ error: 'Review the document title and content before saving.' });
+  const body = parsed.data;
+  const existing = body.id ? database.prepare('SELECT id FROM generated_documents WHERE id = ? AND user_id = ?').get(body.id, req.account.id) as any : null;
+  let docId: number;
+  if (existing) {
+    database.prepare('UPDATE generated_documents SET title = ?, content_html = ?, summary_json = ? WHERE id = ? AND user_id = ?').run(body.title, body.contentHtml, JSON.stringify(body.summary), existing.id, req.account.id);
+    docId = existing.id;
+  } else {
+    const result = database.prepare(`
     INSERT INTO generated_documents (user_id, doc_type, title, business_name, municipality, content_html, summary_json)
     VALUES (?, ?, ?, ?, ?, ?, ?)
   `).run(
@@ -1544,10 +1459,11 @@ app.post('/api/ai/save-doc', optionalAuthentication, async (req: any, res) => {
     body.municipality || 'South Cotabato', body.contentHtml, JSON.stringify(body.summary || {})
   );
 
-  const docId = Number(result.lastInsertRowid);
+    docId = Number(result.lastInsertRowid);
+  }
   await indexDocumentChunks(docId, body.title, body.contentHtml);
 
-  res.status(201).json({
+  res.status(existing ? 200 : 201).json({
     document: {
       id: docId,
       docType: body.docType || 'business_plan',
@@ -1568,10 +1484,10 @@ app.get('/api/ai/documents', optionalAuthentication, (req: any, res) => {
     SELECT id, doc_type AS docType, title, business_name AS businessName,
            municipality, content_html AS contentHtml, summary_json AS summaryJson,
            created_at AS createdAt
-    FROM generated_documents
+    FROM generated_documents WHERE user_id = ?
     ORDER BY created_at DESC
-  `).all();
-  res.json({ documents });
+  `).all(req.account.id) as any[];
+  res.json({ documents: documents.map(({ summaryJson, ...document }) => ({ ...document, summary: JSON.parse(summaryJson || '{}') })) });
 });
 
 app.get('/api/ai/documents/:id', optionalAuthentication, (req: any, res) => {
@@ -1581,10 +1497,10 @@ app.get('/api/ai/documents/:id', optionalAuthentication, (req: any, res) => {
            municipality, content_html AS contentHtml, summary_json AS summaryJson,
            created_at AS createdAt
     FROM generated_documents
-    WHERE id = ?
-  `).get(id) as any;
+    WHERE id = ? AND user_id = ?
+  `).get(id, req.account.id) as any;
   if (!doc) return res.status(404).json({ error: 'Document not found.' });
-  res.json({ document: doc });
+  res.json({ document: { ...doc, summary: JSON.parse(doc.summaryJson || '{}') } });
 });
 
 // === MODULE B: LOCAL SUPPLIER REVIEWS & MESSAGING ===
@@ -1603,11 +1519,12 @@ app.get('/api/suppliers/:id/reviews', (req, res) => {
 
 app.post('/api/suppliers/:id/reviews', optionalAuthentication, (req: any, res) => {
   const supplierId = Number(req.params.id);
+  if (!database.prepare("SELECT id FROM suppliers WHERE id = ? AND status = 'active'").get(supplierId)) return res.status(404).json({ error: 'Supplier not found.' });
   const data = parseBody(supplierReviewSchema, req, res);
   if (!data) return;
   database.prepare(`
-    INSERT INTO supplier_reviews (supplier_id, user_id, reviewer_name, reviewer_business, rating, review_text)
-    VALUES (?, ?, ?, ?, ?, ?)
+    INSERT INTO supplier_reviews (supplier_id, user_id, reviewer_name, reviewer_business, rating, review_text, verified_transaction)
+    VALUES (?, ?, ?, ?, ?, ?, 0)
   `).run(
     supplierId, req.account.id,
     `${req.account.firstName} ${req.account.lastName}`.trim(),
@@ -1623,13 +1540,15 @@ app.get('/api/suppliers/messages', optionalAuthentication, (req: any, res) => {
            m.subject, m.message, m.status, m.reply, m.created_at AS createdAt
     FROM supplier_messages m
     JOIN suppliers s ON s.id = m.supplier_id
+    WHERE m.user_id = ?
     ORDER BY m.created_at DESC
-  `).all();
+  `).all(req.account.id);
   res.json({ messages });
 });
 
 app.post('/api/suppliers/:id/messages', optionalAuthentication, (req: any, res) => {
   const supplierId = Number(req.params.id);
+  if (!database.prepare("SELECT id FROM suppliers WHERE id = ? AND status = 'active'").get(supplierId)) return res.status(404).json({ error: 'Supplier not found.' });
   const data = parseBody(supplierMessageCreateSchema, req, res);
   if (!data) return;
   const result = database.prepare(`
@@ -1670,11 +1589,12 @@ app.get('/api/suppliers', (_req, res) => {
     SELECT s.id, s.business_name AS name, s.category, s.location, s.products,
            s.public_email AS publicEmail, s.public_phone AS publicPhone, s.website,
            s.verified_at AS verifiedAt,
-           COALESCE(ROUND(AVG(r.rating), 1), 4.8) AS averageRating,
+           COALESCE(ROUND(AVG(r.rating), 1), 0) AS averageRating,
            COUNT(r.id) AS reviewCount
     FROM suppliers s
     LEFT JOIN supplier_reviews r ON r.supplier_id = s.id
     WHERE s.status = 'active' AND s.verified_at <> '' AND s.expires_at > CURRENT_TIMESTAMP
+      AND s.website NOT LIKE '%.example.ph%' AND s.public_email NOT LIKE '%@%.example.ph'
     GROUP BY s.id
     ORDER BY s.business_name COLLATE NOCASE
   `).all();
@@ -1861,117 +1781,13 @@ app.delete('/api/admin/inquiries/:id', requireAdmin, (req, res) => {
   res.status(204).end();
 });
 
-// Seed sample suppliers if directory is empty
-function seedSuppliersIfEmpty() {
-  const count = (database.prepare('SELECT COUNT(*) AS count FROM suppliers').get() as any)?.count || 0;
-  if (count === 0) {
-    const sampleSuppliers = [
-      {
-        businessName: 'Matutum Agri-Packaging Solutions',
-        contactName: 'Elena Ramos',
-        contactEmail: 'elena@matutumpackaging.example.ph',
-        publicEmail: 'inquiries@matutumpackaging.example.ph',
-        publicPhone: '+63 83 228 4101',
-        category: 'packaging',
-        location: 'Polomolok',
-        products: 'Corrugated boxes, eco-friendly banana leaves trays, vacuum pouches for dried fruit',
-        website: 'https://matutumpackaging.example.ph'
-      },
-      {
-        businessName: 'South Cotabato Coffee Producers Hub',
-        contactName: 'Mateo Dalisay',
-        contactEmail: 'mateo@sotcotcoffee.example.ph',
-        publicEmail: 'sales@sotcotcoffee.example.ph',
-        publicPhone: '+63 917 555 3821',
-        category: 'raw-materials',
-        location: 'Tupi',
-        products: 'Green coffee beans, roasted Arabica and Robusta, processing equipment rentals',
-        website: 'https://sotcotcoffee.example.ph'
-      },
-      {
-        businessName: 'Koronadal Digital Marketing & Media',
-        contactName: 'Clara Mendoza',
-        contactEmail: 'clara@koronadaldigital.example.ph',
-        publicEmail: 'support@koronadaldigital.example.ph',
-        publicPhone: '+63 83 228 9942',
-        category: 'marketing',
-        location: 'City of Koronadal',
-        products: 'Social media management, DTI brand registration packages, product photography',
-        website: 'https://koronadaldigital.example.ph'
-      },
-      {
-        businessName: 'Sebu Artisanal Weaving Cooperative',
-        contactName: 'Bae Lilibeth',
-        contactEmail: 'lilibeth@lake-sebu-tnalak.example.ph',
-        publicEmail: 'order@lake-sebu-tnalak.example.ph',
-        publicPhone: '+63 920 441 8892',
-        category: 'raw-materials',
-        location: 'Lake Sebu',
-        products: 'T’nalak abaca textile, natural dye extracts, brassware hardware for bags',
-        website: 'https://lake-sebu-tnalak.example.ph'
-      },
-      {
-        businessName: 'Surallah Cold Chain & Logistics',
-        contactName: 'Arthur Tan',
-        contactEmail: 'arthur@surallahlogistics.example.ph',
-        publicEmail: 'dispatch@surallahlogistics.example.ph',
-        publicPhone: '+63 83 238 1234',
-        category: 'services',
-        location: 'Surallah',
-        products: 'Temperature-controlled van delivery across SOCCSKSARGEN, pallet storage',
-        website: 'https://surallahlogistics.example.ph'
-      }
-    ];
-
-    for (const s of sampleSuppliers) {
-      const now = new Date().toISOString();
-      const appResult = database.prepare(`
-        INSERT INTO supplier_applications
-          (business_name, contact_name, contact_email, public_email, public_phone, publish_contact,
-           category, location, products, website, consent_at, status, review_notes, decision_at)
-        VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, 'approved', 'Verified initial local supplier listing.', ?)
-      `).run(s.businessName, s.contactName, s.contactEmail, s.publicEmail, s.publicPhone, s.category, s.location, s.products, s.website, now, now);
-
-      database.prepare(`
-        INSERT INTO suppliers (application_id, business_name, category, location, products,
-          public_email, public_phone, website, consent_at, verified_at, expires_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', '+365 days'))
-      `).run(Number(appResult.lastInsertRowid), s.businessName, s.category, s.location, s.products, s.publicEmail, s.publicPhone, s.website, now, now);
-    }
-  }
-}
-seedSuppliersIfEmpty();
-
-function seedTicketsAndReviewsIfEmpty() {
-  const ticketCount = (database.prepare('SELECT COUNT(*) AS count FROM efiling_tickets').get() as any)?.count || 0;
-  if (ticketCount === 0) {
-    database.prepare(`
-      INSERT INTO efiling_tickets (tracking_number, business_name, business_type, municipality, filing_stage, status, priority, location_sketch_desc, documents_json, notes, assigned_agent)
-      VALUES
-        ('PREP-SC-2026-8812', 'Matutum Highlands Coffee Roasters', 'Sole Proprietorship', 'City of Koronadal', 'Mayor''s Permit / BPLO', 'Document Prep', 'expedited', 'General Santos Drive near Koronadal City Public Market.', '["DTI-BNRS-Certificate.pdf", "Barangay-Clearance.pdf"]', 'Informational packet ready. Visit the Koronadal BPLO portal or municipal hall window to submit.', 'Registration Prep Desk (Koronadal)'),
-        ('PREP-SC-2026-9041', 'Matutum Highlands Coffee Roasters', 'Barangay Micro-Business (BMBE)', 'City of Koronadal', 'Business Name', 'Approved', 'standard', 'Sitio Upper Matutum, Barangay Crossing Palkan.', '["DTI-BNRS-Scope-Provincial.pdf"]', 'BNRS form details prepared. Ready for official filing at bnrs.dti.gov.ph.', 'Registration Prep Desk (Koronadal)'),
-        ('PREP-SC-2026-9214', 'Matutum Highlands Coffee Roasters', 'Sole Proprietorship', 'City of Koronadal', 'Location & Zoning', 'Draft', 'urgent_renewal', 'Block 4 Lot 9, General Santos Drive, Barangay Morales, Koronadal City.', '["Zoning-Clearance-Form.pdf"]', 'Zoning draft ready. Submit with sketch to City Planning & Development Coordinator.', 'Registration Prep Desk (Koronadal)')
-    `).run();
-  }
-
-  const reviewCount = (database.prepare('SELECT COUNT(*) AS count FROM supplier_reviews').get() as any)?.count || 0;
-  if (reviewCount === 0) {
-    const suppliers = database.prepare('SELECT id FROM suppliers LIMIT 5').all() as any[];
-    if (suppliers.length >= 5) {
-      database.prepare(`
-        INSERT INTO supplier_reviews (supplier_id, reviewer_name, reviewer_business, rating, review_text)
-        VALUES
-          (?, 'Ramon Castillo', 'Highland Berry Farm (Tupi)', 5, 'Their corrugated boxes protected our fresh strawberry dispatches to Davao with zero crushing. Very responsive team!'),
-          (?, 'Carlos M.', 'Marbel Artisan Cafe', 5, 'Consistently 84+ cupping score for Mt. Matutum Arabica beans. Prompt delivery and fair trade pricing.'),
-          (?, 'Maria Theresa Santos', 'Santos Organics Koronadal', 5, 'Helped us redesign our product packaging and registered our trademark logo with DTI efficiently.'),
-          (?, 'Aida Morales', 'Mindanao Heritage Souvenirs', 5, 'Genuine handwoven T''nalak blessed by cultural masters in Lake Sebu. Authentic cultural patterns.'),
-          (?, 'Danilo Cruz', 'Surallah Agri-Fishery Guild', 5, 'Kept our cold storage tilapia fillets in perfect frozen state during transit to General Santos fish port.')
-      `).run(suppliers[0].id, suppliers[1].id, suppliers[2].id, suppliers[3].id, suppliers[4].id);
-    }
-  }
-}
-seedTicketsAndReviewsIfEmpty();
-
+// Return API errors as JSON so clients can give useful feedback without simulating success.
+app.use('/api', (_req, res) => { res.status(404).json({ error: 'This action was not found.' }); });
+app.use((error: any, req: Request, res: Response, next: NextFunction) => {
+  if (!req.path.startsWith('/api')) return next(error);
+  const status = error.type === 'entity.too.large' ? 413 : error.type === 'entity.parse.failed' ? 400 : 500;
+  res.status(status).json({ error: status === 413 ? 'This request is too large. Use fewer records and try again.' : status === 400 ? 'This request could not be read. Review your entries and try again.' : 'This action could not be completed. Please try again.' });
+});
 async function startServer() {
   const isDev = process.env.NODE_ENV !== 'production';
   const port = Number(process.env.PORT || 3000);
@@ -1986,7 +1802,7 @@ async function startServer() {
   } else {
     const distPath = path.resolve(projectRoot, 'dist');
     app.use(express.static(distPath));
-    app.get('*', (_req, res) => {
+    app.get('/{*path}', (_req, res) => {
       res.sendFile(path.resolve(distPath, 'index.html'));
     });
   }

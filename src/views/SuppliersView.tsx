@@ -70,7 +70,7 @@ const MUNICIPALITY_OPTIONS = [
 ];
 
 export const SuppliersView: React.FC = () => {
-  const { user } = useAuth();
+  const { user, isDemo } = useAuth();
   const fullName = user ? `${user.firstName} ${user.lastName}`.trim() : 'Local MSME Owner';
 
   const [activeMainTab, setActiveMainTab] = useState<'directory' | 'messages'>('directory');
@@ -95,6 +95,8 @@ export const SuppliersView: React.FC = () => {
   const [newReviewText, setNewReviewText] = useState('');
   const [submittingReview, setSubmittingReview] = useState(false);
   const [reviewSuccess, setReviewSuccess] = useState(false);
+  const [reviewError, setReviewError] = useState('');
+  const [messageLoadError, setMessageLoadError] = useState('');
 
   // Direct Messaging modal
   const [messageSupplier, setMessageSupplier] = useState<SupplierListing | null>(null);
@@ -133,6 +135,7 @@ export const SuppliersView: React.FC = () => {
   const loadSuppliers = async () => {
     try {
       setLoading(true);
+      setLoadError(false);
       const res = await apiFetch('/api/suppliers');
       if (!res.ok) throw new Error();
       const data = await res.json();
@@ -147,10 +150,11 @@ export const SuppliersView: React.FC = () => {
   const loadMessages = async () => {
     try {
       setLoadingMessages(true);
+      setMessageLoadError('');
       const msgs = await fetchSupplierMessages();
       setMyMessages(msgs);
     } catch (err) {
-      console.warn('Could not load messages:', err);
+      setMessageLoadError(err instanceof Error ? err.message : 'Your inquiries could not load.');
     } finally {
       setLoadingMessages(false);
     }
@@ -160,12 +164,14 @@ export const SuppliersView: React.FC = () => {
     setReviewSupplier(supplier);
     setNewReviewText('');
     setReviewSuccess(false);
+    setReviewError('');
+    setReviewsList([]);
     try {
       setLoadingReviews(true);
       const revs = await fetchSupplierReviews(supplier.id);
       setReviewsList(revs);
     } catch (err) {
-      console.warn('Failed to load reviews:', err);
+      setReviewError(err instanceof Error ? err.message : 'Reviews could not load.');
     } finally {
       setLoadingReviews(false);
     }
@@ -186,7 +192,7 @@ export const SuppliersView: React.FC = () => {
       setNewReviewText('');
       await loadSuppliers();
     } catch (err: any) {
-      alert(err.message || 'Failed to submit review.');
+      setReviewError(err.message || 'Failed to submit review.');
     } finally {
       setSubmittingReview(false);
     }
@@ -211,7 +217,7 @@ export const SuppliersView: React.FC = () => {
       });
       setMsgNotice({
         tone: 'success',
-        text: `Message sent to ${messageSupplier.name}. Track responses in the "Sent Inquiries" tab.`
+        text: `Inquiry saved for ${messageSupplier.name}. Delivery is not confirmed. Use their public contact details for urgent requests.`
       });
       setMsgBody('');
       await loadMessages();
@@ -273,8 +279,9 @@ export const SuppliersView: React.FC = () => {
       {/* Header */}
       <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_minmax(0,320px)] md:items-end">
         <PageHeader
+          eyebrow="Better business, built locally"
           title="Local Suppliers"
-          lead="Direct directory of verified raw material producers, packaging specialists, and logistics partners across South Cotabato municipalities."
+          lead={isDemo ? 'Explore sample partners and see how the directory works. These demonstration businesses are not real verified listings.' : 'Find reviewed producers, packaging specialists, and logistics partners across South Cotabato.'}
           actions={
             <div className="flex items-center gap-2">
               <Button
@@ -291,7 +298,7 @@ export const SuppliersView: React.FC = () => {
                 onClick={() => setActiveMainTab('messages')}
               >
                 <Inbox className="w-4 h-4 mr-1.5" />
-                Sent Inquiries ({myMessages.length})
+                Saved Inquiries ({myMessages.length})
               </Button>
             </div>
           }
@@ -422,11 +429,11 @@ export const SuppliersView: React.FC = () => {
                     ))}
                   </ul>
                 ) : loadError ? (
-                  <Notice tone="error">The supplier directory could not load. Refresh the page to try again.</Notice>
+                  <Notice tone="error">The supplier directory could not load.<button type="button" onClick={loadSuppliers} className="ml-2 font-bold underline">Try again</button></Notice>
                 ) : filtered.length === 0 ? (
                   <div className="rounded-2xl border border-dashed border-line-strong px-6 py-10 text-center">
-                    <p className="font-semibold text-ink">No suppliers match your criteria</p>
-                    <p className="mt-1 text-sm text-muted">Try clearing your search query or choosing "All Municipalities".</p>
+                    <p className="font-semibold text-ink">{suppliers.length ? 'No suppliers match your criteria' : 'The network is growing'}</p>
+                    <p className="mt-1 text-sm text-muted">{suppliers.length ? 'Try clearing your search or choosing All Municipalities.' : 'Reviewed listings will appear here. Apply to introduce your business to the community.'}</p>
                     {(search || activeCategory !== 'all' || selectedMunicipality !== 'All Municipalities') && (
                       <Button
                         variant="secondary"
@@ -448,7 +455,7 @@ export const SuppliersView: React.FC = () => {
                       <li
                         key={s.id}
                         className={cx(
-                          'bg-surface rounded-2xl border p-5 transition-all shadow-xs',
+                          'interactive-card bg-surface rounded-2xl border p-5 shadow-xs',
                           selected?.id === s.id ? 'border-brand ring-1 ring-brand/30' : 'border-line hover:border-brand/40'
                         )}
                       >
@@ -470,8 +477,8 @@ export const SuppliersView: React.FC = () => {
                               title="View MSME sample reviews"
                             >
                               <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-500" />
-                              <span>{s.averageRating || 4.8}</span>
-                              <span className="font-normal text-amber-700">({s.reviewCount || 1} sample)</span>
+                              <span>{s.reviewCount ? s.averageRating : 'No ratings'}</span>
+                              <span className="font-normal text-amber-700">({s.reviewCount || 0})</span>
                             </button>
 
                             <button
@@ -480,7 +487,7 @@ export const SuppliersView: React.FC = () => {
                               className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 hover:bg-emerald-100 transition-colors"
                             >
                               <BadgeCheck className="w-3.5 h-3.5 text-emerald-600" />
-                              Verified Supplier
+                              {s.verifiedAt && !isDemo ? 'Reviewed supplier' : 'Sample listing'}
                             </button>
                           </div>
                         </div>
@@ -536,6 +543,7 @@ export const SuppliersView: React.FC = () => {
             description="Track inquiries, quotations, and direct messages sent to South Cotabato suppliers."
           />
 
+          {messageLoadError && <Notice tone="error">{messageLoadError}<button type="button" onClick={loadMessages} className="ml-2 underline">Retry</button></Notice>}
           {loadingMessages ? (
             <div className="py-12 text-center text-sm text-muted">Loading inquiry thread...</div>
           ) : myMessages.length === 0 ? (
@@ -557,7 +565,7 @@ export const SuppliersView: React.FC = () => {
                         'text-xs font-semibold px-2 py-0.5 rounded-full border',
                         msg.status === 'replied' ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : 'bg-blue-50 text-blue-800 border-blue-200'
                       )}>
-                        {msg.status === 'replied' ? 'Replied' : 'Sent'}
+                        {msg.status === 'replied' ? 'Replied' : 'Saved'}
                       </span>
                     </div>
                     <span className="text-xs text-muted flex items-center gap-1">
@@ -634,15 +642,15 @@ export const SuppliersView: React.FC = () => {
           <div className="space-y-5">
             <div className="p-4 rounded-xl bg-purple-50/70 border border-purple-200 flex items-center justify-between">
               <div>
-                <p className="text-xs text-purple-900 font-bold uppercase tracking-wider">Sample Peer Ratings</p>
+                <p className="text-xs text-purple-900 font-bold uppercase tracking-wider">Community reviews</p>
                 <div className="flex items-center gap-1.5 mt-1">
                   <Star className="w-5 h-5 fill-amber-400 text-amber-500" />
-                  <span className="text-2xl font-extrabold text-purple-950">{reviewSupplier.averageRating || 4.8}</span>
+                  <span className="text-2xl font-extrabold text-purple-950">{reviewSupplier.reviewCount ? reviewSupplier.averageRating : '—'}</span>
                   <span className="text-xs text-purple-700">out of 5.0 ({reviewsList.length} reviews)</span>
                 </div>
               </div>
               <span className="text-xs font-semibold text-emerald-800 bg-white px-2.5 py-1 rounded-full border border-emerald-200 shadow-2xs">
-                Demo data
+                {isDemo ? 'Demo workspace' : 'Member feedback'}
               </span>
             </div>
 
@@ -672,6 +680,7 @@ export const SuppliersView: React.FC = () => {
 
             <form onSubmit={handleReviewSubmit} className="pt-4 border-t border-line space-y-3">
               <p className="text-xs font-bold text-ink">Leave a Review</p>
+              {reviewError && <Notice tone="error">{reviewError}</Notice>}
               {reviewSuccess && (
                 <Notice tone="success">Your review has been published!</Notice>
               )}

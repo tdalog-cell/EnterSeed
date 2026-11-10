@@ -7,6 +7,8 @@ import {
   GeneratedDocument
 } from '../services/apiClient';
 import { exportDocumentAsPdf } from '../utils/pdfExport';
+import { sanitizeDocumentHtml } from '../utils/documentHtml';
+import { useUnsavedChanges } from '../utils/useUnsavedChanges';
 import {
   Download,
   Printer,
@@ -82,17 +84,17 @@ const SAMPLE_OUTLINES: Record<DocType, { title: string; sections: { name: string
 };
 
 export const DocumentsView: React.FC = () => {
-  const { user } = useAuth();
+  const { user, isDemo } = useAuth();
 
   const [activeTab, setActiveTab] = useState<'create' | 'library'>('create');
   const [docType, setDocType] = useState<DocType>('business_plan');
   const [businessName, setBusinessName] = useState(user?.business || 'Matutum Highlands Coffee Roasters');
   const [municipality, setMunicipality] = useState(user?.municipality || 'City of Koronadal');
-  const [sector, setSector] = useState('Coffee Roasting & Agri-Processing');
-  const [targetMarket, setTargetMarket] = useState('Regional cafes, supermarkets along Koronadal-GenSan highway, and online retail customers.');
-  const [monthlyRevenue, setMonthlyRevenue] = useState(180000);
-  const [requestedAmount, setRequestedAmount] = useState(350000);
-  const [supplyChainNotes, setSupplyChainNotes] = useState('Fresh coffee cherries sourced directly from Mt. Matutum growers; foil pouch packaging from Polomolok supplier.');
+  const [sector, setSector] = useState(isDemo ? 'Coffee Roasting & Agri-Processing' : '');
+  const [targetMarket, setTargetMarket] = useState(isDemo ? 'Regional cafes, local shops, and online retail customers.' : '');
+  const [monthlyRevenue, setMonthlyRevenue] = useState(isDemo ? 180000 : 0);
+  const [requestedAmount, setRequestedAmount] = useState(isDemo ? 350000 : 0);
+  const [supplyChainNotes, setSupplyChainNotes] = useState(isDemo ? 'Example: source coffee from local growers and packaging from a nearby supplier.' : '');
 
   const [generating, setGenerating] = useState(false);
   const [savingToLib, setSavingToLib] = useState(false);
@@ -106,6 +108,8 @@ export const DocumentsView: React.FC = () => {
 
   const [savedDocs, setSavedDocs] = useState<GeneratedDocument[]>([]);
   const [loadingSaved, setLoadingSaved] = useState(false);
+  const [libraryError, setLibraryError] = useState('');
+  useUnsavedChanges(Boolean(currentDoc && (editableHtml !== currentDoc.contentHtml || !savedDocs.some(doc => doc.id === currentDoc.id))));
 
   useEffect(() => {
     loadSavedDocuments();
@@ -114,6 +118,7 @@ export const DocumentsView: React.FC = () => {
   const loadSavedDocuments = async () => {
     try {
       setLoadingSaved(true);
+      setLibraryError('');
       const docs = await fetchGeneratedDocs();
       setSavedDocs(docs);
       if (docs.length > 0 && !currentDoc) {
@@ -121,7 +126,7 @@ export const DocumentsView: React.FC = () => {
         setEditableHtml(docs[0].contentHtml);
       }
     } catch (err) {
-      console.warn('Could not load saved documents:', err);
+      setLibraryError(err instanceof Error ? err.message : 'Your document library could not load.');
     } finally {
       setLoadingSaved(false);
     }
@@ -201,12 +206,14 @@ export const DocumentsView: React.FC = () => {
   const handleSaveToLibrary = async (doc: GeneratedDocument) => {
     try {
       setSavingToLib(true);
-      const updatedDoc = { ...doc, contentHtml: editableHtml };
-      await saveDocumentToLibrary(updatedDoc);
+      const updatedDoc = { ...doc, contentHtml: sanitizeDocumentHtml(editableHtml || doc.contentHtml) };
+      const savedDoc = await saveDocumentToLibrary(updatedDoc);
+      setCurrentDoc(savedDoc);
+      setEditableHtml(savedDoc.contentHtml);
       await loadSavedDocuments();
       setNotice({
         tone: 'success',
-        text: `Successfully saved "${doc.title}" to your Document Library! Boss Narra AI can now reference this document for contextual business advice.`
+        text: `Saved "${doc.title}" to your document library.`
       });
     } catch (err: any) {
       setNotice({ tone: 'error', text: err.message || 'Failed to save document to library.' });
@@ -216,15 +223,16 @@ export const DocumentsView: React.FC = () => {
   };
 
   const handleDownloadPdf = (doc: GeneratedDocument) => {
-    const updatedDoc = { ...doc, contentHtml: editableHtml };
+    const updatedDoc = { ...doc, contentHtml: sanitizeDocumentHtml(editableHtml || doc.contentHtml) };
     exportDocumentAsPdf(updatedDoc);
   };
 
   const handlePrint = (doc: GeneratedDocument) => {
-    const content = editableHtml || doc.contentHtml;
+    const content = sanitizeDocumentHtml(editableHtml || doc.contentHtml);
     const w = window.open('', '_blank');
-    if (!w) return;
-    w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${doc.title}</title><style>body { font-family: sans-serif; padding: 24px; color: #1e293b; } h1, h2 { color: #4A1D8F; } table { width: 100%; border-collapse: collapse; } th, td { border: 1px solid #cbd5e1; padding: 8px; font-size: 12px; } th { background: #4A1D8F; color: white; }</style></head><body>${content}</body></html>`);
+    if (!w) { setNotice({ tone: 'error', text: 'Allow pop-ups for this site to open the print preview.' }); return; }
+    w.opener = null;
+    w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Enterseed document</title><style>body { font-family: sans-serif; padding: 24px; color: #1e293b; } h1, h2 { color: #4A1D8F; } table { width: 100%; border-collapse: collapse; } th, td { border: 1px solid #cbd5e1; padding: 8px; font-size: 12px; } th { background: #4A1D8F; color: white; }</style></head><body>${content}</body></html>`);
     w.document.close();
     w.focus();
     w.print();
@@ -233,7 +241,8 @@ export const DocumentsView: React.FC = () => {
   return (
     <div className="space-y-6 sm:space-y-8">
       <PageHeader
-        title="AI Document Studio"
+        eyebrow="From idea to a first draft"
+        title="Your document studio"
         lead="Draft structured Business Plans, Feasibility Studies, and Loan Proposals for South Cotabato MSMEs. All generated drafts are editable templates and should be verified before official submission."
         actions={
           <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
@@ -259,6 +268,7 @@ export const DocumentsView: React.FC = () => {
         }
       />
 
+      {libraryError && <Notice tone="error">{libraryError}<button type="button" onClick={loadSavedDocuments} className="ml-2 font-semibold underline">Retry library</button></Notice>}
       {notice && (
         <Notice tone={notice.tone} className="mb-2">
           {notice.text}
@@ -442,7 +452,7 @@ export const DocumentsView: React.FC = () => {
             {currentDoc ? (
               <Panel>
                 {(() => {
-                  const isSaved = savedDocs.some((d) => d.id === currentDoc.id);
+                  const isSaved = savedDocs.some((d) => d.id === currentDoc.id && d.contentHtml === editableHtml);
                   return (
                     <div>
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 mb-4 border-b border-line">
@@ -509,6 +519,7 @@ export const DocumentsView: React.FC = () => {
                         <div className="space-y-2">
                           <label className="block text-xs font-semibold text-ink">Edit Document HTML / Content:</label>
                           <textarea
+                            aria-label="Edit document content"
                             value={editableHtml}
                             onChange={(e) => setEditableHtml(e.target.value)}
                             rows={18}
@@ -520,8 +531,8 @@ export const DocumentsView: React.FC = () => {
                         </div>
                       ) : (
                         <div
-                          className="prose prose-sm max-w-none bg-surface border border-line rounded-xl p-4 sm:p-6 overflow-x-auto max-h-[640px] overflow-y-auto"
-                          dangerouslySetInnerHTML={{ __html: editableHtml || currentDoc.contentHtml }}
+                          className="document-prose max-w-none bg-surface border border-line rounded-xl p-4 sm:p-6 overflow-x-auto max-h-[640px] overflow-y-auto"
+                          dangerouslySetInnerHTML={{ __html: sanitizeDocumentHtml(editableHtml || currentDoc.contentHtml) }}
                         />
                       )}
                     </div>

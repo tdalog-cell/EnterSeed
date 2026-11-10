@@ -3,6 +3,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch } from '../services/apiClient';
 import { createLedgerCsv, parseLedgerCsv, localDateInManila } from '../utils/financeCsv';
+import { useUnsavedChanges } from '../utils/useUnsavedChanges';
 import {
   Wallet,
   CreditCard,
@@ -176,6 +177,7 @@ export const FinanceView: React.FC = () => {
   const workspace = { openingBalance, transactions, debts, taxChecklist, investA, investB };
   const snapshot = JSON.stringify(workspace);
   const hasUnsavedChanges = !loadingWorkspace && savedSnapshot !== snapshot;
+  useUnsavedChanges(hasUnsavedChanges && !workspaceError);
   const loadWorkspace = async () => {
     setLoadingWorkspace(true);
     setWorkspaceError(null);
@@ -218,10 +220,14 @@ export const FinanceView: React.FC = () => {
       const priorResponse = await apiFetch('/api/finance/assessment');
       if (!priorResponse.ok) throw new Error('Your ledger was saved, but the dashboard summary could not be updated. Try Save workspace again.');
       const prior = (await priorResponse.json()).assessment;
+      if (!prior) {
+        setNotice({ tone: 'success', text: 'Workspace saved. Complete the financial checkup on your dashboard to create your business snapshot.' });
+        return;
+      }
       const currentMonth = localDateInManila().slice(0, 7);
       const currentTransactions = transactions.filter((transaction) => transaction.date.startsWith(currentMonth));
       const sum = (type: 'in' | 'out') => currentTransactions.filter((transaction) => transaction.type === type).reduce((total, transaction) => total + transaction.amount, 0);
-      const assessment = await apiFetch('/api/finance/assessment', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ monthlyIncome: Math.round(sum('in')), monthlyExpenses: Math.round(sum('out')), cashOnHand: Math.max(0, Math.round(currentLiquidCash)), debtOutstanding: Math.round(totalDebtPrincipal), monthlyDebtPayment: Math.round(totalMonthlyDebtPayments), otherAssets: prior?.otherAssets || 0, otherLiabilities: prior?.otherLiabilities || 0, taxStanding: prior?.taxStanding || 'current', consent: true }) });
+      const assessment = await apiFetch('/api/finance/assessment', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ monthlyIncome: Math.round(sum('in')), monthlyExpenses: Math.round(sum('out')), cashOnHand: Math.max(0, Math.round(currentLiquidCash)), debtOutstanding: Math.round(totalDebtPrincipal), monthlyDebtPayment: Math.round(totalMonthlyDebtPayments), otherAssets: prior.otherAssets, otherLiabilities: prior.otherLiabilities, taxStanding: prior.taxStanding, consent: true }) });
       if (!assessment.ok) throw new Error('Your ledger was saved, but the dashboard summary could not be updated. Try Save workspace again.');
       setNotice({ tone: 'success', text: isDemo ? 'Demo workspace saved on this browser. Your dashboard is up to date.' : 'Workspace saved to your account. Your dashboard is up to date.' });
     } catch (error) {
@@ -322,7 +328,7 @@ export const FinanceView: React.FC = () => {
     try {
       if (file.size > 2_000_000) throw new Error('Choose a CSV smaller than 2 MB.');
       const rows = parseLedgerCsv(await file.text());
-      if (rows.length > 5000) throw new Error('Import up to 5,000 transactions at a time.');
+      if (rows.length + transactions.length > 2000) throw new Error('A workspace supports up to 2,000 transactions. Export and archive older entries before importing more.');
       setTransactions((previous) => [...rows.map((row) => ({ ...row, id: crypto.randomUUID() })), ...previous]);
       setSelectedMonth(rows[0].date.slice(0, 7));
       setNotice({ tone: 'success', text: `${rows.length} transactions imported. Review your ledger, then save your workspace.` });
@@ -449,7 +455,7 @@ export const FinanceView: React.FC = () => {
         <div className="space-y-6 view-enter">
           <div className="grid gap-4 sm:grid-cols-2 max-w-xl">
             <Field label="Reporting month">{(id) => <input id={id} type="month" value={selectedMonth} onChange={(event) => { if (event.target.value) setSelectedMonth(event.target.value); }} className={inputClass} />}</Field>
-            <Field label="Opening cash balance" hint="Cash held before your first ledger entry.">{(id) => <input id={id} type="number" min="0" max="1000000000" step="0.01" value={openingBalance} onChange={(event) => setOpeningBalance(Math.max(0, Math.min(1_000_000_000, Number(event.target.value) || 0)))} className={inputClass} /></Field>
+            <Field label="Opening cash balance" hint="Cash held before your first ledger entry.">{(id) => <input id={id} type="number" min="0" max="1000000000" step="0.01" value={openingBalance} onChange={(event) => setOpeningBalance(Math.max(0, Math.min(1_000_000_000, Number(event.target.value) || 0)))} className={inputClass} />}</Field>
           </div>
           {/* Top 3 KPI Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 stagger-children">
@@ -1237,8 +1243,8 @@ export const FinanceView: React.FC = () => {
       )}
 
       {/* Edit Transaction Modal */}
+      </fieldset>
       {editingTx && (
-        </fieldset>
       <Modal
           open={Boolean(editingTx)}
           onClose={() => setEditingTx(null)}

@@ -35,6 +35,7 @@ export const BossNanaView: React.FC = () => {
   return (
     <div className="view-enter max-w-4xl mx-auto flex flex-col gap-4 h-[calc(100dvh-8rem)] min-h-[540px]">
       <PageHeader
+        eyebrow="A little guidance for your next step"
         title={t('chatbot.name')}
         lead="AI advisor for South Cotabato MSMEs. Provides general guidance on registrations, financing, and suppliers with official portal links."
         actions={
