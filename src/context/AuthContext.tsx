@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useLanguage, Language } from './LanguageContext';
-import { apiFetch } from '../services/apiClient';
+import { apiFetch, getDemoUser, isDemoMode, startDemoSession, endDemoSession, isStaticDemoHost } from '../services/apiClient';
 
 export interface User {
   id?: number;
@@ -17,6 +17,7 @@ interface AuthContextType {
   user: User | null;
   token: string | null;
   loading: boolean;
+  isDemo: boolean;
   needsLanguageSelection: boolean;
   setNeedsLanguageSelection: (val: boolean) => void;
   login: (email: string, password: string, remember?: boolean) => Promise<{ success: boolean; error?: string }>;
@@ -32,13 +33,22 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(() => localStorage.getItem('enterseed_token') || sessionStorage.getItem('enterseed_token'));
+  const [token, setToken] = useState<string | null>(() => isDemoMode() ? null : sessionStorage.getItem('enterseed_token') || localStorage.getItem('enterseed_token'));
+  const [isDemo, setIsDemo] = useState(isDemoMode);
   const [loading, setLoading] = useState(true);
   const [needsLanguageSelection, setNeedsLanguageSelection] = useState(false);
   const { setLanguage } = useLanguage();
 
   const fetchCurrentUser = async (authToken?: string) => {
     try {
+      const demoUser = getDemoUser();
+      if (demoUser) {
+        setUser(demoUser as User);
+        setIsDemo(true);
+        setToken(null);
+        if (demoUser.preferredLanguage) setLanguage(demoUser.preferredLanguage as Language);
+        return;
+      }
       const activeToken = authToken || token;
       const headers: Record<string, string> = { Accept: 'application/json' };
       if (activeToken) {
@@ -57,6 +67,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       } else {
         setUser(null);
+        if (res.status === 401) {
+          setToken(null);
+          localStorage.removeItem('enterseed_token');
+          sessionStorage.removeItem('enterseed_token');
+        }
       }
     } catch (err) {
       console.warn('Failed to fetch authenticated user:', err);
@@ -71,6 +86,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, password: string, remember = false): Promise<{ success: boolean; error?: string }> => {
     try {
+      if (!isStaticDemoHost()) endDemoSession();
       const res = await apiFetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
@@ -80,7 +96,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (!res.ok) {
         return { success: false, error: data.error || 'Login failed.' };
       }
+      setIsDemo(false);
       setUser(data.user);
+      localStorage.removeItem('enterseed_token');
+      sessionStorage.removeItem('enterseed_token');
       if (data.sessionToken) {
         setToken(data.sessionToken);
         if (remember) {
@@ -89,6 +108,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           sessionStorage.setItem('enterseed_token', data.sessionToken);
         }
       }
+      setNeedsLanguageSelection(Boolean(data.needsLanguageSelection));
       if (data.needsLanguageSelection) {
         setNeedsLanguageSelection(true);
       } else if (data.user.preferredLanguage) {
@@ -102,6 +122,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const register = async (data: { firstName: string; lastName: string; email: string; password: string; business: string; municipality?: string }): Promise<{ success: boolean; error?: string }> => {
     try {
+      if (!isStaticDemoHost()) endDemoSession();
       const res = await apiFetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
@@ -111,7 +132,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (!res.ok) {
         return { success: false, error: resData.error || 'Registration failed.' };
       }
+      setIsDemo(false);
       setUser(resData.user);
+      localStorage.removeItem('enterseed_token');
+      sessionStorage.removeItem('enterseed_token');
       if (resData.sessionToken) {
         setToken(resData.sessionToken);
         sessionStorage.setItem('enterseed_token', resData.sessionToken);
@@ -131,6 +155,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch {
       // ignore
     } finally {
+      endDemoSession();
+      setIsDemo(false);
+      setNeedsLanguageSelection(false);
       setUser(null);
       setToken(null);
       localStorage.removeItem('enterseed_token');
@@ -163,7 +190,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const headers: Record<string, string> = { Accept: 'application/json' };
       if (token) headers['Authorization'] = `Bearer ${token}`;
       const res = await apiFetch('/api/user/export-data', { headers });
-      if (!res.ok) throw new Error('Export failed');
+      if (!res.ok) { const data = await res.json(); throw new Error(data.error || 'Could not export your data.'); }
       const data = await res.json();
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
@@ -175,7 +202,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (err: any) {
-      alert(err.message || 'Could not export data.');
+      throw new Error(err.message || 'Could not export data.');
     }
   };
 
@@ -185,7 +212,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (token) headers['Authorization'] = `Bearer ${token}`;
       const res = await apiFetch('/api/user/delete-data', { method: 'DELETE', headers });
       if (!res.ok) return false;
-      await logout();
+      endDemoSession();
+      localStorage.removeItem('enterseed_token');
+      sessionStorage.removeItem('enterseed_token');
+      setUser(null);
+      setToken(null);
+      setIsDemo(false);
+      setNeedsLanguageSelection(false);
       return true;
     } catch {
       return false;
@@ -193,8 +226,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const setQuickDemoUser = (demoUser: User) => {
-    setUser(demoUser);
-    localStorage.setItem('enterseed_current_user', JSON.stringify(demoUser));
+    startDemoSession(demoUser);
+    setUser({ ...demoUser, role: 'owner' });
+    setToken(null);
+    setIsDemo(true);
+    setLoading(false);
+    setNeedsLanguageSelection(false);
+    if (demoUser.preferredLanguage) setLanguage(demoUser.preferredLanguage as Language);
   };
 
   return (
@@ -203,6 +241,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         user,
         token,
         loading,
+        isDemo,
         needsLanguageSelection,
         setNeedsLanguageSelection,
         login,

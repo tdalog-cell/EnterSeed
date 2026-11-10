@@ -1,10 +1,3 @@
-/**
- * Robust API Client with Dual-Mode Support:
- * 1. Full-Stack Server Mode: Uses real Express / SQLite backend when reachable.
- * 2. Static GitHub Pages Mode: When running as a static site on GitHub Pages without a backend server,
- *    gracefully falls back to browser-level localStorage persistence and local offline AI guidance so all features work seamlessly.
- */
-
 import {
   SubsidyInput,
   SubsidyMatch,
@@ -96,740 +89,204 @@ export interface SupplierListing {
   reviewCount?: number;
 }
 
+// Real requests never silently fall back to simulated authentication or storage.
 const API_BASE = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
+const DEMO_SESSION_KEY = 'enterseed_demo_session_v2';
+type DemoProfile = { id?: number; email: string; firstName: string; lastName: string; business: string; municipality?: string; role?: string; preferredLanguage?: string };
 
-// Seed initial demo data for client-side GitHub Pages storage if empty
-const defaultSuppliers: SupplierListing[] = [
-  {
-    id: 1,
-    name: 'Matutum Agri-Packaging Solutions',
-    category: 'packaging',
-    location: 'Polomolok, South Cotabato',
-    products: 'Corrugated boxes, eco-friendly banana leaves trays, vacuum pouches for dried fruit',
-    publicEmail: 'inquiries@matutumpackaging.example.ph',
-    publicPhone: '+63 83 228 4101',
-    website: 'https://matutumpackaging.example.ph',
-    verifiedAt: '2026-10-15T08:00:00Z',
-    averageRating: 4.9,
-    reviewCount: 14
-  },
-  {
-    id: 2,
-    name: 'South Cotabato Coffee Producers Hub',
-    category: 'raw-materials',
-    location: 'Tupi, South Cotabato',
-    products: 'Green coffee beans, roasted Arabica and Robusta, processing equipment rentals',
-    publicEmail: 'sales@sotcotcoffee.example.ph',
-    publicPhone: '+63 917 555 3821',
-    website: 'https://sotcotcoffee.example.ph',
-    verifiedAt: '2026-10-18T09:30:00Z',
-    averageRating: 5.0,
-    reviewCount: 22
-  },
-  {
-    id: 3,
-    name: 'Koronadal Digital Marketing & Media',
-    category: 'marketing',
-    location: 'City of Koronadal',
-    products: 'Social media management, DTI brand registration packages, product photography',
-    publicEmail: 'support@koronadaldigital.example.ph',
-    publicPhone: '+63 83 228 9942',
-    website: 'https://koronadaldigital.example.ph',
-    verifiedAt: '2026-10-20T11:00:00Z',
-    averageRating: 4.8,
-    reviewCount: 9
-  },
-  {
-    id: 4,
-    name: 'Sebu Artisanal Weaving Cooperative',
-    category: 'raw-materials',
-    location: 'Lake Sebu, South Cotabato',
-    products: 'T’nalak abaca textile, natural dye extracts, brassware hardware for bags',
-    publicEmail: 'order@lake-sebu-tnalak.example.ph',
-    publicPhone: '+63 920 441 8892',
-    website: 'https://lake-sebu-tnalak.example.ph',
-    verifiedAt: '2026-10-22T14:15:00Z',
-    averageRating: 5.0,
-    reviewCount: 31
-  },
-  {
-    id: 5,
-    name: 'Surallah Cold Chain & Logistics',
-    category: 'services',
-    location: 'Surallah, South Cotabato',
-    products: 'Temperature-controlled van delivery across SOCCSKSARGEN, pallet storage',
-    publicEmail: 'dispatch@surallahlogistics.example.ph',
-    publicPhone: '+63 83 238 1234',
-    website: 'https://surallahlogistics.example.ph',
-    verifiedAt: '2026-10-25T16:00:00Z',
-    averageRating: 4.7,
-    reviewCount: 18
-  }
-];
+function readStored<T>(storage: Storage, key: string, fallback: T): T {
+  try { const value = storage.getItem(key); return value ? JSON.parse(value) : fallback; }
+  catch { return fallback; }
+}
 
-const defaultReviews: Record<number, SupplierReview[]> = {
-  1: [
-    {
-      id: 101,
-      supplierId: 1,
-      reviewerName: 'Ramon Castillo',
-      reviewerBusiness: 'Highland Berry Farm (Tupi)',
-      rating: 5,
-      reviewText: 'Their corrugated boxes protected our fresh strawberry dispatches to Davao with zero crushing. Very responsive team!',
-      verifiedTransaction: 1,
-      createdAt: '2026-10-28T10:00:00Z'
-    },
-    {
-      id: 102,
-      supplierId: 1,
-      reviewerName: 'Grace Alcantara',
-      reviewerBusiness: 'Polomolok Dried Fruits',
-      rating: 5,
-      reviewText: 'High quality food-grade vacuum pouches complying with FDA labeling standards. Essential partner for our exports.',
-      verifiedTransaction: 1,
-      createdAt: '2026-11-01T14:30:00Z'
-    }
-  ],
-  2: [
-    {
-      id: 201,
-      supplierId: 2,
-      reviewerName: 'Carlos M.',
-      reviewerBusiness: 'Marbel Artisan Cafe',
-      rating: 5,
-      reviewText: 'Consistently 84+ cupping score for Mt. Matutum Arabica beans. Prompt delivery and fair trade pricing.',
-      verifiedTransaction: 1,
-      createdAt: '2026-10-30T09:15:00Z'
-    }
-  ],
-  3: [
-    {
-      id: 301,
-      supplierId: 3,
-      reviewerName: 'Maria Theresa Santos',
-      reviewerBusiness: 'Santos Organics Koronadal',
-      rating: 5,
-      reviewText: 'Helped us redesign our product packaging and registered our trade trademark logo with DTI efficiently.',
-      verifiedTransaction: 1,
-      createdAt: '2026-11-02T16:45:00Z'
-    }
-  ],
-  4: [
-    {
-      id: 401,
-      supplierId: 4,
-      reviewerName: 'Aida Morales',
-      reviewerBusiness: 'Mindanao Heritage Souvenirs',
-      rating: 5,
-      reviewText: 'Genuine handwoven T’nalak blessed by cultural masters in Lake Sebu. Our European buyers loved the authenticity.',
-      verifiedTransaction: 1,
-      createdAt: '2026-11-03T11:20:00Z'
-    }
-  ],
-  5: [
-    {
-      id: 501,
-      supplierId: 5,
-      reviewerName: 'Danilo Cruz',
-      reviewerBusiness: 'Surallah Agri-Fishery Guild',
-      rating: 5,
-      reviewText: 'Kept our cold storage tilapia fillets in perfect frozen state during transit to General Santos fish port.',
-      verifiedTransaction: 1,
-      createdAt: '2026-11-04T08:00:00Z'
-    }
-  ]
-};
+export function isStaticDemoHost(): boolean {
+  return import.meta.env.VITE_DEMO_MODE === 'true';
+}
 
-const defaultTickets: EfilingTicket[] = [
-  {
-    id: 1,
-    trackingNumber: 'EF-SC-2026-8812',
-    businessName: 'Matutum Highlands Roastery',
-    businessType: 'Sole Proprietorship',
-    municipality: 'Tupi',
-    filingStage: "Mayor's Permit / BPLO",
-    status: 'Under Inspection',
-    priority: 'expedited',
-    locationSketchDesc: 'Poblacion National Highway, adjacent to Tupi Fruit Market, fronting municipal agriculture post.',
-    documents: ['DTI-BNRS-Certificate.pdf', 'Barangay-Clearance-Tupi.pdf', 'Sanitary-Health-Cards.pdf'],
-    notes: 'Sanitary inspection scheduled with Tupi Municipal Health Office on Thursday morning.',
-    assignedAgent: 'DTI Negosyo Center Tupi Desk',
-    createdAt: '2026-10-29T08:15:00Z',
-    updatedAt: '2026-11-02T14:20:00Z'
-  },
-  {
-    id: 2,
-    trackingNumber: 'EF-SC-2026-9041',
-    businessName: 'Lake Sebu Loomweavers Artisans',
-    businessType: 'Barangay Micro-Business (BMBE)',
-    municipality: 'Lake Sebu',
-    filingStage: 'Business Name',
-    status: 'Approved',
-    priority: 'standard',
-    locationSketchDesc: 'Sitio Tukoblog, Barangay Poblacion, Lake Sebu near Tourism Cultural Office.',
-    documents: ['DTI-BNRS-Scope-Provincial.pdf', 'NCIP-Endorsement-Clearance.pdf'],
-    notes: 'DTI BNRS Certificate issued for Provincial Scope (South Cotabato). Now applying for BMBE tax exemption.',
-    assignedAgent: 'DTI Provincial MSMEDC Desk',
-    createdAt: '2026-10-25T11:30:00Z',
-    updatedAt: '2026-10-27T16:00:00Z'
-  },
-  {
-    id: 3,
-    trackingNumber: 'EF-SC-2026-9214',
-    businessName: 'Koronadal Eco-Pack Logistics',
-    businessType: 'Corporation',
-    municipality: 'City of Koronadal',
-    filingStage: 'Location & Zoning',
-    status: 'Submitted to LGU',
-    priority: 'urgent_renewal',
-    locationSketchDesc: 'Block 4 Lot 9, General Santos Drive, Barangay Morales, Koronadal City.',
-    documents: ['SEC-Certificate.pdf', 'Zoning-Clearance-Form.pdf', 'Barangay-Morales-Clearance.pdf'],
-    notes: 'City Planning & Development Coordinator currently reviewing commercial setback guidelines.',
-    assignedAgent: 'Koronadal City BPLO Liaison',
-    createdAt: '2026-11-01T09:00:00Z',
-    updatedAt: '2026-11-03T10:10:00Z'
-  }
-];
+export function getDemoUser(): DemoProfile | null {
+  if (typeof sessionStorage === 'undefined') return null;
+  return readStored<DemoProfile | null>(sessionStorage, DEMO_SESSION_KEY, null);
+}
 
-const defaultMessages: SupplierMessage[] = [
-  {
-    id: 1,
-    supplierId: 1,
-    supplierName: 'Matutum Agri-Packaging Solutions',
-    subject: 'Bulk quotation for 1,500 corrugated boxes with custom print',
-    message: 'Hello Ms. Elena, we are looking to procure 1,500 food-grade boxes for our upcoming harvest dispatch in Tupi. Do you offer sample prints?',
-    status: 'replied',
-    reply: 'Mabuhay! Yes, we offer free sample mockups. Minimum lead time is 4 days. Please share your box dimensions!',
-    createdAt: '2026-11-02T13:40:00Z'
-  }
-];
+export function isDemoMode(): boolean { return Boolean(getDemoUser()); }
 
-const referenceSources = [
-  { label: 'DTI Business Name Registration System (BNRS)', url: 'https://bnrs.dti.gov.ph/' },
-  { label: 'Bureau of Internal Revenue (BIR)', url: 'https://www.bir.gov.ph/' },
-  { label: 'DOST Regional Office 12 (SETUP)', url: 'https://region12.dost.gov.ph/' },
-  { label: 'Small Business Corporation (SBCorp)', url: 'https://sbcorp.gov.ph/' },
-  { label: 'South Cotabato Provincial Services', url: 'https://southcotabato.gov.ph/services/' },
-  { label: 'City Government of Koronadal', url: 'https://koronadal.gov.ph/' }
-];
+export function startDemoSession(profile: DemoProfile): void {
+  // A demonstration must never carry a real account's bearer token.
+  localStorage.removeItem('enterseed_token');
+  sessionStorage.removeItem('enterseed_token');
+  sessionStorage.setItem(DEMO_SESSION_KEY, JSON.stringify({ ...profile, role: 'owner' }));
+}
+
+export function endDemoSession(): void { sessionStorage.removeItem(DEMO_SESSION_KEY); }
+
+function demoKey(name: string): string {
+  const profile = getDemoUser();
+  return `enterseed_demo_v2:${encodeURIComponent(profile?.email.toLowerCase() || 'visitor')}:${name}`;
+}
+function demoRead<T>(name: string, fallback: T): T { return readStored(localStorage, demoKey(name), fallback); }
+function demoWrite(name: string, value: unknown): void { localStorage.setItem(demoKey(name), JSON.stringify(value)); }
+function jsonResponse(status: number, data: any, demo = false): Response {
+  return new Response(JSON.stringify(demo ? { ...data, demo: true } : data), {
+    status, headers: { 'Content-Type': 'application/json', ...(demo ? { 'X-Enterseed-Mode': 'demo' } : {}) }
+  });
+}
+function demoResponse(status: number, data: any): Response { return jsonResponse(status, data, true); }
 
 export async function apiFetch(endpoint: string, options: RequestInit = {}): Promise<Response> {
-  const fullUrl = `${API_BASE}${endpoint}`;
-
+  if (isDemoMode() || isStaticDemoHost()) {
+    try { return handleDemoRequest(endpoint, options); }
+    catch { return demoResponse(507, { error: 'Your browser could not save this demo change. Check available storage and try again.' }); }
+  }
+  const headers = new Headers(options.headers);
+  headers.set('Accept', 'application/json');
+  const token = sessionStorage.getItem('enterseed_token') || localStorage.getItem('enterseed_token');
+  if (token && !headers.has('Authorization')) headers.set('Authorization', `Bearer ${token}`);
   try {
-    const res = await fetch(fullUrl, {
-      ...options,
-      credentials: API_BASE ? 'include' : 'same-origin',
-      headers: {
-        Accept: 'application/json',
-        ...(options.headers || {})
-      }
+    const response = await fetch(`${API_BASE}${endpoint}`, {
+      ...options, headers, credentials: API_BASE ? 'include' : 'same-origin',
+      signal: options.signal || AbortSignal.timeout(30000)
     });
-
-    const contentType = res.headers.get('content-type') || '';
-    if (res.ok || (contentType.includes('application/json') && res.status !== 404)) {
-      return res;
-    }
-
-    if (res.status === 404 || contentType.includes('text/html')) {
-      return handleClientFallback(endpoint, options);
-    }
-
-    return res;
-  } catch {
-    return handleClientFallback(endpoint, options);
+    if (response.status === 204 || response.headers.get('content-type')?.includes('application/json')) return response;
+    return jsonResponse(response.ok ? 502 : response.status, { error: 'The server did not return a valid response. Please try again.' });
+  } catch (error) {
+    if (options.signal?.aborted) throw error;
+    return jsonResponse(503, { error: 'Could not connect to the server. Your changes have not been saved. Please try again.' });
   }
 }
 
-/** In-browser storage fallback when running on static hosts like GitHub Pages */
-function handleClientFallback(endpoint: string, options: RequestInit): Response {
+const demoSuppliers: SupplierListing[] = [
+  { id: 1, name: 'Sample Packaging Studio', category: 'packaging', location: 'Polomolok', products: 'Sample corrugated boxes and reusable packaging', verifiedAt: '', averageRating: 0, reviewCount: 0 },
+  { id: 2, name: 'Sample Coffee Cooperative', category: 'raw-materials', location: 'Tupi', products: 'Sample green and roasted coffee beans', verifiedAt: '', averageRating: 0, reviewCount: 0 },
+  { id: 3, name: 'Sample Creative Studio', category: 'marketing', location: 'City of Koronadal', products: 'Sample photography and social media services', verifiedAt: '', averageRating: 0, reviewCount: 0 },
+  { id: 4, name: 'Sample Weaving Workshop', category: 'raw-materials', location: 'Lake Sebu', products: 'Sample textiles and craft materials', verifiedAt: '', averageRating: 0, reviewCount: 0 },
+  { id: 5, name: 'Sample Delivery Service', category: 'services', location: 'Surallah', products: 'Sample delivery and storage services', verifiedAt: '', averageRating: 0, reviewCount: 0 }
+];
+const referenceSources = [
+  { label: 'DTI Business Name Registration System', url: 'https://bnrs.dti.gov.ph/' },
+  { label: 'Bureau of Internal Revenue', url: 'https://www.bir.gov.ph/' },
+  { label: 'DOST Region 12', url: 'https://region12.dost.gov.ph/' },
+  { label: 'Small Business Corporation', url: 'https://sbcorp.gov.ph/' }
+];
+const escapeHtml = (value: unknown): string => String(value ?? '').replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]!));
+
+function handleDemoRequest(endpoint: string, options: RequestInit): Response {
   const method = (options.method || 'GET').toUpperCase();
-  const body = options.body ? JSON.parse(options.body as string) : {};
-
-  // 1. Health
-  if (endpoint === '/api/health') {
-    return makeResponse(200, { ok: true, emailConfigured: false, mode: 'github-pages-client' });
+  let body: any = {};
+  try { body = options.body ? JSON.parse(String(options.body)) : {}; }
+  catch { return demoResponse(400, { error: 'The request could not be read.' }); }
+  const user = getDemoUser();
+  if (endpoint === '/api/health') return demoResponse(200, { ok: true, emailConfigured: false, mode: 'demo' });
+  if (endpoint === '/api/auth/login' || endpoint === '/api/auth/register') {
+    return demoResponse(409, { error: 'This is a demo preview. Choose Quick Demo to explore; account sign-in requires a connected Enterseed server.' });
   }
-
-  // 2. Auth: Register
-  if (endpoint === '/api/auth/register' && method === 'POST') {
-    const users = JSON.parse(localStorage.getItem('enterseed_users') || '[]');
-    const existing = users.find((u: any) => u.email.toLowerCase() === body.email.toLowerCase());
-    if (existing) {
-      return makeResponse(409, { error: 'An account with this email already exists.' });
-    }
-    const newUser = {
-      id: Date.now(),
-      email: body.email.toLowerCase(),
-      firstName: body.firstName,
-      lastName: body.lastName,
-      business: body.business,
-      preferredLanguage: ''
-    };
-    users.push(newUser);
-    localStorage.setItem('enterseed_users', JSON.stringify(users));
-    localStorage.setItem('enterseed_current_user', JSON.stringify(newUser));
-    return makeResponse(201, {
-      user: newUser,
-      needsLanguageSelection: true,
-      sessionToken: `ghpages-${Date.now()}`
-    });
+  if (endpoint === '/api/auth/me') return user ? demoResponse(200, { user }) : demoResponse(401, { error: 'Choose Quick Demo to open a sample workspace.' });
+  if (endpoint === '/api/auth/logout') { endDemoSession(); return new Response(null, { status: 204 }); }
+  if (endpoint === '/api/suppliers' && method === 'GET') return demoResponse(200, { suppliers: demoSuppliers });
+  if (/^\/api\/suppliers\/\d+\/reviews$/.test(endpoint) && method === 'GET') return demoResponse(200, { reviews: [] });
+  if (endpoint.startsWith('/api/admin')) return demoResponse(403, { error: 'Staff actions require an authenticated staff account on the connected server.' });
+  if (['/api/inquiries', '/api/supplier-applications'].includes(endpoint) || /\/(contact|messages|reviews)$/.test(endpoint) && method === 'POST') {
+    return demoResponse(409, { error: 'This is a demo workspace. Messages and applications are not sent. Sign in to a connected account to submit.' });
   }
+  if (endpoint.startsWith('/api/places/search')) return demoResponse(503, { error: 'Place search needs a connected server. Browse the sample locations on the map.' });
+  if (!user && endpoint !== '/api/assistant') return demoResponse(401, { error: 'Choose Quick Demo to open a sample workspace.' });
 
-  // 3. Auth: Login
-  if (endpoint === '/api/auth/login' && method === 'POST') {
-    const users = JSON.parse(localStorage.getItem('enterseed_users') || '[]');
-    const user = users.find((u: any) => u.email.toLowerCase() === body.email.toLowerCase()) || {
-      id: Date.now(),
-      email: body.email,
-      firstName: 'MSME',
-      lastName: 'Owner',
-      business: 'Local Enterprise (South Cotabato)',
-      preferredLanguage: 'en'
-    };
-    localStorage.setItem('enterseed_current_user', JSON.stringify(user));
-    return makeResponse(200, {
-      user,
-      needsLanguageSelection: !user.preferredLanguage,
-      sessionToken: `ghpages-${Date.now()}`
-    });
-  }
-
-  // 4. Auth: Me
-  if (endpoint === '/api/auth/me') {
-    const user = JSON.parse(localStorage.getItem('enterseed_current_user') || 'null');
-    if (user) {
-      return makeResponse(200, { user });
-    }
-    return makeResponse(401, { error: 'Please log in to continue.' });
-  }
-
-  // 5. Auth: Language
   if (endpoint === '/api/auth/language' && method === 'PATCH') {
-    const user = JSON.parse(localStorage.getItem('enterseed_current_user') || 'null');
-    if (user) {
-      user.preferredLanguage = body.language;
-      localStorage.setItem('enterseed_current_user', JSON.stringify(user));
+    sessionStorage.setItem(DEMO_SESSION_KEY, JSON.stringify({ ...user, preferredLanguage: body.language }));
+    return demoResponse(200, { preferredLanguage: body.language });
+  }
+  if (endpoint === '/api/user/export-data') {
+    return demoResponse(200, { profile: user, exportedAt: new Date().toISOString(), assessment: demoRead('finance', null), workspace: demoRead('finance_workspace', null), tickets: demoRead('tickets', []), documents: demoRead('documents', []) });
+  }
+  if (endpoint === '/api/user/delete-data' && method === 'DELETE') {
+    const prefix = demoKey('');
+    const keys = Array.from({ length: localStorage.length }, (_, index) => localStorage.key(index)).filter((key) => key?.startsWith(prefix));
+    keys.forEach((key) => localStorage.removeItem(key!));
+    endDemoSession();
+    return demoResponse(200, { success: true });
+  }
+  if (endpoint === '/api/finance/assessment' || endpoint === '/api/finance/workspace') {
+    const workspace = endpoint.endsWith('/workspace');
+    const key = workspace ? 'finance_workspace' : 'finance';
+    const field = workspace ? 'workspace' : 'assessment';
+    if (method === 'GET') return demoResponse(200, { [field]: demoRead(key, null) });
+    if (method === 'PUT' || method === 'POST') {
+      const value = workspace ? (body.workspace ?? body) : { ...body, updatedAt: new Date().toISOString() };
+      demoWrite(key, value);
+      return demoResponse(200, { saved: true, [field]: value });
     }
-    return makeResponse(200, { preferredLanguage: body.language });
+    if (method === 'DELETE') { localStorage.removeItem(demoKey(key)); return new Response(null, { status: 204 }); }
   }
-
-  // 6. Auth: Logout
-  if (endpoint === '/api/auth/logout') {
-    localStorage.removeItem('enterseed_current_user');
-    return new Response(null, { status: 204 });
-  }
-
-  // 7. Finance: Get assessment
-  if (endpoint === '/api/finance/assessment' && method === 'GET') {
-    const saved = localStorage.getItem('enterseed_finance_assessment');
-    return makeResponse(200, { assessment: saved ? JSON.parse(saved) : null });
-  }
-
-  // 8. Finance: Save assessment
-  if (endpoint === '/api/finance/assessment' && method === 'PUT') {
-    localStorage.setItem('enterseed_finance_assessment', JSON.stringify({ ...body, updatedAt: new Date().toISOString() }));
-    return makeResponse(200, { saved: true });
-  }
-
-  // 9. Finance: Delete assessment
-  if (endpoint === '/api/finance/assessment' && method === 'DELETE') {
-    localStorage.removeItem('enterseed_finance_assessment');
-    return new Response(null, { status: 204 });
-  }
-
-  // === MODULE A: E-FILING TICKETS ===
-  if (endpoint === '/api/efiling/tickets' && method === 'GET') {
-    const stored = JSON.parse(localStorage.getItem('enterseed_efiling_tickets') || 'null');
-    const tickets = stored || defaultTickets;
-    return makeResponse(200, { tickets });
-  }
-
-  if (endpoint === '/api/efiling/tickets' && method === 'POST') {
-    const currentUser = JSON.parse(localStorage.getItem('enterseed_current_user') || '{}');
-    const adminKey = localStorage.getItem('enterseed_admin_key');
-    if (currentUser.role === 'admin' || Boolean(adminKey)) {
-      return makeResponse(403, {
-        error: 'Role-Based Access Control: Admin accounts are restricted from creating or submitting e-filings. E-filing creation is strictly reserved for verified MSME Business Owners.'
-      });
+  if (endpoint === '/api/efiling/tickets') {
+    const tickets = demoRead<EfilingTicket[]>('tickets', []);
+    if (method === 'GET') return demoResponse(200, { tickets });
+    if (method === 'POST') {
+      if (!body.businessName?.trim() || !body.municipality?.trim() || !body.filingStage) return demoResponse(400, { error: 'Complete the business, municipality, and preparation stage.' });
+      const now = new Date().toISOString();
+      const ticket: EfilingTicket = { ...body, id: Date.now(), trackingNumber: `DEMO-${crypto.randomUUID().slice(0, 8).toUpperCase()}`, status: body.status || 'Draft', priority: body.priority || 'standard', locationSketchDesc: body.locationSketchDesc || '', documents: body.documents || [], notes: body.notes || '', assignedAgent: 'Personal preparation workspace', createdAt: now, updatedAt: now };
+      demoWrite('tickets', [ticket, ...tickets]);
+      return demoResponse(201, { ticket });
     }
-    const stored = JSON.parse(localStorage.getItem('enterseed_efiling_tickets') || 'null') || defaultTickets;
-    const now = new Date().toISOString();
-    const newTicket: EfilingTicket = {
-      id: Date.now(),
-      trackingNumber: `EF-SC-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
-      businessName: body.businessName,
-      businessType: body.businessType,
-      municipality: body.municipality,
-      filingStage: body.filingStage,
-      status: body.status || 'Draft',
-      priority: body.priority || 'standard',
-      locationSketchDesc: body.locationSketchDesc || '',
-      documents: body.documents || ['DTI-BNRS-Application.pdf'],
-      notes: body.notes || 'Created via digital multi-client filing desk.',
-      assignedAgent: 'DTI Negosyo Center Desk',
-      createdAt: now,
-      updatedAt: now
-    };
-    stored.unshift(newTicket);
-    localStorage.setItem('enterseed_efiling_tickets', JSON.stringify(stored));
-    return makeResponse(201, { ticket: newTicket });
   }
-
-  if (endpoint.startsWith('/api/efiling/tickets/') && method === 'PATCH') {
+  if (endpoint.startsWith('/api/efiling/tickets/')) {
     const id = Number(endpoint.split('/').pop());
-    const stored = JSON.parse(localStorage.getItem('enterseed_efiling_tickets') || 'null') || defaultTickets;
-    const ticket = stored.find((t: EfilingTicket) => t.id === id);
-    if (!ticket) return makeResponse(404, { error: 'Ticket not found' });
-    if (body.status) ticket.status = body.status;
-    if (body.filingStage) ticket.filingStage = body.filingStage;
-    if (body.notes) ticket.notes = body.notes;
-    ticket.updatedAt = new Date().toISOString();
-    localStorage.setItem('enterseed_efiling_tickets', JSON.stringify(stored));
-    return makeResponse(200, { ticket });
+    const tickets = demoRead<EfilingTicket[]>('tickets', []);
+    const ticket = tickets.find((entry) => entry.id === id);
+    if (!ticket) return demoResponse(404, { error: 'Preparation record not found.' });
+    if (method === 'PATCH') {
+      for (const field of ['status', 'filingStage', 'notes'] as const) if (body[field] !== undefined) (ticket as any)[field] = body[field];
+      ticket.updatedAt = new Date().toISOString();
+      demoWrite('tickets', tickets);
+      return demoResponse(200, { ticket });
+    }
+    if (method === 'DELETE') { demoWrite('tickets', tickets.filter((entry) => entry.id !== id)); return new Response(null, { status: 204 }); }
   }
-
-  if (endpoint.startsWith('/api/efiling/tickets/') && method === 'DELETE') {
-    const id = Number(endpoint.split('/').pop());
-    let stored = JSON.parse(localStorage.getItem('enterseed_efiling_tickets') || 'null') || defaultTickets;
-    stored = stored.filter((t: EfilingTicket) => t.id !== id);
-    localStorage.setItem('enterseed_efiling_tickets', JSON.stringify(stored));
-    return new Response(null, { status: 204 });
-  }
-
-  // === MODULE A: SMART REFERRAL ENGINE ===
-  if (endpoint === '/api/referrals/subsidy-check' && method === 'POST') {
-    const matches = evaluateSubsidies(body);
-    return makeResponse(200, { matches });
-  }
-
-  if (endpoint === '/api/referrals/credit-match' && method === 'POST') {
-    const matches = evaluateCredit(body);
-    return makeResponse(200, { matches });
-  }
-
-  // === MODULE A: AUTOMATED DOCUMENT GENERATION ===
+  if (endpoint === '/api/referrals/subsidy-check' && method === 'POST') return demoResponse(200, { matches: evaluateSubsidies(body) });
+  if (endpoint === '/api/referrals/credit-match' && method === 'POST') return demoResponse(200, { matches: evaluateCredit(body) });
   if (endpoint === '/api/ai/generate-doc' && method === 'POST') {
-    const user = JSON.parse(localStorage.getItem('enterseed_current_user') || '{}');
-    const docTypeLabels: Record<string, string> = {
-      feasibility_study: 'Feasibility Study & Commercial Viability Assessment',
-      business_plan: 'Comprehensive MSME Business Plan',
-      grant_loan_proposal: 'Small Business Grant & Credit Financing Proposal'
+    if (!body.businessName?.trim() || !body.targetMarket?.trim()) return demoResponse(400, { error: 'Add your business name and target market.' });
+    const titles = { feasibility_study: 'Feasibility study draft', business_plan: 'Business plan draft', grant_loan_proposal: 'Funding proposal draft' };
+    const title = `${titles[body.docType as keyof typeof titles] || 'Business draft'} — ${body.businessName}`;
+    const monthlyRevenue = Math.max(0, Number(body.monthlyRevenue) || 0);
+    const requestedAmount = Math.max(0, Number(body.requestedAmount) || 0);
+    const annualRevenue = monthlyRevenue * 12;
+    const document: GeneratedDocument = {
+      id: Date.now(), docType: body.docType, title, businessName: body.businessName, municipality: body.municipality,
+      contentHtml: `<article><h1>${escapeHtml(title)}</h1><p>Enterseed demo draft · Prepared from your inputs. No application has been submitted.</p><h2>Business overview</h2><p>${escapeHtml(body.businessName)} · ${escapeHtml(body.municipality)} · ${escapeHtml(body.sector)}</p><h2>Target market</h2><p>${escapeHtml(body.targetMarket)}</p><h2>Operations and suppliers</h2><p>${escapeHtml(body.supplyChainNotes || 'Add supplier quotations, capacity, and delivery assumptions.')}</p><h2>Financial assumptions</h2><p>Monthly sales input: ${formatPesos(monthlyRevenue)}. Annual sales at the same monthly level: ${formatPesos(annualRevenue)}. Funding requested: ${formatPesos(requestedAmount)}.</p><p>Add operating costs, taxes, debt payments, and seasonal changes before estimating profit or payback. Sales alone do not establish profitability.</p><h2>Next steps</h2><p>Validate customer demand and costs, attach supporting records, and check current registration or funding requirements with the relevant official agency.</p></article>`,
+      summary: { businessName: body.businessName, municipality: body.municipality, sector: body.sector, projectedRevenue: annualRevenue, paybackMonths: 0 }, createdAt: new Date().toISOString()
     };
-    const title = `${docTypeLabels[body.docType] || 'Business Document'} — ${body.businessName} (${body.municipality})`;
-    const annualRev = (body.monthlyRevenue || 80000) * 12;
-    const paybackMonths = calculatePaybackPeriod(body.requestedAmount || 0, body.monthlyRevenue || 80000);
-
-    const contentHtml = `
-      <div class="doc-container p-6 sm:p-10 font-sans text-slate-800 bg-white">
-        <div class="border-b-2 border-purple-900 pb-4 mb-6">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-xs font-bold uppercase tracking-widest text-purple-900">Republic of the Philippines · Province of South Cotabato</p>
-              <h1 class="text-2xl font-extrabold text-slate-900 mt-1">${title}</h1>
-              <p class="text-xs text-slate-500 mt-0.5">DTI Negosyo Center Support Hub · Proponent: ${user.firstName || 'MSME'} ${user.lastName || 'Owner'}</p>
-            </div>
-            <div class="text-right text-xs text-slate-500">
-              <p><strong>Tracking No:</strong> DOC-SC-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}</p>
-              <p><strong>Date Generated:</strong> ${new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
-            </div>
-          </div>
-        </div>
-
-        <section class="mb-6">
-          <h2 class="text-lg font-bold text-purple-900 border-b border-purple-100 pb-1 mb-2">1. Executive Summary & Purpose</h2>
-          <p class="text-sm leading-relaxed mb-3">
-            <strong>${body.businessName}</strong> is an enterprise established within <strong>${body.municipality}, South Cotabato</strong>, operating in the <strong>${body.sector}</strong> sector. This document formalizes operational scaling, market capture, and financial feasibility for statutory registration and institutional credit evaluation.
-          </p>
-          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50 p-3 rounded-lg text-xs border border-slate-200">
-            <div><span class="text-slate-500 block">Municipality:</span><strong>${body.municipality}, South Cotabato</strong></div>
-            <div><span class="text-slate-500 block">Sector:</span><strong>${body.sector}</strong></div>
-            <div><span class="text-slate-500 block">Capital Plan:</span><strong>₱${Number(body.requestedAmount || 0).toLocaleString()}</strong></div>
-            <div><span class="text-slate-500 block">Projected Annual Sales:</span><strong>₱${annualRev.toLocaleString()}</strong></div>
-          </div>
-        </section>
-
-        <section class="mb-6">
-          <h2 class="text-lg font-bold text-purple-900 border-b border-purple-100 pb-1 mb-2">2. Regulatory Classification & Compliance</h2>
-          <p class="text-sm leading-relaxed mb-2">
-            The enterprise operates under Republic Act No. 9178 (Barangay Micro Business Enterprises Act) and Republic Act No. 11032 (Ease of Doing Business Act). Filings in progress include DTI BNRS, Barangay Clearance, Mayor’s Permit, and BIR Form 1901.
-          </p>
-        </section>
-
-        <section class="mb-6">
-          <h2 class="text-lg font-bold text-purple-900 border-b border-purple-100 pb-1 mb-2">3. Target Market & Competitive Strategy</h2>
-          <p class="text-sm leading-relaxed mb-2">
-            <strong>Target Market:</strong> ${body.targetMarket}.
-          </p>
-          <p class="text-sm leading-relaxed">
-            South Cotabato provides strategic logistic connectivity through the Makar Wharf seaport and General Santos City airport corridor, supporting both retail consumer demand and institutional bulk off-takers across Region 12.
-          </p>
-        </section>
-
-        <section class="mb-6">
-          <h2 class="text-lg font-bold text-purple-900 border-b border-purple-100 pb-1 mb-2">4. Supply Chain Integration</h2>
-          <p class="text-sm leading-relaxed mb-2">
-            <strong>Local Sourcing:</strong> ${body.supplyChainNotes || 'Integrated with verified South Cotabato packaging and agricultural hubs in Polomolok, Tupi, and Koronadal.'}
-          </p>
-        </section>
-
-        <section class="mb-6">
-          <h2 class="text-lg font-bold text-purple-900 border-b border-purple-100 pb-1 mb-2">5. 3-Year Financial Projections</h2>
-          <table class="w-full text-xs text-left border-collapse border border-slate-200 mb-3">
-            <thead>
-              <tr class="bg-purple-900 text-white">
-                <th class="p-2 border border-slate-300">Financial Metric (PHP)</th>
-                <th class="p-2 border border-slate-300 text-right">Year 1</th>
-                <th class="p-2 border border-slate-300 text-right">Year 2 (+18%)</th>
-                <th class="p-2 border border-slate-300 text-right">Year 3 (+25%)</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr class="border-b border-slate-200">
-                <td class="p-2 font-medium">Gross Turnover</td>
-                <td class="p-2 text-right">₱${annualRev.toLocaleString()}</td>
-                <td class="p-2 text-right">₱${Math.round(annualRev * 1.18).toLocaleString()}</td>
-                <td class="p-2 text-right">₱${Math.round(annualRev * 1.475).toLocaleString()}</td>
-              </tr>
-              <tr class="border-b border-slate-200 bg-slate-50">
-                <td class="p-2 font-medium">Cost of Sales (48%)</td>
-                <td class="p-2 text-right">₱${Math.round(annualRev * 0.48).toLocaleString()}</td>
-                <td class="p-2 text-right">₱${Math.round(annualRev * 1.18 * 0.46).toLocaleString()}</td>
-                <td class="p-2 text-right">₱${Math.round(annualRev * 1.475 * 0.45).toLocaleString()}</td>
-              </tr>
-              <tr class="bg-purple-50 font-bold text-purple-900">
-                <td class="p-2">Net Operating Surplus (28%)</td>
-                <td class="p-2 text-right">₱${Math.round(annualRev * 0.28).toLocaleString()}</td>
-                <td class="p-2 text-right">₱${Math.round(annualRev * 1.18 * 0.31).toLocaleString()}</td>
-                <td class="p-2 text-right">₱${Math.round(annualRev * 1.475 * 0.33).toLocaleString()}</td>
-              </tr>
-            </tbody>
-          </table>
-          <p class="text-xs text-slate-500">
-            Payback estimation: <strong>${paybackMonths} months</strong> based on retained operational surplus.
-          </p>
-        </section>
-      </div>
-    `;
-
-    const newDoc: GeneratedDocument = {
-      id: Date.now(),
-      docType: body.docType,
-      title,
-      businessName: body.businessName,
-      municipality: body.municipality,
-      contentHtml,
-      summary: {
-        businessName: body.businessName,
-        municipality: body.municipality,
-        sector: body.sector,
-        projectedRevenue: annualRev,
-        paybackMonths
-      },
-      createdAt: new Date().toISOString()
-    };
-
-    if (body.saveToLibrary) {
-      const storedDocs = JSON.parse(localStorage.getItem('enterseed_generated_docs') || '[]');
-      storedDocs.unshift(newDoc);
-      localStorage.setItem('enterseed_generated_docs', JSON.stringify(storedDocs));
-    }
-
-    return makeResponse(201, { document: newDoc });
+    if (body.saveToLibrary) demoWrite('documents', [document, ...demoRead<GeneratedDocument[]>('documents', [])]);
+    return demoResponse(201, { document });
   }
-
   if (endpoint === '/api/ai/save-doc' && method === 'POST') {
-    const doc: GeneratedDocument = body.doc || body;
-    const storedDocs = JSON.parse(localStorage.getItem('enterseed_generated_docs') || '[]');
-    const existingIndex = storedDocs.findIndex((d: any) => d.id === doc.id);
-    if (existingIndex >= 0) {
-      storedDocs[existingIndex] = doc;
-    } else {
-      storedDocs.unshift(doc);
-    }
-    localStorage.setItem('enterseed_generated_docs', JSON.stringify(storedDocs));
-    return makeResponse(200, { success: true, document: doc });
+    const document = body.doc || body;
+    if (!document.title || !document.contentHtml) return demoResponse(400, { error: 'Document content is required.' });
+    const documents = demoRead<GeneratedDocument[]>('documents', []);
+    demoWrite('documents', [document, ...documents.filter((entry) => entry.id !== document.id)]);
+    return demoResponse(200, { document });
   }
-
-  if (endpoint === '/api/ai/documents' && method === 'GET') {
-    const storedDocs = JSON.parse(localStorage.getItem('enterseed_generated_docs') || '[]');
-    return makeResponse(200, { documents: storedDocs });
+  if (endpoint === '/api/ai/documents') return demoResponse(200, { documents: demoRead('documents', []) });
+  if (endpoint.startsWith('/api/ai/documents/')) {
+    const document = demoRead<GeneratedDocument[]>('documents', []).find((entry) => entry.id === Number(endpoint.split('/').pop()));
+    return document ? demoResponse(200, { document }) : demoResponse(404, { error: 'Document not found.' });
   }
-
-  // === MODULE B: SUPPLIERS, REVIEWS & MESSAGING ===
-  if (endpoint === '/api/suppliers' && method === 'GET') {
-    const stored = JSON.parse(localStorage.getItem('enterseed_suppliers') || 'null');
-    const suppliers = stored || defaultSuppliers;
-    return makeResponse(200, { suppliers });
+  if (endpoint === '/api/suppliers/messages' && method === 'GET') return demoResponse(200, { messages: [] });
+  if (endpoint === '/api/marketing/generate' && method === 'POST') {
+    if (!body.businessName?.trim() || !body.productOrOffer?.trim()) return demoResponse(400, { error: 'Add your business and product or offer.' });
+    const intro = body.language === 'fil' ? `Kilalanin ang ${body.productOrOffer} mula sa ${body.businessName}!` : `${body.productOrOffer} from ${body.businessName}.`;
+    return demoResponse(200, { copy: `${intro}\n\n${body.keyDetails || 'Add your price, availability, and contact details before sharing.'}\n\n${body.language === 'fil' ? 'Mag-message para sa mga detalye.' : 'Get in touch for details.'}`, success: true });
   }
-
-  if (endpoint.includes('/reviews') && method === 'GET') {
-    const supplierId = Number(endpoint.split('/')[3]);
-    const storedReviews = JSON.parse(localStorage.getItem('enterseed_supplier_reviews') || 'null') || defaultReviews;
-    const reviews = storedReviews[supplierId] || [];
-    return makeResponse(200, { reviews });
+  if (endpoint === '/api/boss-nana' || endpoint === '/api/assistant') {
+    const answer = body.language === 'fil'
+      ? 'Nasa demo workspace ka. Maaari kitang tulungan sa pag-aayos ng business plan, pagtatala ng gastos, at paghahanda ng checklist. Walang aplikasyon na isinusumite rito. Tingnan ang mga opisyal na sanggunian para sa kasalukuyang requirements at bayarin.'
+      : 'You are in a demo workspace. Use the finance tools to record costs, the document builder to organize a draft, and the preparation tracker to maintain a checklist. Nothing here submits a government application. Verify current requirements and fees using the official sources below.';
+    return demoResponse(200, { answer, mode: 'demo', sources: referenceSources });
   }
-
-  if (endpoint.includes('/reviews') && method === 'POST') {
-    const supplierId = Number(endpoint.split('/')[3]);
-    const storedReviews = JSON.parse(localStorage.getItem('enterseed_supplier_reviews') || 'null') || defaultReviews;
-    const user = JSON.parse(localStorage.getItem('enterseed_current_user') || '{}');
-    const newReview: SupplierReview = {
-      id: Date.now(),
-      supplierId,
-      reviewerName: `${user.firstName || 'Verified'} ${user.lastName || 'MSME'}`.trim(),
-      reviewerBusiness: user.business || 'South Cotabato Enterprise',
-      rating: body.rating,
-      reviewText: body.reviewText,
-      verifiedTransaction: 1,
-      createdAt: new Date().toISOString()
-    };
-    if (!storedReviews[supplierId]) storedReviews[supplierId] = [];
-    storedReviews[supplierId].unshift(newReview);
-    localStorage.setItem('enterseed_supplier_reviews', JSON.stringify(storedReviews));
-    return makeResponse(201, { success: true });
-  }
-
-  if (endpoint === '/api/suppliers/messages' && method === 'GET') {
-    const stored = JSON.parse(localStorage.getItem('enterseed_supplier_messages') || 'null');
-    const messages = stored || defaultMessages;
-    return makeResponse(200, { messages });
-  }
-
-  if (endpoint.endsWith('/messages') && method === 'POST') {
-    const supplierId = Number(endpoint.split('/')[3]);
-    const storedSuppliers = JSON.parse(localStorage.getItem('enterseed_suppliers') || 'null') || defaultSuppliers;
-    const supplier = storedSuppliers.find((s: any) => s.id === supplierId);
-    const stored = JSON.parse(localStorage.getItem('enterseed_supplier_messages') || 'null') || defaultMessages;
-    const newMsg: SupplierMessage = {
-      id: Date.now(),
-      supplierId,
-      supplierName: supplier?.name || 'Local South Cotabato Supplier',
-      subject: body.subject,
-      message: body.message,
-      status: 'sent',
-      createdAt: new Date().toISOString()
-    };
-    stored.unshift(newMsg);
-    localStorage.setItem('enterseed_supplier_messages', JSON.stringify(stored));
-    return makeResponse(201, { id: newMsg.id, success: true });
-  }
-
-  // 10. Boss Narra AI / Assistant
-  if (endpoint.startsWith('/api/boss-nana') || endpoint.startsWith('/api/assistant')) {
-    const q = (body.question || '').toLowerCase();
-    const lang = body.language || 'en';
-
-    // RAG Retrieval over saved Document Library in localStorage
-    const savedDocs: GeneratedDocument[] = JSON.parse(localStorage.getItem('enterseed_generated_docs') || '[]');
-    let ragSnippet = '';
-    const activeSources: Array<{ label: string; url: string }> = [];
-
-    if (savedDocs.length > 0) {
-      const matchingDoc = savedDocs.find(
-        (doc) =>
-          doc.title.toLowerCase().includes(q) ||
-          doc.businessName.toLowerCase().includes(q) ||
-          doc.municipality.toLowerCase().includes(q) ||
-          (doc.summary?.sector && doc.summary.sector.toLowerCase().includes(q))
-      ) || savedDocs[0];
-
-      if (matchingDoc) {
-        ragSnippet = `\n\n[Retrieved Context from ${matchingDoc.title}]: Based on your saved Document Library file, your enterprise in ${matchingDoc.municipality} is structured under ${matchingDoc.summary?.sector || 'MSME sector'} with an estimated payback period of ${matchingDoc.summary?.paybackMonths || 'N/A'} months.`;
-        activeSources.push({
-          label: `Document Library: ${matchingDoc.title}`,
-          url: '#documents'
-        });
-      }
-    }
-
-    let answer = 'I can help guide you on business registration, permits, financing, and supply chains across South Cotabato. You can file tickets or check grants in the hub.';
-    if (/dti|business name|registration|rehistro/i.test(q)) {
-      answer = lang === 'fil'
-        ? 'Para sa pagpaparehistro ng business name (sole proprietorship), gamitin ang opisyal na DTI BNRS portal o lumikha ng ticket sa E-Filing Hub. Maghanda ng 1 valid ID at fee (₱200-₱2,000).'
-        : 'For sole proprietorship business name registration, access DTI BNRS or create an e-filing ticket right here. Prepare a valid government ID and registration fees based on territorial scope.';
-      activeSources.push({ label: 'DTI BNRS Portal', url: 'https://bnrs.dti.gov.ph/' });
-    } else if (/bir|tax|buwis/i.test(q)) {
-      answer = lang === 'fil'
-        ? 'Magrehistro sa BIR gamit ang Form 1901 para sa self-employed o negosyo. Maaaring pumili ng 8% gross income tax kung ang taunang benta ay mas mababa sa ₱3,000,000.'
-        : 'Register with the BIR using Form 1901 for self-employed/single proprietors. You may avail of the 8% preferential gross income tax option if gross sales do not exceed ₱3,000,000.';
-      activeSources.push({ label: 'BIR Official Portal', url: 'https://www.bir.gov.ph/' });
-    } else if (/permit|mayor|lgu|koronadal|tupi|surallah/i.test(q)) {
-      answer = lang === 'fil'
-        ? 'Kailangan ng Barangay Business Clearance, Sanitary Permit, at Fire Inspection Certificate (FSIC) bago maibigay ang Mayor’s Permit sa Business Permits and Licensing Office (BPLO).'
-        : 'A Barangay Business Clearance, Sanitary Permit, and Fire Safety Inspection Certificate (FSIC) are required prior to issuance of the Mayor’s Permit by the City/Municipal BPLO.';
-      activeSources.push({ label: 'City of Koronadal Portal', url: 'https://koronadal.gov.ph/' });
-      activeSources.push({ label: 'South Cotabato Services', url: 'https://southcotabato.gov.ph/services/' });
-    } else if (/loan|bank|capital|pondo|sbcorp|landbank/i.test(q)) {
-      answer = lang === 'fil'
-        ? 'Subukan ang Credit Matcher tool sa Hub! Ang SBCorp RISE UP ay may 1% buwanang interes na walang kolateral para sa micro loans, at ang LandBank Koronadal ay may 5-6.5% kada taon.'
-        : 'Try our Credit Matcher tool in the E-Filing & Advisory Hub! SBCorp RISE UP offers 1% monthly interest with no collateral for micro loans, while LandBank Koronadal provides 5-6.5% annual financing.';
-      activeSources.push({ label: 'SBCorp Financing Portal', url: 'https://sbcorp.gov.ph/' });
-    } else {
-      activeSources.push(...referenceSources.slice(0, 3));
-    }
-
-    answer += ragSnippet;
-
-    return makeResponse(200, {
-      answer,
-      mode: 'grounded-local-orientation',
-      sources: activeSources
-    });
-  }
-
-  // 12. Suppliers: Apply
-  if (endpoint === '/api/supplier-applications' && method === 'POST') {
-    const apps = JSON.parse(localStorage.getItem('enterseed_supplier_applications') || '[]');
-    apps.push({ ...body, id: Date.now(), createdAt: new Date().toISOString() });
-    localStorage.setItem('enterseed_supplier_applications', JSON.stringify(apps));
-    return makeResponse(201, { received: true, status: 'pending_review', retentionDays: 90 });
-  }
-
-  // 14. Readiness: Submit
   if (endpoint === '/api/readiness' && method === 'POST') {
-    return makeResponse(201, { received: true, deleteToken: `token-${Date.now()}`, retentionDays: 30 });
+    const token = crypto.randomUUID(); demoWrite(`readiness:${token}`, body);
+    return demoResponse(201, { received: false, savedLocally: true, deleteToken: token, retentionDays: 0 });
   }
-
-  // 15. Inquiries: Submit
-  if (endpoint === '/api/inquiries' && method === 'POST') {
-    const inqs = JSON.parse(localStorage.getItem('enterseed_inquiries') || '[]');
-    inqs.push({ ...body, id: Date.now(), createdAt: new Date().toISOString() });
-    localStorage.setItem('enterseed_inquiries', JSON.stringify(inqs));
-    return makeResponse(201, { received: true, reference: Date.now(), retentionDays: 180 });
-  }
-
-  // 16. Admin Endpoints
-  if (endpoint.startsWith('/api/admin')) {
-    const apps = JSON.parse(localStorage.getItem('enterseed_supplier_applications') || '[]');
-    const storedSuppliers = JSON.parse(localStorage.getItem('enterseed_suppliers') || 'null') || defaultSuppliers;
-    const inqs = JSON.parse(localStorage.getItem('enterseed_inquiries') || '[]');
-
-    if (endpoint === '/api/admin/supplier-applications') {
-      return makeResponse(200, { applications: apps });
-    }
-    if (endpoint === '/api/admin/suppliers') {
-      return makeResponse(200, { suppliers: storedSuppliers });
-    }
-    if (endpoint === '/api/admin/inquiries') {
-      return makeResponse(200, { inquiries: inqs });
-    }
-    if (endpoint.includes('/approve')) {
-      return makeResponse(201, { approved: true, supplierId: Date.now(), verifiedAt: new Date().toISOString() });
-    }
-  }
-
-  return makeResponse(200, { ok: true });
-}
-
-function makeResponse(status: number, data: any): Response {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Enterseed-Mode': 'client-storage-adapter'
-    }
-  });
+  if (endpoint.startsWith('/api/readiness/') && method === 'DELETE') { localStorage.removeItem(demoKey(`readiness:${endpoint.split('/').pop()}`)); return new Response(null, { status: 204 }); }
+  return demoResponse(404, { error: 'This action is not available in the demo workspace.' });
 }
 
 // === EXPORTED HIGH-LEVEL API FUNCTIONS ===

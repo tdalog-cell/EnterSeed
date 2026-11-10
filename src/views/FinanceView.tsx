@@ -1,6 +1,8 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
+import { apiFetch } from '../services/apiClient';
+import { createLedgerCsv, parseLedgerCsv, localDateInManila } from '../utils/financeCsv';
 import {
   Wallet,
   CreditCard,
@@ -81,20 +83,27 @@ function formatDatePH(dateStr: string): string {
 
 export const FinanceView: React.FC = () => {
   const { t } = useLanguage();
-  const { user } = useAuth();
+  const { user, isDemo } = useAuth();
 
   const [activeTab, setActiveTab] = useState<FinanceTab>('cash');
+  const [loadingWorkspace, setLoadingWorkspace] = useState(true);
+  const [savingWorkspace, setSavingWorkspace] = useState(false);
+  const [workspaceError, setWorkspaceError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<{ tone: 'success' | 'error' | 'info'; text: string } | null>(null);
+  const [savedSnapshot, setSavedSnapshot] = useState('');
+  const [selectedMonth, setSelectedMonth] = useState(localDateInManila().slice(0, 7));
+  const [newTxDate, setNewTxDate] = useState(localDateInManila());
 
   // Opening Cash Balance
-  const [openingBalance, setOpeningBalance] = useState<number>(97500);
+  const [openingBalance, setOpeningBalance] = useState<number>(isDemo ? 97500 : 0);
 
   // --- 1. CASH MANAGEMENT STATE ---
-  const [transactions, setTransactions] = useState<CashTransaction[]>([
+  const [transactions, setTransactions] = useState<CashTransaction[]>(isDemo ? [
     { id: '1', type: 'in', category: 'Product Sales', description: 'Arabica & Robusta Wholesale to Koronadal Cafes', amount: 45000, date: '2026-11-01' },
     { id: '2', type: 'out', category: 'Raw Materials', description: 'Fresh Coffee Cherries from Mt. Matutum Farmers', amount: 18000, date: '2026-11-03' },
     { id: '3', type: 'out', category: 'Packaging', description: 'Degassing Valve Pouches from Polomolok Supplier', amount: 6500, date: '2026-11-05' },
     { id: '4', type: 'in', category: 'B2B Contract', description: 'Quarterly Hotel Supply Order in GenSan', amount: 32000, date: '2026-11-07' }
-  ]);
+  ] : []);
 
   const [newTxType, setNewTxType] = useState<'in' | 'out'>('in');
   const [newTxCategory, setNewTxCategory] = useState('Product Sales');
@@ -112,7 +121,7 @@ export const FinanceView: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // --- 2. DEBT MANAGEMENT STATE ---
-  const [debts, setDebts] = useState<DebtItem[]>([
+  const [debts, setDebts] = useState<DebtItem[]>(isDemo ? [
     {
       id: 'd1',
       lender: 'SBCorp RISE UP Micro Credit',
@@ -131,7 +140,7 @@ export const FinanceView: React.FC = () => {
       interestRate: '6% per annum',
       notes: 'Equipment loan for commercial roasting machine'
     }
-  ]);
+  ] : []);
 
   const [newDebtLender, setNewDebtLender] = useState('');
   const [newDebtPrincipal, setNewDebtPrincipal] = useState('');
@@ -141,11 +150,11 @@ export const FinanceView: React.FC = () => {
 
   // --- 3. TAX PREPARATION CHECKLIST STATE ---
   const [taxChecklist, setTaxChecklist] = useState<Record<string, boolean>>({
-    booksUpdated: true,
-    receiptsArchived: true,
+    booksUpdated: isDemo,
+    receiptsArchived: isDemo,
     quarterlyReturnFiled: false,
-    form2307Archived: true,
-    bmbeExemptionVerified: true,
+    form2307Archived: isDemo,
+    bmbeExemptionVerified: isDemo,
     barangayPermitRenewed: false
   });
 
@@ -164,34 +173,99 @@ export const FinanceView: React.FC = () => {
     usefulLifeMonths: 24
   });
 
+  const workspace = { openingBalance, transactions, debts, taxChecklist, investA, investB };
+  const snapshot = JSON.stringify(workspace);
+  const hasUnsavedChanges = !loadingWorkspace && savedSnapshot !== snapshot;
+  const loadWorkspace = async () => {
+    setLoadingWorkspace(true);
+    setWorkspaceError(null);
+    try {
+      const response = await apiFetch('/api/finance/workspace');
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Your saved ledger could not load.');
+      if (data.workspace) {
+        const saved = data.workspace;
+        setOpeningBalance(saved.openingBalance);
+        setTransactions(saved.transactions);
+        setDebts(saved.debts);
+        setTaxChecklist(saved.taxChecklist);
+        setInvestA(saved.investA);
+        setInvestB(saved.investB);
+        setSavedSnapshot(JSON.stringify({ openingBalance: saved.openingBalance, transactions: saved.transactions, debts: saved.debts, taxChecklist: saved.taxChecklist, investA: saved.investA, investB: saved.investB }));
+      } else setSavedSnapshot(snapshot);
+    } catch (error) {
+      setWorkspaceError(error instanceof Error ? error.message : 'Your saved ledger could not load. Please retry.');
+    } finally { setLoadingWorkspace(false); }
+  };
+
+  useEffect(() => { void loadWorkspace(); }, [user?.email, isDemo]);
+  useEffect(() => {
+    if (!hasUnsavedChanges) return;
+    const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ''; };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [hasUnsavedChanges]);
+
+  const handleSaveWorkspace = async () => {
+    if (savingWorkspace || loadingWorkspace || workspaceError) return;
+    setSavingWorkspace(true);
+    setNotice(null);
+    try {
+      const response = await apiFetch('/api/finance/workspace', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ workspace }) });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Your ledger could not be saved. Try again.');
+      setSavedSnapshot(snapshot);
+      const priorResponse = await apiFetch('/api/finance/assessment');
+      if (!priorResponse.ok) throw new Error('Your ledger was saved, but the dashboard summary could not be updated. Try Save workspace again.');
+      const prior = (await priorResponse.json()).assessment;
+      const currentMonth = localDateInManila().slice(0, 7);
+      const currentTransactions = transactions.filter((transaction) => transaction.date.startsWith(currentMonth));
+      const sum = (type: 'in' | 'out') => currentTransactions.filter((transaction) => transaction.type === type).reduce((total, transaction) => total + transaction.amount, 0);
+      const assessment = await apiFetch('/api/finance/assessment', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ monthlyIncome: Math.round(sum('in')), monthlyExpenses: Math.round(sum('out')), cashOnHand: Math.max(0, Math.round(currentLiquidCash)), debtOutstanding: Math.round(totalDebtPrincipal), monthlyDebtPayment: Math.round(totalMonthlyDebtPayments), otherAssets: prior?.otherAssets || 0, otherLiabilities: prior?.otherLiabilities || 0, taxStanding: prior?.taxStanding || 'current', consent: true }) });
+      if (!assessment.ok) throw new Error('Your ledger was saved, but the dashboard summary could not be updated. Try Save workspace again.');
+      setNotice({ tone: 'success', text: isDemo ? 'Demo workspace saved on this browser. Your dashboard is up to date.' : 'Workspace saved to your account. Your dashboard is up to date.' });
+    } catch (error) {
+      setNotice({ tone: 'error', text: error instanceof Error ? error.message : 'Save failed. Your changes are still here.' });
+    } finally { setSavingWorkspace(false); }
+  };
+
   // Calculations for Cash Management
-  const totalCashIn = transactions.filter((t) => t.type === 'in').reduce((sum, t) => sum + t.amount, 0);
-  const totalCashOut = transactions.filter((t) => t.type === 'out').reduce((sum, t) => sum + t.amount, 0);
+  const monthlyTransactions = transactions.filter((transaction) => transaction.date.startsWith(selectedMonth));
+  const totalCashIn = monthlyTransactions.filter((t) => t.type === 'in').reduce((sum, t) => sum + t.amount, 0);
+  const totalCashOut = monthlyTransactions.filter((t) => t.type === 'out').reduce((sum, t) => sum + t.amount, 0);
   const netMonthlyCashFlow = totalCashIn - totalCashOut;
-  const currentLiquidCash = openingBalance + netMonthlyCashFlow;
+  const currentLiquidCash = openingBalance + transactions.reduce((sum, transaction) => sum + (transaction.type === 'in' ? transaction.amount : -transaction.amount), 0);
   const recommendedReserve = totalCashOut > 0 ? totalCashOut * 3 : 50000;
 
   // Calculations for Debt Management
   const totalDebtPrincipal = debts.reduce((sum, d) => sum + d.principal, 0);
   const totalMonthlyDebtPayments = debts.reduce((sum, d) => sum + d.monthlyPayment, 0);
-  const debtCoverageRatio = totalMonthlyDebtPayments > 0 ? (totalCashIn - totalCashOut) / totalMonthlyDebtPayments : 2.5;
+  const debtCoverageRatio = totalMonthlyDebtPayments > 0 ? netMonthlyCashFlow / totalMonthlyDebtPayments : 0;
+  const chartMonths = Array.from({ length: 4 }, (_, index) => {
+    const date = new Date(`${selectedMonth}-15T12:00:00Z`);
+    date.setUTCMonth(date.getUTCMonth() - 3 + index);
+    const monthKey = date.toISOString().slice(0, 7);
+    const monthRows = transactions.filter((transaction) => transaction.date.startsWith(monthKey));
+    return { month: date.toLocaleDateString('en-PH', { month: 'short', timeZone: 'Asia/Manila' }), inAmt: monthRows.filter((row) => row.type === 'in').reduce((sum, row) => sum + row.amount, 0), outAmt: monthRows.filter((row) => row.type === 'out').reduce((sum, row) => sum + row.amount, 0) };
+  });
 
   // Add new cash transaction
   const handleAddTransaction = (e: React.FormEvent) => {
     e.preventDefault();
     const amt = parseFloat(newTxAmount.replace(/,/g, ''));
-    if (!newTxDesc || isNaN(amt) || amt <= 0) return;
+    if (!newTxDesc.trim() || !Number.isFinite(amt) || amt <= 0 || amt > 1_000_000_000) { setNotice({ tone: 'error', text: 'Enter a description and an amount between ₱0.01 and ₱1 billion.' }); return; }
 
     const newTx: CashTransaction = {
-      id: Date.now().toString(),
+      id: crypto.randomUUID(),
       type: newTxType,
       category: newTxCategory,
       description: newTxDesc,
       amount: amt,
-      date: new Date().toISOString().split('T')[0]
+      date: newTxDate
     };
 
-    setTransactions([newTx, ...transactions]);
+    setTransactions((previous) => [newTx, ...previous]);
+    setSelectedMonth(newTxDate.slice(0, 7));
     setNewTxDesc('');
     setNewTxAmount('');
   };
@@ -213,7 +287,7 @@ export const FinanceView: React.FC = () => {
     e.preventDefault();
     if (!editingTx) return;
     const amt = parseFloat(editAmount.replace(/,/g, ''));
-    if (isNaN(amt) || amt <= 0) return;
+    if (!editDesc.trim() || !Number.isFinite(amt) || amt <= 0 || amt > 1_000_000_000) return;
 
     setTransactions((prev) =>
       prev.map((t) =>
@@ -232,66 +306,29 @@ export const FinanceView: React.FC = () => {
     setEditingTx(null);
   };
 
-  // CSV Export
   const handleExportCsv = () => {
-    const headers = ['Date', 'Type', 'Category', 'Description', 'Amount'];
-    const rows = transactions.map((t) => [
-      t.date,
-      t.type === 'in' ? 'Cash-In' : 'Cash-Out',
-      `"${t.category.replace(/"/g, '""')}"`,
-      `"${t.description.replace(/"/g, '""')}"`,
-      t.amount
-    ]);
-    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
-    const encodedUri = encodeURI(csvContent);
+    const url = URL.createObjectURL(new Blob([createLedgerCsv(transactions)], { type: 'text/csv;charset=utf-8' }));
     const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `enterseed-cashflow-${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
+    link.href = url;
+    link.download = `enterseed-cashflow-${localDateInManila()}.csv`;
     link.click();
-    document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
-  // CSV Import
-  const handleImportCsv = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const handleImportCsv = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
     if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const text = event.target?.result as string;
-      if (!text) return;
-      const lines = text.split('\n').map((l) => l.trim()).filter((l) => l.length > 0);
-      if (lines.length <= 1) return;
-
-      const parsed: CashTransaction[] = [];
-      for (let i = 1; i < lines.length; i++) {
-        const parts = lines[i].split(',');
-        if (parts.length >= 5) {
-          const date = parts[0].replace(/"/g, '').trim();
-          const typeStr = parts[1].replace(/"/g, '').toLowerCase().trim();
-          const category = parts[2].replace(/"/g, '').trim();
-          const description = parts[3].replace(/"/g, '').trim();
-          const amount = parseFloat(parts[4].replace(/[^0-9.]/g, ''));
-          if (!isNaN(amount) && amount > 0) {
-            parsed.push({
-              id: `${Date.now()}-${i}`,
-              date: date || new Date().toISOString().split('T')[0],
-              type: typeStr.includes('in') ? 'in' : 'out',
-              category: category || 'General',
-              description: description || 'Imported Transaction',
-              amount
-            });
-          }
-        }
-      }
-
-      if (parsed.length > 0) {
-        setTransactions((prev) => [...parsed, ...prev]);
-      }
-    };
-    reader.readAsText(file);
-    if (fileInputRef.current) fileInputRef.current.value = '';
+    try {
+      if (file.size > 2_000_000) throw new Error('Choose a CSV smaller than 2 MB.');
+      const rows = parseLedgerCsv(await file.text());
+      if (rows.length > 5000) throw new Error('Import up to 5,000 transactions at a time.');
+      setTransactions((previous) => [...rows.map((row) => ({ ...row, id: crypto.randomUUID() })), ...previous]);
+      setSelectedMonth(rows[0].date.slice(0, 7));
+      setNotice({ tone: 'success', text: `${rows.length} transactions imported. Review your ledger, then save your workspace.` });
+    } catch (error) {
+      setNotice({ tone: 'error', text: error instanceof Error ? error.message : 'This file could not be imported.' });
+    }
   };
 
   // Add new debt entry
@@ -299,7 +336,7 @@ export const FinanceView: React.FC = () => {
     e.preventDefault();
     const princ = parseFloat(newDebtPrincipal.replace(/,/g, ''));
     const mth = parseFloat(newDebtMonthly.replace(/,/g, ''));
-    if (!newDebtLender || isNaN(princ)) return;
+    if (!newDebtLender.trim() || !Number.isFinite(princ) || princ <= 0 || princ > 1_000_000_000 || (newDebtMonthly && (!Number.isFinite(mth) || mth < 0 || mth > 1_000_000_000))) { setNotice({ tone: 'error', text: 'Enter a lender, a positive principal, and a non-negative monthly payment.' }); return; }
 
     const newItem: DebtItem = {
       id: Date.now().toString(),
@@ -329,25 +366,33 @@ export const FinanceView: React.FC = () => {
 
   // Format number input with commas
   const handleAmountChange = (val: string) => {
-    const raw = val.replace(/[^0-9]/g, '');
+    const raw = val.replace(/,/g, '');
     if (!raw) {
       setNewTxAmount('');
       return;
     }
-    const num = parseInt(raw, 10);
-    setNewTxAmount(num.toLocaleString('en-PH'));
+    if (/^\d*(\.\d{0,2})?$/.test(raw)) setNewTxAmount(raw);
   };
 
   return (
     <div className="space-y-6 sm:space-y-8">
-      {/* Shortened full-width title */}
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-ink tracking-tight">Finance</h1>
-        <p className="mt-1 text-sm text-muted max-w-3xl leading-relaxed">
-          Record everyday business cash flow, track loans, complete statutory tax checklists, and review draft financial statements for {user?.business || 'Matutum Highlands Coffee Roasters'}.
-        </p>
+      <PageHeader
+        eyebrow="YOUR BUSINESS, BY THE NUMBERS"
+        title="A clearer view of your finances."
+        lead="Keep your cash, commitments, and next investment in one place. Save your workspace to keep your records and dashboard together."
+        actions={<Button onClick={handleSaveWorkspace} busy={savingWorkspace} busyLabel="Saving workspace…" disabled={loadingWorkspace || !!workspaceError}><CheckCircle2 />Save workspace</Button>}
+      />
+      <div className="flex flex-wrap items-center gap-3 text-xs text-muted">
+        <span className={cx('inline-flex items-center gap-2 rounded-full px-3 py-1.5 font-semibold', hasUnsavedChanges ? 'bg-accent-soft text-accent-ink' : 'bg-good-soft text-good')}>
+          <span className="h-1.5 w-1.5 rounded-full bg-current" />
+          {loadingWorkspace ? 'Loading your records…' : hasUnsavedChanges ? 'Unsaved changes' : 'Workspace up to date'}
+        </span>
+        <span>{isDemo ? 'Sample business · changes stay on this browser' : user?.business}</span>
       </div>
-
+      {workspaceError && <Notice tone="error"><div className="flex flex-wrap items-center gap-3"><span>{workspaceError}</span><Button variant="secondary" size="sm" onClick={loadWorkspace}>Retry loading</Button></div></Notice>}
+      {notice && <Notice tone={notice.tone}>{notice.text}</Notice>}
+      {loadingWorkspace && <div className="grid grid-cols-3 gap-4" aria-label="Loading finance workspace">{[1, 2, 3].map((key) => <div key={key} className="skeleton h-28 rounded-2xl" />)}</div>}
+      <fieldset disabled={loadingWorkspace || savingWorkspace || !!workspaceError} className="min-w-0 space-y-6 disabled:opacity-60">
       {/* Tabs on their own row below header (horizontally scrollable on mobile) */}
       <div className="border-b border-line pb-2 overflow-x-auto">
         <div className="flex items-center gap-2 min-w-max">
@@ -401,18 +446,22 @@ export const FinanceView: React.FC = () => {
 
       {/* --- SUB-SECTION 1: CASH MANAGEMENT --- */}
       {activeTab === 'cash' && (
-        <div className="space-y-6">
+        <div className="space-y-6 view-enter">
+          <div className="grid gap-4 sm:grid-cols-2 max-w-xl">
+            <Field label="Reporting month">{(id) => <input id={id} type="month" value={selectedMonth} onChange={(event) => { if (event.target.value) setSelectedMonth(event.target.value); }} className={inputClass} />}</Field>
+            <Field label="Opening cash balance" hint="Cash held before your first ledger entry.">{(id) => <input id={id} type="number" min="0" max="1000000000" step="0.01" value={openingBalance} onChange={(event) => setOpeningBalance(Math.max(0, Math.min(1_000_000_000, Number(event.target.value) || 0)))} className={inputClass} /></Field>
+          </div>
           {/* Top 3 KPI Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 stagger-children">
             <Panel className="bg-emerald-50/70 border-emerald-200">
               <span className="text-xs font-semibold text-emerald-800 uppercase tracking-wider block">Total Recorded Cash-In</span>
               <p className="text-2xl font-extrabold text-emerald-950 mt-1">₱{totalCashIn.toLocaleString('en-PH')}</p>
-              <p className="text-xs text-emerald-700 mt-0.5">Coffee wholesale & retail sales</p>
+              <p className="text-xs text-emerald-700 mt-0.5">Income recorded for the selected month</p>
             </Panel>
             <Panel className="bg-rose-50/70 border-rose-200">
               <span className="text-xs font-semibold text-rose-800 uppercase tracking-wider block">Total Recorded Cash-Out</span>
               <p className="text-2xl font-extrabold text-rose-950 mt-1">₱{totalCashOut.toLocaleString('en-PH')}</p>
-              <p className="text-xs text-rose-700 mt-0.5">Green bean sourcing & packaging</p>
+              <p className="text-xs text-rose-700 mt-0.5">Expenses recorded for the selected month</p>
             </Panel>
             <Panel className="bg-purple-50/70 border-purple-200">
               <span className="text-xs font-semibold text-purple-800 uppercase tracking-wider block">Net Cash Flow</span>
@@ -433,7 +482,7 @@ export const FinanceView: React.FC = () => {
                 <span className="text-xs text-muted">How liquid cash is calculated</span>
               </div>
               <p className="text-sm font-semibold text-ink">
-                Opening Balance (₱{openingBalance.toLocaleString('en-PH')}) + Net Cash Flow (₱{netMonthlyCashFlow.toLocaleString('en-PH')}) = <span className="text-emerald-700 font-bold">Current Liquid Cash: ₱{currentLiquidCash.toLocaleString('en-PH')}</span>
+                Opening Balance (₱{openingBalance.toLocaleString('en-PH')}) + All recorded net cash (₱{(currentLiquidCash - openingBalance).toLocaleString('en-PH')}) = <span className="text-emerald-700 font-bold">Current Liquid Cash: ₱{currentLiquidCash.toLocaleString('en-PH')}</span>
               </p>
             </div>
             <div className="flex items-center gap-2 text-xs shrink-0">
@@ -448,17 +497,12 @@ export const FinanceView: React.FC = () => {
           <Panel>
             <PanelHeader
               title="Recent Monthly Cash Flow Trend"
-              description="Historical monthly comparison of cash-in versus cash-out (August to November 2026)."
+              description="Four months of your recorded transactions. Months with no entries show zero."
             />
             <div className="pt-3 pb-1">
               <div className="grid grid-cols-4 gap-4 text-center">
-                {[
-                  { month: 'Aug', inAmt: 65000, outAmt: 22000 },
-                  { month: 'Sep', inAmt: 72000, outAmt: 26000 },
-                  { month: 'Oct', inAmt: 80000, outAmt: 29000 },
-                  { month: 'Nov', inAmt: totalCashIn, outAmt: totalCashOut }
-                ].map((item, idx) => {
-                  const maxVal = 90000;
+                {chartMonths.map((item, idx) => {
+                  const maxVal = Math.max(1, ...chartMonths.flatMap((month) => [month.inAmt, month.outAmt]));
                   const inPct = Math.round((item.inAmt / maxVal) * 100);
                   const outPct = Math.round((item.outAmt / maxVal) * 100);
                   return (
@@ -467,13 +511,13 @@ export const FinanceView: React.FC = () => {
                         {/* Cash-in bar */}
                         <div
                           className="w-4 bg-emerald-500 rounded-t transition-all hover:bg-emerald-600 relative group"
-                          style={{ height: `${Math.max(12, inPct)}%` }}
+                          style={{ height: `${inPct}%` }}
                           title={`Cash In: ₱${item.inAmt.toLocaleString('en-PH')}`}
                         />
                         {/* Cash-out bar */}
                         <div
                           className="w-4 bg-rose-400 rounded-t transition-all hover:bg-rose-500 relative group"
-                          style={{ height: `${Math.max(8, outPct)}%` }}
+                          style={{ height: `${outPct}%` }}
                           title={`Cash Out: ₱${item.outAmt.toLocaleString('en-PH')}`}
                         />
                       </div>
@@ -505,7 +549,7 @@ export const FinanceView: React.FC = () => {
                     <Segmented
                       label="Transaction Type"
                       value={newTxType}
-                      onChange={(val) => setNewTxType(val as 'in' | 'out')}
+                      onChange={(val) => { setNewTxType(val as 'in' | 'out'); setNewTxCategory(val === 'in' ? 'Product Sales' : 'Raw Materials'); }}
                       options={[
                         { value: 'in', label: 'Cash-In (Income)' },
                         { value: 'out', label: 'Cash-Out (Expense)' }
@@ -537,6 +581,7 @@ export const FinanceView: React.FC = () => {
                   )}
                 </Field>
 
+                <Field label="Transaction date">{(id) => <input id={id} type="date" required value={newTxDate} onChange={(event) => setNewTxDate(event.target.value)} className={inputClass} />}</Field>
                 <Field label="Description">
                   {(id) => (
                     <input
@@ -610,7 +655,8 @@ export const FinanceView: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-line">
-                    {transactions.map((tx) => (
+                    {!monthlyTransactions.length && <tr><td colSpan={5} className="py-12 px-4 text-center"><p className="font-semibold text-ink">Your ledger starts here</p><p className="mt-1 text-muted">Record a transaction or import a CSV to see this month’s cash flow.</p></td></tr>}
+                    {[...monthlyTransactions].sort((a, b) => b.date.localeCompare(a.date)).map((tx) => (
                       <tr key={tx.id} className="hover:bg-sunken/50 transition-colors">
                         <td className="py-2.5 px-3 text-muted whitespace-nowrap">{formatDatePH(tx.date)}</td>
                         <td className="py-2.5 px-3">
@@ -660,7 +706,7 @@ export const FinanceView: React.FC = () => {
 
       {/* --- SUB-SECTION 2: DEBT MANAGEMENT --- */}
       {activeTab === 'debt' && (
-        <div className="space-y-6">
+        <div className="space-y-6 view-enter">
           <Notice tone="info" className="border-amber-300 bg-amber-50 text-amber-950">
             <div className="flex items-start gap-2.5">
               <ShieldAlert className="w-5 h-5 shrink-0 text-amber-700 mt-0.5" />
@@ -673,7 +719,7 @@ export const FinanceView: React.FC = () => {
             </div>
           </Notice>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 stagger-children">
             <Panel className="bg-slate-50 border-slate-200">
               <span className="text-xs font-semibold text-slate-700 uppercase tracking-wider block">Total Outstanding Principal</span>
               <p className="text-2xl font-extrabold text-slate-900 mt-1">₱{totalDebtPrincipal.toLocaleString('en-PH')}</p>
@@ -686,7 +732,7 @@ export const FinanceView: React.FC = () => {
             </Panel>
             <Panel className="bg-purple-50/60 border-purple-200">
               <span className="text-xs font-semibold text-purple-800 uppercase tracking-wider block">Debt Coverage Ratio</span>
-              <p className="text-2xl font-extrabold text-purple-950 mt-1">{debtCoverageRatio > 0 ? `${debtCoverageRatio.toFixed(1)}x` : 'N/A'}</p>
+              <p className="text-2xl font-extrabold text-purple-950 mt-1">{totalMonthlyDebtPayments > 0 ? `${debtCoverageRatio.toFixed(1)}x` : 'No payments'}</p>
               <p className="text-xs text-purple-700 mt-0.5">Ratio of Net Operating Profit to Debt Service</p>
             </Panel>
           </div>
@@ -714,7 +760,7 @@ export const FinanceView: React.FC = () => {
                   style={{
                     width: `${Math.min(
                       100,
-                      Math.max(10, netMonthlyCashFlow > 0 ? (totalMonthlyDebtPayments / netMonthlyCashFlow) * 100 : 100)
+                      Math.max(0, totalMonthlyDebtPayments === 0 ? 0 : netMonthlyCashFlow > 0 ? (totalMonthlyDebtPayments / netMonthlyCashFlow) * 100 : 100)
                     )}%`
                   }}
                 />
@@ -811,6 +857,7 @@ export const FinanceView: React.FC = () => {
             <Panel>
               <PanelHeader title="Active Business Debt Obligations" description="Monitored loans, microfinance, and due dates." />
               <div className="space-y-3">
+                {debts.length === 0 && <p className="rounded-xl bg-sunken px-5 py-8 text-center text-sm text-muted">No debt recorded. Add a loan when you have an obligation to track.</p>}
                 {debts.map((d) => (
                   <div key={d.id} className="p-4 rounded-xl border border-line bg-surface flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div className="space-y-1">
@@ -845,7 +892,7 @@ export const FinanceView: React.FC = () => {
 
       {/* --- SUB-SECTION 3: TAX CHECKLIST --- */}
       {activeTab === 'tax' && (
-        <div className="space-y-6">
+        <div className="space-y-6 view-enter">
           <Notice tone="info" className="border-blue-300 bg-blue-50 text-blue-950">
             <div className="flex items-start gap-2.5">
               <Info className="w-5 h-5 shrink-0 text-blue-700 mt-0.5" />
@@ -975,7 +1022,7 @@ export const FinanceView: React.FC = () => {
 
       {/* --- SUB-SECTION 4: INVESTMENT PLANNING --- */}
       {activeTab === 'investment' && (
-        <div className="space-y-6">
+        <div className="space-y-6 view-enter">
           <Notice tone="info" className="border-purple-300 bg-purple-50 text-purple-950">
             <div className="flex items-start gap-2.5">
               <ShieldAlert className="w-5 h-5 shrink-0 text-purple-700 mt-0.5" />
@@ -1121,7 +1168,7 @@ export const FinanceView: React.FC = () => {
 
       {/* --- SUB-SECTION 5: FINANCIAL REPORTS --- */}
       {activeTab === 'reports' && (
-        <div className="space-y-6">
+        <div className="space-y-6 view-enter">
           <Notice tone="info" className="border-rose-300 bg-rose-50 text-rose-950 font-bold uppercase tracking-wider text-xs">
             <div className="flex items-center gap-2">
               <AlertTriangle className="w-4 h-4 text-rose-700 shrink-0" />
@@ -1191,7 +1238,8 @@ export const FinanceView: React.FC = () => {
 
       {/* Edit Transaction Modal */}
       {editingTx && (
-        <Modal
+        </fieldset>
+      <Modal
           open={Boolean(editingTx)}
           onClose={() => setEditingTx(null)}
           title="Edit Cash Transaction"

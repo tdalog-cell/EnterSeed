@@ -1,5 +1,6 @@
 import React, { useEffect, useId, useRef } from 'react';
-import { AlertTriangle, CheckCircle2, Info, X } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { AlertTriangle, CheckCircle2, Info, LoaderCircle, X } from 'lucide-react';
 
 export const cx = (...parts: Array<string | false | null | undefined>) => parts.filter(Boolean).join(' ');
 
@@ -45,14 +46,16 @@ export const Logo: React.FC<{ tone?: 'light' | 'dark'; caption?: string; onClick
 
 /* ---------- Layout ---------- */
 
-export const PageHeader: React.FC<{ title: React.ReactNode; lead?: React.ReactNode; actions?: React.ReactNode }> = ({
+export const PageHeader: React.FC<{ title: React.ReactNode; lead?: React.ReactNode; actions?: React.ReactNode; eyebrow?: React.ReactNode }> = ({
   title,
   lead,
-  actions
+  actions,
+  eyebrow
 }) => (
-  <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+  <header className="page-heading flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
     <div className="max-w-2xl">
-      <h1 className="text-2xl sm:text-[1.75rem] font-extrabold tracking-tight text-ink leading-tight">{title}</h1>
+      {eyebrow && <p className="section-label mb-2">{eyebrow}</p>}
+      <h1 className="text-[1.7rem] sm:text-[2rem] font-extrabold tracking-tight text-ink leading-tight">{title}</h1>
       {lead && <p className="mt-2 text-[15px] leading-relaxed text-muted">{lead}</p>}
     </div>
     {actions && <div className="flex flex-wrap gap-2 shrink-0">{actions}</div>}
@@ -65,7 +68,7 @@ export const Panel: React.FC<React.HTMLAttributes<HTMLElement> & { as?: 'section
   children,
   ...rest
 }) => (
-  <Tag className={cx('bg-surface rounded-2xl border border-line p-5 sm:p-6', className)} {...rest}>
+  <Tag className={cx('surface-panel bg-surface rounded-2xl border border-line p-5 sm:p-6', className)} {...rest}>
     {children}
   </Tag>
 );
@@ -91,8 +94,8 @@ type ButtonVariant = 'primary' | 'accent' | 'secondary' | 'ghost' | 'danger';
 type ButtonSize = 'sm' | 'md' | 'lg';
 
 const buttonVariants: Record<ButtonVariant, string> = {
-  primary: 'bg-brand text-white hover:bg-brand-deep',
-  accent: 'bg-accent text-ink hover:bg-[#F7772A]',
+  primary: 'bg-brand text-white hover:bg-brand-deep shadow-[0_3px_8px_-3px_rgb(74_29_143/0.3)]',
+  accent: 'bg-accent text-ink hover:bg-[#F7772A] shadow-[0_3px_8px_-3px_rgb(255_138_61/0.3)]',
   secondary: 'bg-surface text-brand border border-line-strong hover:bg-brand-soft',
   ghost: 'text-brand hover:bg-brand-soft',
   danger: 'text-danger hover:bg-danger-soft'
@@ -106,20 +109,23 @@ const buttonSizes: Record<ButtonSize, string> = {
 
 export const buttonClass = (variant: ButtonVariant = 'primary', size: ButtonSize = 'md', extra?: string) =>
   cx(
-    'inline-flex items-center justify-center text-center leading-tight font-semibold transition-colors duration-150 disabled:opacity-50 [&_svg]:w-4 [&_svg]:h-4 [&_svg]:shrink-0',
+    'button-motion inline-flex items-center justify-center text-center leading-tight font-semibold disabled:opacity-50 [&_svg]:w-4 [&_svg]:h-4 [&_svg]:shrink-0',
     buttonVariants[variant],
     buttonSizes[size],
     extra
   );
 
 export const Button: React.FC<
-  React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: ButtonVariant; size?: ButtonSize }
-> = ({ variant = 'primary', size = 'md', className, type = 'button', ...rest }) => (
-  <button type={type} className={buttonClass(variant, size, className)} {...rest} />
+  React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: ButtonVariant; size?: ButtonSize; busy?: boolean; busyLabel?: string }
+> = ({ variant = 'primary', size = 'md', className, type = 'button', busy, busyLabel, disabled, children, ...rest }) => (
+  <button type={type} className={buttonClass(variant, size, className)} disabled={disabled || busy} aria-busy={busy || undefined} {...rest}>
+    {busy && <LoaderCircle className="animate-spin" aria-hidden="true" />}
+    {busy && busyLabel ? busyLabel : children}
+  </button>
 );
 
 export const inputClass =
-  'w-full h-10 bg-surface border border-line-strong rounded-xl px-3.5 text-sm text-ink placeholder:text-muted/70 transition-colors hover:border-muted/50 focus:border-brand focus:outline-none focus-visible:outline-2 focus-visible:outline-brand/30 focus-visible:outline-offset-0 disabled:bg-sunken';
+  'field-control w-full h-11 bg-surface border border-line-strong rounded-xl px-3.5 text-sm text-ink placeholder:text-muted/70 hover:border-muted/50 focus:border-brand focus:outline-none focus-visible:outline-2 focus-visible:outline-brand/30 focus-visible:outline-offset-0 disabled:bg-sunken';
 
 export const textareaClass = cx(inputClass, 'h-auto py-2.5 leading-relaxed resize-y');
 
@@ -182,6 +188,16 @@ export function Segmented<T extends string>({
             type="button"
             role="radio"
             aria-checked={active}
+            tabIndex={active ? 0 : -1}
+            onKeyDown={(event) => {
+              const direction = ['ArrowRight', 'ArrowDown'].includes(event.key) ? 1 : ['ArrowLeft', 'ArrowUp'].includes(event.key) ? -1 : 0;
+              if (!direction && event.key !== 'Home' && event.key !== 'End') return;
+              event.preventDefault();
+              const index = options.findIndex((option) => option.value === value);
+              const next = event.key === 'Home' ? 0 : event.key === 'End' ? options.length - 1 : (index + direction + options.length) % options.length;
+              onChange(options[next].value);
+              (event.currentTarget.parentElement?.children[next] as HTMLButtonElement)?.focus();
+            }}
             onClick={() => onChange(o.value)}
             className={cx(
               'min-h-8 px-3 py-1 rounded-lg text-[13px] leading-tight font-semibold transition-colors',
@@ -272,15 +288,27 @@ export const Modal: React.FC<{
   dismissable?: boolean;
 }> = ({ open, onClose, title, description, size = 'md', children, dismissable = true }) => {
   const titleId = useId();
+  const descriptionId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
 
   useEffect(() => {
     if (!open) return;
     const prevFocus = document.activeElement as HTMLElement | null;
-    const first = panelRef.current?.querySelector<HTMLElement>('input, textarea, select, button:not([data-close])');
-    first?.focus();
+    const selector = 'a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex="0"]';
+    const first = panelRef.current?.querySelector<HTMLElement>('input:not([disabled]), textarea:not([disabled]), select:not([disabled]), button:not([data-close]):not([disabled])');
+    (first || panelRef.current)?.focus();
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && dismissable) onClose();
+      if (e.key === 'Escape' && dismissable) { e.preventDefault(); closeRef.current(); }
+      if (e.key === 'Tab') {
+        const targets = Array.from(panelRef.current?.querySelectorAll<HTMLElement>(selector) || []).filter((element) => element.getClientRects().length > 0);
+        const firstTarget = targets[0];
+        const lastTarget = targets[targets.length - 1];
+        if (!firstTarget) { e.preventDefault(); panelRef.current?.focus(); }
+        else if (e.shiftKey && (document.activeElement === firstTarget || !panelRef.current?.contains(document.activeElement))) { e.preventDefault(); lastTarget.focus(); }
+        else if (!e.shiftKey && (document.activeElement === lastTarget || !panelRef.current?.contains(document.activeElement))) { e.preventDefault(); firstTarget.focus(); }
+      }
     };
     document.addEventListener('keydown', onKey);
     const prevOverflow = document.body.style.overflow;
@@ -290,13 +318,13 @@ export const Modal: React.FC<{
       document.body.style.overflow = prevOverflow;
       prevFocus?.focus?.();
     };
-  }, [open, onClose, dismissable]);
+  }, [open, dismissable]);
 
   if (!open) return null;
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center sm:p-4 bg-night/55"
+      className="fade-in fixed inset-0 z-[80] flex items-end sm:items-center justify-center sm:p-4 bg-night/55 backdrop-blur-[4px]"
       onMouseDown={(e) => {
         if (dismissable && e.target === e.currentTarget) onClose();
       }}
@@ -304,8 +332,10 @@ export const Modal: React.FC<{
       <div
         ref={panelRef}
         role="dialog"
+        tabIndex={-1}
         aria-modal="true"
         aria-labelledby={titleId}
+        aria-describedby={description ? descriptionId : undefined}
         className={cx(
           'pop-in relative w-full bg-surface rounded-t-2xl sm:rounded-2xl shadow-[0_24px_60px_-20px_rgb(36_23_43/0.5)] max-h-[92vh] overflow-y-auto p-5 sm:p-7',
           size === 'lg' ? 'sm:max-w-xl' : 'sm:max-w-md'
@@ -316,7 +346,7 @@ export const Modal: React.FC<{
             <h2 id={titleId} className="text-lg font-bold text-ink leading-snug">
               {title}
             </h2>
-            {description && <p className="mt-1 text-sm text-muted leading-relaxed">{description}</p>}
+            {description && <p id={descriptionId} className="mt-1 text-sm text-muted leading-relaxed">{description}</p>}
           </div>
           {dismissable && (
             <button
@@ -332,6 +362,6 @@ export const Modal: React.FC<{
         </div>
         {children}
       </div>
-    </div>
+    </div>, document.body
   );
 };
