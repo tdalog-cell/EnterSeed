@@ -500,7 +500,7 @@ export const SuppliersView: React.FC = () => {
                           <div className="flex flex-wrap items-center gap-2">
                             <Button size="sm" variant="primary" onClick={() => openMessageModal(s)}>
                               <MessageSquare className="w-3.5 h-3.5 mr-1" />
-                              Message Supplier
+                              Prepare inquiry
                             </Button>
                             <Button size="sm" variant="secondary" onClick={() => openReviewsModal(s)}>
                               <Star className="w-3.5 h-3.5 mr-1" />
@@ -550,7 +550,7 @@ export const SuppliersView: React.FC = () => {
             <div className="py-12 text-center rounded-xl bg-sunken border border-line">
               <Inbox className="w-10 h-10 text-muted mx-auto mb-2 opacity-50" />
               <p className="font-semibold text-ink">No inquiries sent yet.</p>
-              <p className="text-xs text-muted mt-1">Browse the Supplier Directory and click "Message Supplier" to request quotations.</p>
+              <p className="text-xs text-muted mt-1">Choose a supplier and select Prepare inquiry to organize your request.</p>
             </div>
           ) : (
             <div className="space-y-4">
@@ -727,7 +727,7 @@ export const SuppliersView: React.FC = () => {
       <Modal
         open={Boolean(messageSupplier)}
         onClose={() => setMessageSupplier(null)}
-        title={messageSupplier ? `Contact ${messageSupplier.name}` : 'Contact Supplier'}
+        title={messageSupplier ? `Prepare inquiry for ${messageSupplier.name}` : 'Prepare supplier inquiry'}
       >
         {messageSupplier && (
           <form onSubmit={handleSendMessage} className="space-y-4">
@@ -736,7 +736,7 @@ export const SuppliersView: React.FC = () => {
             )}
 
             <p className="text-xs text-muted">
-              Direct inquiry to <strong>{messageSupplier.name}</strong> ({messageSupplier.location}).
+              Prepare a request for <strong>{messageSupplier.name}</strong> ({messageSupplier.location}). Saving keeps a copy in your workspace. Contact the supplier directly to send it.
             </p>
 
             <Field label="Inquiry Subject">
@@ -772,7 +772,7 @@ export const SuppliersView: React.FC = () => {
               </Button>
               <Button type="submit" variant="primary" disabled={sendingMsg || !msgBody.trim()}>
                 <Send className="w-3.5 h-3.5 mr-1" />
-                {sendingMsg ? 'Sending...' : 'Send Inquiry'}
+                {sendingMsg ? 'Saving inquiry…' : 'Save inquiry'}
               </Button>
             </div>
           </form>

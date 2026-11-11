@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { BossNarraAvatar, ChatComposer, ChatThread, useBossNarraChat } from './BossNarraChat';
@@ -7,6 +7,11 @@ import { BossNarraAvatar, ChatComposer, ChatThread, useBossNarraChat } from './B
 export const BossNarraWidget: React.FC<{ hidden?: boolean }> = ({ hidden }) => {
   const { t } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
+  const launcherRef = useRef<HTMLButtonElement>(null);
+  const close = () => {
+    setIsOpen(false);
+    requestAnimationFrame(() => launcherRef.current?.focus());
+  };
   const { messages, loading, send } = useBossNarraChat();
 
   useEffect(() => {
@@ -17,7 +22,7 @@ export const BossNarraWidget: React.FC<{ hidden?: boolean }> = ({ hidden }) => {
 
   useEffect(() => {
     if (!isOpen) return;
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setIsOpen(false);
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') close(); };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [isOpen]);
@@ -28,10 +33,13 @@ export const BossNarraWidget: React.FC<{ hidden?: boolean }> = ({ hidden }) => {
     <div className="fixed right-4 bottom-6 md:right-6 md:bottom-6 z-50">
       {!isOpen ? (
         <button
+          ref={launcherRef}
           type="button"
           onClick={() => setIsOpen(true)}
           className="flex items-center justify-center gap-2.5 w-12 h-12 sm:w-auto sm:pl-2 sm:pr-5 rounded-full bg-brand text-white font-semibold text-sm shadow-[0_10px_30px_-10px_rgb(74_29_143/0.7)] hover:bg-brand-deep transition-all hover:scale-105 active:scale-95"
           aria-label={t('chatbot.label')}
+          aria-expanded={false}
+          aria-controls="boss-narra-quick-chat"
         >
           <span className="w-8 h-8 sm:w-7 sm:h-7 rounded-full bg-white flex items-center justify-center p-0.5 shrink-0 shadow-xs ring-1 ring-white/20">
             <img
@@ -44,6 +52,7 @@ export const BossNarraWidget: React.FC<{ hidden?: boolean }> = ({ hidden }) => {
         </button>
       ) : (
         <section
+          id="boss-narra-quick-chat"
           aria-label="Boss Narra"
           className="pop-in w-[calc(100vw-2rem)] sm:w-[400px] h-[min(560px,calc(100vh-7rem))] bg-surface rounded-2xl border border-line shadow-[0_24px_60px_-20px_rgb(36_23_43/0.45)] flex flex-col overflow-hidden origin-bottom-right"
         >
@@ -57,7 +66,7 @@ export const BossNarraWidget: React.FC<{ hidden?: boolean }> = ({ hidden }) => {
             </div>
             <button
               type="button"
-              onClick={() => setIsOpen(false)}
+              onClick={close}
               className="p-1.5 rounded-lg text-muted hover:text-ink hover:bg-sunken"
               aria-label={t('chatbot.close')}
             >

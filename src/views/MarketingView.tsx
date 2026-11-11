@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { apiFetch } from '../services/apiClient';
+import { useUnsavedChanges } from '../utils/useUnsavedChanges';
 import { Button, Field, Notice, PageHeader, Panel, PanelHeader, cx, inputClass, textareaClass } from '../components/ui';
-import { Share2, Copy, Check, Sparkles, Tag, FileSpreadsheet, RefreshCw, MessageSquare } from 'lucide-react';
+import { Copy, Check, Sparkles, Tag, FileSpreadsheet } from 'lucide-react';
 
 const FacebookIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -15,23 +16,37 @@ export const MarketingView: React.FC = () => {
   const { user, isDemo } = useAuth();
   const { language } = useLanguage();
 
-  const [toolType, setToolType] = useState<'facebook_post' | 'promo_text' | 'price_list'>('facebook_post');
-  const [businessName, setBusinessName] = useState(user?.business || 'Matutum Highlands Coffee');
-  const [productOrOffer, setProductOrOffer] = useState(isDemo ? 'Freshly Roasted Mt. Matutum Arabica & Robusta Coffee Beans' : '');
-  const [targetAudience, setTargetAudience] = useState(isDemo ? 'Coffee lovers, local cafe owners, and families in South Cotabato' : '');
-  const [tone, setTone] = useState<'friendly' | 'professional' | 'festive' | 'urgent'>('friendly');
-  const [contentLanguage, setContentLanguage] = useState<'fil' | 'en' | 'ceb' | 'hil'>(language);
-  const [keyDetails, setKeyDetails] = useState(isDemo ? '250g whole beans at ₱280, free delivery within Koronadal for orders above ₱500.' : '');
-
+  type ToolType = 'facebook_post' | 'promo_text' | 'price_list';
+  type Draft = { toolType: ToolType; businessName: string; productOrOffer: string; targetAudience: string; tone: 'friendly' | 'professional' | 'festive' | 'urgent'; contentLanguage: 'fil' | 'en' | 'ceb' | 'hil'; keyDetails: string; outputs: Record<ToolType, string>; edited: Partial<Record<ToolType, boolean>> };
+  const storageKey = `enterseed_marketing_draft:${isDemo ? 'demo' : 'account'}:${user?.email || 'guest'}`;
+  const [draft, setDraft] = useState<Draft>(() => {
+    const initial: Draft = { toolType: 'facebook_post', businessName: user?.business || '', productOrOffer: isDemo ? 'Freshly roasted coffee beans' : '', targetAudience: isDemo ? 'Coffee lovers in South Cotabato' : '', tone: 'friendly', contentLanguage: language, keyDetails: isDemo ? '250g for ₱280. Pickup in Koronadal.' : '', outputs: { facebook_post: '', promo_text: '', price_list: '' }, edited: {} };
+    try {
+      const saved = JSON.parse(localStorage.getItem(storageKey) || 'null');
+      if (saved && ['facebook_post', 'promo_text', 'price_list'].includes(saved.toolType) && ['businessName', 'productOrOffer', 'targetAudience', 'keyDetails'].every(key => typeof saved[key] === 'string') && ['friendly', 'professional', 'festive', 'urgent'].includes(saved.tone) && ['fil', 'en', 'ceb', 'hil'].includes(saved.contentLanguage) && ['facebook_post', 'promo_text', 'price_list'].every(key => typeof saved.outputs?.[key] === 'string')) return { ...initial, ...saved, edited: saved.edited || {} };
+    } catch { /* A new draft is available when browser storage cannot be read. */ }
+    return initial;
+  });
+  const { toolType, businessName, productOrOffer, targetAudience, tone, contentLanguage, keyDetails } = draft;
+  const generatedText = draft.outputs[toolType];
+  const setField = <K extends keyof Draft>(key: K, value: Draft[K]) => setDraft(previous => ({ ...previous, [key]: value }));
+  const setToolType = (value: ToolType) => { setField('toolType', value); setErrorNotice(null); setGenerated(false); };
   const [generating, setGenerating] = useState(false);
-  const [generatedText, setGeneratedText] = useState(isDemo ? (
-    `☕ Magandang araw mga suki at kapwa taga-South Cotabato!\n\nIpinagmamalaki ng Matutum Highlands Coffee ang aming: Freshly Roasted Mt. Matutum Arabica & Robusta Coffee Beans!\n\n✨ Bakit mo magugustuhan ito:\n• Sariwa at de-kalidad mula sa lokal na produksyon sa paanan ng Mt. Matutum\n• Abot-kayang presyo para sa inyong pamilya at negosyo (₱280 per 250g bag)\n• May libreng delivery sa Koronadal para sa orders mula ₱500 pataas\n\n📩 Mag-iwan ng mensahe (PM) o mag-comment sa ibaba para magpa-reserve o mag-order ngayon!\n\n#SouthCotabatoMSME #SupportLocal #MatutumHighlandsCoffee #GawangLokal`
-  ) : '');
   const [copied, setCopied] = useState(false);
   const [errorNotice, setErrorNotice] = useState<string | null>(null);
+  const [storageError, setStorageError] = useState(false);
+  const [generated, setGenerated] = useState(false);
+  useEffect(() => {
+    try { localStorage.setItem(storageKey, JSON.stringify(draft)); setStorageError(false); }
+    catch { setStorageError(true); }
+  }, [draft, storageKey]);
+  useEffect(() => { setCopied(false); }, [generatedText, toolType]);
+  useUnsavedChanges(generating || (storageError && Boolean(generatedText.trim() || productOrOffer.trim())));
 
   const handleGenerate = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
+    if (generating) return;
+    if (draft.edited[toolType] && !window.confirm('Replace your edited draft? Copy any text you want to keep before continuing.')) return;
     setGenerating(true);
     setErrorNotice(null);
 
@@ -52,9 +67,14 @@ export const MarketingView: React.FC = () => {
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Could not generate marketing content.');
-      if (data.copy) {
-        setGeneratedText(data.copy);
-      }
+      if (typeof data.copy !== 'string' || !data.copy.trim()) throw new Error('No draft was returned. Your previous text is still here. Please try again.');
+      setDraft(previous => ({ ...previous, outputs: { ...previous.outputs, [toolType]: data.copy }, edited: { ...previous.edited, [toolType]: false } }));
+      setGenerated(true);
+      requestAnimationFrame(() => {
+        const preview = document.getElementById('marketing-preview');
+        preview?.focus({ preventScroll: true });
+        preview?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'start' });
+      });
     } catch (err: any) {
       setErrorNotice(err.message || 'Generation error. Please check your inputs and retry.');
     } finally {
@@ -64,6 +84,7 @@ export const MarketingView: React.FC = () => {
 
   const handleCopy = async () => {
     try {
+      setErrorNotice(null);
       await navigator.clipboard.writeText(generatedText);
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
@@ -75,71 +96,51 @@ export const MarketingView: React.FC = () => {
   return (
     <div className="space-y-6 sm:space-y-8">
       <PageHeader
-        eyebrow="Make your next impression count"
-        title="Good words. Better connections."
-        lead="Generate customer-ready Facebook captions, promotional blasts, and price lists in Filipino, English, or Bisaya tailored for your local audience."
+        title="Marketing drafts"
+        lead="Choose a format, add your offer, and create text you can edit and copy. Nothing is posted automatically."
       />
 
       {errorNotice && <Notice tone="error">{errorNotice}</Notice>}
 
-      {/* Mode Switcher */}
-      <div className="flex flex-wrap gap-2 border-b border-line pb-4">
-        <Button
-          variant={toolType === 'facebook_post' ? 'primary' : 'secondary'}
-          size="md"
-          onClick={() => setToolType('facebook_post')}
-        >
-          <FacebookIcon className="w-4 h-4 mr-1.5" />
-          Facebook Post & Caption
-        </Button>
-        <Button
-          variant={toolType === 'promo_text' ? 'primary' : 'secondary'}
-          size="md"
-          onClick={() => setToolType('promo_text')}
-        >
-          <Tag className="w-4 h-4 mr-1.5" />
-          Promotional Text Blast
-        </Button>
-        <Button
-          variant={toolType === 'price_list' ? 'primary' : 'secondary'}
-          size="md"
-          onClick={() => setToolType('price_list')}
-        >
-          <FileSpreadsheet className="w-4 h-4 mr-1.5" />
-          Catalog / Price List
-        </Button>
+      <div role="group" aria-label="Marketing format" className="grid sm:grid-cols-3 gap-3">
+        {([
+          { value: 'facebook_post', title: 'Facebook post', detail: 'A caption for your business page.', icon: FacebookIcon },
+          { value: 'promo_text', title: 'Promotional message', detail: 'A short offer for SMS or Messenger.', icon: Tag },
+          { value: 'price_list', title: 'Price list', detail: 'An easy-to-read list of products and prices.', icon: FileSpreadsheet }
+        ] as const).map(({ value, title, detail, icon: Icon }) => <button type="button" key={value} disabled={generating} aria-pressed={toolType === value} onClick={() => setToolType(value)} className={cx('flex items-start gap-3 p-4 text-left rounded-xl border transition-colors', toolType === value ? 'bg-brand-soft border-brand' : 'bg-surface border-line hover:bg-sunken')}><Icon className="w-5 h-5 text-brand shrink-0 mt-0.5" /><span><span className="block text-sm font-semibold">{title}</span><span className="block text-xs text-muted mt-1">{detail}</span></span></button>)}
       </div>
-
+      {storageError ? <Notice tone="error">This browser could not save your draft. Copy your text before leaving this page.</Notice> : <p className="text-xs text-muted" role="status">Your inputs and each format’s draft are saved automatically in this browser.</p>}
+      {generated && <Notice tone="success">Draft created. Review the text, then select Copy text when you’re ready to use it.</Notice>}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Form Inputs */}
         <div className="lg:col-span-5 bg-surface border border-line rounded-2xl p-5 sm:p-6 space-y-4 shadow-xs">
           <div className="flex items-center justify-between pb-2 border-b border-line">
-            <h2 className="font-bold text-ink text-base">Content Generator Details</h2>
-            <span className="text-xs text-muted">Plain Language</span>
+            <h2 className="font-bold text-ink text-base">Your offer</h2>
+            <span className="text-xs text-muted">All formats use these details</span>
           </div>
 
-          <form onSubmit={handleGenerate} className="space-y-4">
-            <Field label="Business Name">
+          <form onSubmit={handleGenerate}><fieldset disabled={generating} className="space-y-4">
+            <Field label="Business name">
               {(id) => (
                 <input
                   id={id}
                   type="text"
                   required
                   value={businessName}
-                  onChange={(e) => setBusinessName(e.target.value)}
+                  onChange={(e) => setField('businessName', e.target.value)}
                   className={inputClass}
                 />
               )}
             </Field>
 
-            <Field label="Product or Main Offer">
+            <Field label="Product or offer">
               {(id) => (
                 <input
                   id={id}
                   type="text"
                   required
                   value={productOrOffer}
-                  onChange={(e) => setProductOrOffer(e.target.value)}
+                  onChange={(e) => setField('productOrOffer', e.target.value)}
                   placeholder="e.g. Arabica Dark Roast or Buko Pie 3-Pack"
                   className={inputClass}
                 />
@@ -152,7 +153,7 @@ export const MarketingView: React.FC = () => {
                   <select
                     id={id}
                     value={contentLanguage}
-                    onChange={(e) => setContentLanguage(e.target.value as any)}
+                    onChange={(e) => setField('contentLanguage', e.target.value as Draft['contentLanguage'])}
                     className={inputClass}
                   >
                     <option value="fil">Filipino (Tagalog)</option>
@@ -168,7 +169,7 @@ export const MarketingView: React.FC = () => {
                   <select
                     id={id}
                     value={tone}
-                    onChange={(e) => setTone(e.target.value as any)}
+                    onChange={(e) => setField('tone', e.target.value as Draft['tone'])}
                     className={inputClass}
                   >
                     <option value="friendly">Friendly & Warm</option>
@@ -180,26 +181,26 @@ export const MarketingView: React.FC = () => {
               </Field>
             </div>
 
-            <Field label="Target Audience / Municipality">
+            <Field label="Customers or location">
               {(id) => (
                 <input
                   id={id}
                   type="text"
                   value={targetAudience}
-                  onChange={(e) => setTargetAudience(e.target.value)}
+                  onChange={(e) => setField('targetAudience', e.target.value)}
                   placeholder="e.g. Koronadal coffee drinkers"
                   className={inputClass}
                 />
               )}
             </Field>
 
-            <Field label="Key Details (Prices, Promos, Pickup Locations)" hint="Add prices, delivery corridors, or special perks.">
+            <Field label="Prices, pickup, and delivery" hint="Include only details you want in the draft.">
               {(id) => (
                 <textarea
                   id={id}
                   rows={3}
                   value={keyDetails}
-                  onChange={(e) => setKeyDetails(e.target.value)}
+                  onChange={(e) => setField('keyDetails', e.target.value)}
                   placeholder="e.g. ₱280 per pack, GCash accepted, pick-up along GenSan Drive."
                   className={textareaClass}
                 />
@@ -208,28 +209,28 @@ export const MarketingView: React.FC = () => {
 
             <Button type="submit" variant="primary" disabled={generating} className="w-full">
               <Sparkles className="w-4 h-4 mr-1.5" />
-              {generating ? 'Drafting Content…' : 'Generate Marketing Draft'}
+              {generating ? 'Creating draft…' : 'Create draft'}
             </Button>
-          </form>
+          </fieldset></form>
         </div>
 
         {/* Live Preview & Editable Editor */}
-        <div className="lg:col-span-7 space-y-4">
+        <div id="marketing-preview" role="region" aria-label="Marketing draft preview" tabIndex={-1} className="lg:col-span-7 space-y-4 scroll-mt-24 outline-none">
           <Panel>
             <PanelHeader
-              title="Your draft, your voice"
+              title="Review your draft"
               description="Review and tweak the draft below. Click Copy to paste directly into Facebook or Messenger."
               action={
                 <Button variant="secondary" size="sm" onClick={handleCopy} disabled={!generatedText.trim()}>
                   {copied ? (
                     <>
                       <Check className="w-4 h-4 text-good mr-1" />
-                      Copied!
+                      Text copied
                     </>
                   ) : (
                     <>
                       <Copy className="w-4 h-4 mr-1" />
-                      Copy Text
+                      Copy text
                     </>
                   )}
                 </Button>
@@ -239,47 +240,25 @@ export const MarketingView: React.FC = () => {
             <div className="space-y-4 pt-2">
               <textarea
                 aria-label="Your editable marketing draft"
+                placeholder="Your draft will appear here. Add your offer and select Create draft."
+                disabled={generating}
                 rows={11}
                 value={generatedText}
-                onChange={(e) => setGeneratedText(e.target.value)}
+                onChange={(e) => setDraft(previous => ({ ...previous, outputs: { ...previous.outputs, [toolType]: e.target.value }, edited: { ...previous.edited, [toolType]: true } }))}
                 className={cx(
                   textareaClass,
                   'font-sans text-sm sm:text-base leading-relaxed bg-surface border-line-strong p-4 focus:ring-2 focus:ring-brand'
                 )}
               />
 
-              <div className="flex flex-wrap items-center justify-between text-xs text-muted">
+              <div className="flex flex-wrap gap-2 items-center justify-between text-xs text-muted">
                 <span>{generatedText.length} characters · {generatedText.split(/\s+/).filter(Boolean).length} words</span>
                 <span className="text-brand font-medium">Review your draft before sharing</span>
               </div>
             </div>
           </Panel>
 
-          {/* Social Post Simulation Card */}
-          <div className="bg-surface rounded-2xl border border-line p-4 sm:p-5 shadow-xs space-y-3">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-brand text-white font-bold flex items-center justify-center text-sm">
-                {businessName[0] || 'M'}
-              </div>
-              <div>
-                <p className="font-bold text-ink text-sm leading-tight">{businessName}</p>
-                <p className="text-[11px] text-muted">Just now · Koronadal City · 🌍</p>
-              </div>
-            </div>
 
-            <div className="bg-sunken/40 rounded-xl p-3 border border-line/60">
-              <p className="text-xs sm:text-sm text-slate-800 whitespace-pre-line leading-relaxed">
-                {generatedText.slice(0, 320)}
-                {generatedText.length > 320 ? '… [See More]' : ''}
-              </p>
-            </div>
-
-            <div className="pt-2 border-t border-line flex items-center justify-around text-xs font-semibold text-muted">
-              <span>👍 Like</span>
-              <span>💬 Comment</span>
-              <span>↗️ Share</span>
-            </div>
-          </div>
         </div>
       </div>
     </div>

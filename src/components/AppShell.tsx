@@ -133,6 +133,17 @@ export const AppShell: React.FC<AppShellProps> = ({ activePage, setActivePage, c
 
   const isStaff = user?.role === 'admin' || user?.role === 'staff';
   const staff: NavItem = { id: 'admin', label: t('appShell.staff'), icon: ShieldCheck };
+  const searchTerms: Partial<Record<ActivePage, string>> = {
+    finance: 'cash sales expenses ledger debt loans tax equipment roi reports money',
+    marketing: 'facebook post promotion message price list catalog customers',
+    suppliers: 'packaging materials vendors partners directory',
+    documents: 'business plan feasibility proposal pdf library drafts',
+    efiling: 'permits bir dti registration requirements filing',
+    settings: 'dark light theme appearance language preferences',
+    privacy: 'export delete account data',
+    'boss-nana': 'help assistant advice chat questions'
+  };
+  const searchResults = [...workspace, ...resources, ...(isStaff ? [staff] : [])].filter(item => `${item.label} ${searchTerms[item.id] || ''}`.toLowerCase().includes(searchQuery.trim().toLowerCase()));
 
   const initial = (user?.firstName || user?.email || '?')[0].toUpperCase();
 
@@ -359,8 +370,8 @@ export const AppShell: React.FC<AppShellProps> = ({ activePage, setActivePage, c
       <Modal open={searchOpen} onClose={() => setSearchOpen(false)} title="Where would you like to go?" description="Find a tool or your next step for your business.">
         <input type="search" aria-label="Find a workspace tool" placeholder="Try finance, suppliers, or documents…" value={searchQuery} onChange={event => setSearchQuery(event.target.value)} className={inputClass} />
         <div className="mt-3 space-y-1 max-h-[45vh] overflow-auto">
-          {[...workspace, ...resources, ...(isStaff ? [staff] : [])].filter(item => item.label.toLowerCase().includes(searchQuery.trim().toLowerCase())).map(item => <button type="button" key={item.id} onClick={() => { setActivePage(item.id); setSearchOpen(false); }} className="flex items-center gap-3 w-full p-3 rounded-xl text-left text-sm hover:bg-brand-soft"><item.icon className="w-4 h-4 text-brand" /><span className="flex-1">{item.label}</span><ChevronRight className="w-4 h-4 text-muted" /></button>)}
-          {![...workspace, ...resources].some(item => item.label.toLowerCase().includes(searchQuery.trim().toLowerCase())) && <p className="text-sm text-muted text-center py-6">No tools found. Try a different search.</p>}
+          {searchResults.map(item => <button type="button" key={item.id} onClick={() => { setActivePage(item.id); setSearchOpen(false); }} className="flex items-center gap-3 w-full p-3 rounded-xl text-left text-sm hover:bg-brand-soft"><item.icon className="w-4 h-4 text-brand" /><span className="flex-1">{item.label}</span><ChevronRight className="w-4 h-4 text-muted" /></button>)}
+          {searchResults.length === 0 && <p className="text-sm text-muted text-center py-6">No tools found. Try cash, permits, or business plan.</p>}
         </div>
       </Modal>
 

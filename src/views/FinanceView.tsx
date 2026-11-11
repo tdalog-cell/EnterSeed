@@ -410,7 +410,14 @@ export const FinanceView: React.FC = () => {
             { id: 'investment', title: 'Equipment ROI', description: 'Compare equipment costs and expected returns.', icon: TrendingUp },
             { id: 'reports', title: 'Financial Summaries', description: 'Review your results and download reports.', icon: FileBarChart }
           ] as const).map(({ id, title, description, icon: Icon }) => <button type="button" key={id}
-            aria-pressed={activeTab === id} aria-controls="finance-tool-content" onClick={() => setActiveTab(id)}
+            aria-pressed={activeTab === id} aria-controls="finance-tool-content" onClick={() => {
+              setActiveTab(id);
+              requestAnimationFrame(() => {
+                const content = document.getElementById('finance-tool-content');
+                content?.focus({ preventScroll: true });
+                content?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'start' });
+              });
+            }}
             className={cx('finance-tool-row w-full grid grid-cols-[minmax(0,1fr)_auto] sm:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_100px] items-center gap-x-4 gap-y-1 px-4 sm:px-5 py-4 sm:py-5 text-left transition-colors', activeTab === id ? 'bg-brand-soft' : 'hover:bg-sunken')}>
             <span className="flex items-center gap-3"><span className={cx('w-10 h-10 rounded-lg flex items-center justify-center shrink-0', activeTab === id ? 'finance-tool-icon bg-brand text-white' : 'bg-sunken text-brand')}><Icon className="w-5 h-5" /></span><span className="font-semibold text-sm sm:text-base">{title}</span></span>
             <span className="text-xs sm:text-sm text-muted col-start-1 sm:col-start-auto pl-[52px] sm:pl-0">{description}</span>
@@ -418,7 +425,8 @@ export const FinanceView: React.FC = () => {
           </button>)}
         </div>
       </section>
-      <div id="finance-tool-content" className="scroll-mt-24">
+      <div id="finance-tool-content" role="region" aria-label="Selected finance tool" tabIndex={-1} className="scroll-mt-24 outline-none">
+        <h2 className="text-xl font-semibold mb-4">{{ cash: 'Cash Management', debt: 'Debt Management', tax: 'Tax Checklist', investment: 'Equipment ROI', reports: 'Financial Summaries' }[activeTab]}</h2>
       {/* --- SUB-SECTION 1: CASH MANAGEMENT --- */}
       {activeTab === 'cash' && (
         <div className="space-y-6 view-enter">

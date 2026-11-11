@@ -192,6 +192,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const res = await apiFetch('/api/user/export-data', { headers });
       if (!res.ok) { const data = await res.json(); throw new Error(data.error || 'Could not export your data.'); }
       const data = await res.json();
+      try {
+        const localDraft = localStorage.getItem(`enterseed_marketing_draft:${isDemo ? 'demo' : 'account'}:${user?.email || 'guest'}`);
+        if (localDraft) data.marketingDraft = JSON.parse(localDraft);
+      } catch { /* Export the server data even when local storage is unavailable. */ }
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -212,6 +216,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (token) headers['Authorization'] = `Bearer ${token}`;
       const res = await apiFetch('/api/user/delete-data', { method: 'DELETE', headers });
       if (!res.ok) return false;
+      localStorage.removeItem(`enterseed_marketing_draft:${isDemo ? 'demo' : 'account'}:${user?.email || 'guest'}`);
       endDemoSession();
       localStorage.removeItem('enterseed_token');
       sessionStorage.removeItem('enterseed_token');

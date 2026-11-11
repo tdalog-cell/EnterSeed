@@ -109,7 +109,8 @@ export const DocumentsView: React.FC = () => {
   const [savedDocs, setSavedDocs] = useState<GeneratedDocument[]>([]);
   const [loadingSaved, setLoadingSaved] = useState(false);
   const [libraryError, setLibraryError] = useState('');
-  useUnsavedChanges(Boolean(currentDoc && (editableHtml !== currentDoc.contentHtml || !savedDocs.some(doc => doc.id === currentDoc.id))));
+  const hasUnsavedDocument = Boolean(currentDoc && (editableHtml !== currentDoc.contentHtml || !savedDocs.some(doc => doc.id === currentDoc.id)));
+  useUnsavedChanges(hasUnsavedDocument);
 
   useEffect(() => {
     loadSavedDocuments();
@@ -146,6 +147,7 @@ export const DocumentsView: React.FC = () => {
 
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (generating || savingToLib) return;
 
     const errors: Record<string, string> = {};
     if (!businessName || businessName.trim().length < 2) {
@@ -173,6 +175,7 @@ export const DocumentsView: React.FC = () => {
       return;
     }
 
+    if (hasUnsavedDocument && !window.confirm('Replace your unsaved document? Save it to your library before creating another draft.')) return;
     setFieldErrors({});
     setGenerating(true);
     setNotice(null);
@@ -204,9 +207,12 @@ export const DocumentsView: React.FC = () => {
   };
 
   const handleSaveToLibrary = async (doc: GeneratedDocument) => {
+    if (savingToLib || generating) return;
     try {
       setSavingToLib(true);
-      const updatedDoc = { ...doc, contentHtml: sanitizeDocumentHtml(editableHtml || doc.contentHtml) };
+      const contentHtml = sanitizeDocumentHtml(editableHtml);
+      if (!contentHtml.trim()) throw new Error('Your document is empty. Add text before saving.');
+      const updatedDoc = { ...doc, contentHtml };
       const savedDoc = await saveDocumentToLibrary(updatedDoc);
       setCurrentDoc(savedDoc);
       setEditableHtml(savedDoc.contentHtml);
@@ -222,13 +228,20 @@ export const DocumentsView: React.FC = () => {
     }
   };
 
-  const handleDownloadPdf = (doc: GeneratedDocument) => {
-    const updatedDoc = { ...doc, contentHtml: sanitizeDocumentHtml(editableHtml || doc.contentHtml) };
-    exportDocumentAsPdf(updatedDoc);
+  const handleDownloadPdf = async (doc: GeneratedDocument, useEditor = false) => {
+    try {
+      const contentHtml = sanitizeDocumentHtml(useEditor ? editableHtml : doc.contentHtml);
+      if (!contentHtml.trim()) throw new Error('Your document is empty. Add text before downloading.');
+      await exportDocumentAsPdf({ ...doc, contentHtml });
+      setNotice({ tone: 'success', text: `Downloaded "${doc.title}" as a PDF.` });
+    } catch (error) {
+      setNotice({ tone: 'error', text: error instanceof Error ? error.message : 'PDF download failed. Please try again.' });
+    }
   };
 
-  const handlePrint = (doc: GeneratedDocument) => {
-    const content = sanitizeDocumentHtml(editableHtml || doc.contentHtml);
+  const handlePrint = (doc: GeneratedDocument, useEditor = false) => {
+    const content = sanitizeDocumentHtml(useEditor ? editableHtml : doc.contentHtml);
+    if (!content.trim()) { setNotice({ tone: 'error', text: 'Your document is empty. Add text before printing.' }); return; }
     const w = window.open('', '_blank');
     if (!w) { setNotice({ tone: 'error', text: 'Allow pop-ups for this site to open the print preview.' }); return; }
     w.opener = null;
@@ -284,7 +297,7 @@ export const DocumentsView: React.FC = () => {
               description="Enter your business details to draft a structured proposal. You can edit the text before exporting."
             />
 
-            <form onSubmit={handleGenerate} className="space-y-4">
+            <form onSubmit={handleGenerate}><fieldset disabled={generating || savingToLib} className="space-y-4">
               <div>
                 <p className="text-[13px] font-semibold text-ink mb-1.5">Document Type</p>
                 <Segmented
@@ -442,9 +455,9 @@ export const DocumentsView: React.FC = () => {
 
               <Button type="submit" variant="primary" size="lg" className="w-full mt-4" disabled={generating}>
                 <Sparkles className="w-4 h-4 mr-1.5" />
-                {generating ? 'Drafting Document...' : 'Generate Formatted Document'}
+                {generating ? 'Drafting Document...' : 'Create document draft'}
               </Button>
-            </form>
+            </fieldset></form>
           </Panel>
 
           {/* Document Live Preview, Editable Mode & Export */}
@@ -477,6 +490,7 @@ export const DocumentsView: React.FC = () => {
                           <Button
                             variant="secondary"
                             size="sm"
+                            disabled={savingToLib || generating}
                             onClick={() => setIsEditing(!isEditing)}
                             className={cx(isEditing && 'bg-brand text-white hover:bg-brand-dark')}
                           >
@@ -495,11 +509,11 @@ export const DocumentsView: React.FC = () => {
                               {savingToLib ? 'Saving...' : 'Save to Library'}
                             </Button>
                           )}
-                          <Button variant="secondary" size="sm" className="shrink-0" onClick={() => handlePrint(currentDoc)}>
+                          <Button variant="secondary" size="sm" className="shrink-0" onClick={() => handlePrint(currentDoc, true)}>
                             <Printer className="w-4 h-4 mr-1.5" />
                             Print
                           </Button>
-                          <Button variant="secondary" size="sm" className="shrink-0" onClick={() => handleDownloadPdf(currentDoc)}>
+                          <Button variant="secondary" size="sm" className="shrink-0" onClick={() => handleDownloadPdf(currentDoc, true)}>
                             <Download className="w-4 h-4 mr-1.5" />
                             PDF
                           </Button>
@@ -519,6 +533,7 @@ export const DocumentsView: React.FC = () => {
                         <div className="space-y-2">
                           <label className="block text-xs font-semibold text-ink">Edit Document HTML / Content:</label>
                           <textarea
+                            disabled={savingToLib || generating}
                             aria-label="Edit document content"
                             value={editableHtml}
                             onChange={(e) => setEditableHtml(e.target.value)}
@@ -532,7 +547,7 @@ export const DocumentsView: React.FC = () => {
                       ) : (
                         <div
                           className="document-prose max-w-none bg-surface border border-line rounded-xl p-4 sm:p-6 overflow-x-auto max-h-[640px] overflow-y-auto"
-                          dangerouslySetInnerHTML={{ __html: sanitizeDocumentHtml(editableHtml || currentDoc.contentHtml) }}
+                          dangerouslySetInnerHTML={{ __html: sanitizeDocumentHtml(editableHtml) }}
                         />
                       )}
                     </div>
@@ -550,7 +565,7 @@ export const DocumentsView: React.FC = () => {
                     </h3>
                   </div>
                   <p className="text-xs text-purple-800 leading-relaxed mb-4">
-                    When you click "Generate Formatted Document", Enterseed will produce an editable draft incorporating the following sections:
+                    When you click "Create document draft", Enterseed will produce an editable draft incorporating the following sections:
                   </p>
                   <div className="space-y-3">
                     {SAMPLE_OUTLINES[docType].sections.map((sec, idx) => (
@@ -616,14 +631,17 @@ export const DocumentsView: React.FC = () => {
                       size="sm"
                       className="shrink-0"
                       onClick={() => {
+                        if (currentDoc?.id !== doc.id && hasUnsavedDocument && !window.confirm('Open this document and discard your unsaved changes? Save the current document first if you want to keep it.')) return;
+                        if (currentDoc?.id !== doc.id) {
                         setCurrentDoc(doc);
                         setEditableHtml(doc.contentHtml);
+                        }
                         setIsEditing(false);
                         setActiveTab('create');
                       }}
                     >
                       <Eye className="w-4 h-4 mr-1.5" />
-                      View / Edit
+                      Open document
                     </Button>
                     <Button variant="secondary" size="sm" className="shrink-0" onClick={() => handlePrint(doc)}>
                       <Printer className="w-4 h-4 mr-1.5" />
@@ -631,7 +649,7 @@ export const DocumentsView: React.FC = () => {
                     </Button>
                     <Button variant="primary" size="sm" className="shrink-0" onClick={() => handleDownloadPdf(doc)}>
                       <Download className="w-4 h-4 mr-1.5" />
-                      Export .PDF
+                      Download PDF
                     </Button>
                   </div>
                 </div>
