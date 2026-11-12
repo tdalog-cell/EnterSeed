@@ -407,7 +407,7 @@ const ticketUpdateSchema = z.object({
 const subsidyCheckSchema = z.object({
   businessSector: z.string().trim().min(2).max(100),
   annualSales: z.number().int().min(0).max(1_000_000_000),
-  employeeCount: z.number().int().min(1).max(500),
+  employeeCount: z.number().int().min(0).max(500),
   yearsOperating: z.number().min(0).max(100),
   municipality: z.string().trim().min(2).max(80),
   needsMachinery: z.boolean().default(false),
@@ -1212,8 +1212,8 @@ app.post('/api/auth/logout', requireAuthentication, (req: any, res) => {
 const moneySchema = z.number().finite().min(0).max(1_000_000_000);
 const registrationDraftSchema = z.object({ draft: z.record(z.string().max(60), z.union([z.string().max(10000), moneySchema])).refine(value => Object.keys(value).length <= 40 && typeof value.businessName === 'string', 'A business preparation draft is required.') });
 app.get('/api/registration/draft', requireAuthentication, (req: any, res) => {
-  const row = database.prepare('SELECT draft_json FROM registration_drafts WHERE user_id = ?').get(req.account.id) as any;
-  res.json({ draft: row ? JSON.parse(row.draft_json) : null });
+  const row = database.prepare('SELECT draft_json, updated_at FROM registration_drafts WHERE user_id = ?').get(req.account.id) as any;
+  res.json({ draft: row ? JSON.parse(row.draft_json) : null, updatedAt: row?.updated_at || null });
 });
 app.put('/api/registration/draft', requireAuthentication, (req: any, res) => {
   const data = parseBody(registrationDraftSchema, req, res);

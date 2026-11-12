@@ -205,8 +205,8 @@ function handleDemoRequest(endpoint: string, options: RequestInit): Response {
     return demoResponse(200, { success: true });
   }
   if (endpoint === '/api/registration/draft') {
-    if (method === 'GET') return demoResponse(200, { draft: demoRead('registration_draft', null) });
-    if (method === 'PUT') { demoWrite('registration_draft', body.draft); return demoResponse(200, { saved: true, draft: body.draft }); }
+    if (method === 'GET') return demoResponse(200, { draft: demoRead('registration_draft', null), updatedAt: demoRead('registration_draft_updated', null) });
+    if (method === 'PUT') { demoWrite('registration_draft', body.draft); demoWrite('registration_draft_updated', new Date().toISOString()); return demoResponse(200, { saved: true, draft: body.draft }); }
   }
   if (endpoint === '/api/finance/assessment' || endpoint === '/api/finance/workspace') {
     const workspace = endpoint.endsWith('/workspace');
@@ -352,8 +352,8 @@ export async function runSubsidyCheck(input: SubsidyInput): Promise<SubsidyMatch
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(input)
   });
-  if (!res.ok) throw new Error('Failed to evaluate subsidies.');
   const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'The program search could not finish. Check your inputs and try again.');
   return data.matches || [];
 }
 
@@ -363,8 +363,8 @@ export async function runCreditMatch(input: CreditInput): Promise<CreditMatch[]>
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(input)
   });
-  if (!res.ok) throw new Error('Failed to match credit facilities.');
   const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'The credit search could not finish. Check your inputs and try again.');
   return data.matches || [];
 }
 

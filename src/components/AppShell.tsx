@@ -58,6 +58,7 @@ export const AppShell: React.FC<AppShellProps> = ({ activePage, setActivePage, c
   const { user, logout, isDemo } = useAuth();
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchIndex, setSearchIndex] = useState(0);
   const [profileOpen, setProfileOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const drawerRef = useRef<HTMLElement>(null);
@@ -120,7 +121,7 @@ export const AppShell: React.FC<AppShellProps> = ({ activePage, setActivePage, c
     { id: 'marketing', label: 'Marketing', icon: Megaphone },
     { id: 'suppliers', label: 'Supplier Network', icon: Store },
     { id: 'efiling', label: 'Registration Assistant', icon: FileCheck2 },
-    { id: 'documents', label: 'AI Document Studio', icon: FileText },
+    { id: 'documents', label: 'Document studio', icon: FileText },
     { id: 'boss-nana', label: 'Boss Narra AI', icon: MessageCircle }
   ];
 
@@ -146,6 +147,10 @@ export const AppShell: React.FC<AppShellProps> = ({ activePage, setActivePage, c
   const searchResults = [...workspace, ...resources, ...(isStaff ? [staff] : [])].filter(item => `${item.label} ${searchTerms[item.id] || ''}`.toLowerCase().includes(searchQuery.trim().toLowerCase()));
 
   const initial = (user?.firstName || user?.email || '?')[0].toUpperCase();
+  useEffect(() => { setSearchIndex(0); }, [searchQuery, searchOpen]);
+  useEffect(() => {
+    if (searchOpen) document.getElementById(`workspace-result-${searchIndex}`)?.scrollIntoView({ block: 'nearest' });
+  }, [searchIndex, searchOpen]);
 
   const handleLogout = async () => {
     setProfileOpen(false);
@@ -178,18 +183,18 @@ export const AppShell: React.FC<AppShellProps> = ({ activePage, setActivePage, c
 
   return (
     <div className="min-h-screen bg-canvas md:flex">
-      <a href="#workspace-content" className="skip-link">Skip to content</a>
+      <a href="#workspace-content" onClick={event => { event.preventDefault(); document.getElementById('workspace-content')?.focus(); }} className="skip-link">Skip to content</a>
       <OnboardingModal />
 
       {/* Desktop sidebar */}
       <aside className="workspace-sidebar hidden md:flex md:sticky md:top-0 md:h-screen w-60 lg:w-64 shrink-0 flex-col text-ink">
-        <div className="px-6 pt-8 pb-8">
+        <div className="px-5 pt-6 pb-5">
           <Logo onClick={() => setActivePage('dashboard')} />
-          <p className="mt-3 text-[9px] font-semibold tracking-[.18em] uppercase text-muted">Business workspace</p>
+          <div className="mt-5 rounded-lg border border-line bg-surface px-3 py-2.5"><p className="text-xs font-semibold truncate">{user?.business || 'Your workspace'}</p><p className="mt-1 text-xs text-muted">{isStaff ? 'Staff & business workspace' : 'Business workspace'}</p></div>
         </div>
 
         <nav className="flex-1 overflow-y-auto px-3 pb-4" aria-label={t('appShell.primaryNavigation')}>
-          <p className="px-3 mb-3 text-[9px] font-bold tracking-[.18em] uppercase text-muted">Your workspace</p>
+          <p className="px-3 mb-2 text-xs font-medium text-muted">Workspace</p>
           <ul className="space-y-0.5">
             {workspace.map((item) => (
               <li key={item.id}>
@@ -198,7 +203,8 @@ export const AppShell: React.FC<AppShellProps> = ({ activePage, setActivePage, c
             ))}
           </ul>
 
-          <p className="mt-8 mb-3 px-3 text-[9px] uppercase tracking-[.18em] font-semibold text-muted">{t('appShell.resources')}</p>
+          {isStaff && <div className="mt-3 border-t border-line pt-3">{sideLink(staff)}</div>}
+          <p className="mt-6 mb-2 px-3 text-xs font-medium text-muted">{t('appShell.resources')}</p>
           <ul className="space-y-0.5">
             {resources.map((item) => (
               <li key={item.id}>
@@ -216,11 +222,6 @@ export const AppShell: React.FC<AppShellProps> = ({ activePage, setActivePage, c
           </button>
           <p className="flex items-center gap-2 mt-5 px-2 text-[10px] text-muted"><Sprout className="w-4 h-4 text-accent/80" />Rooted in South Cotabato</p>
         </div>
-        {isStaff && (
-          <div className="px-3 pb-4 border-t border-line pt-3">
-            {sideLink(staff, true)}
-          </div>
-        )}
       </aside>
 
       <div className="flex-1 min-w-0 flex flex-col">
@@ -368,11 +369,18 @@ export const AppShell: React.FC<AppShellProps> = ({ activePage, setActivePage, c
       </div>
 
       <Modal open={searchOpen} onClose={() => setSearchOpen(false)} title="Where would you like to go?" description="Find a tool or your next step for your business.">
-        <input type="search" aria-label="Find a workspace tool" placeholder="Try finance, suppliers, or documents…" value={searchQuery} onChange={event => setSearchQuery(event.target.value)} className={inputClass} />
-        <div className="mt-3 space-y-1 max-h-[45vh] overflow-auto">
-          {searchResults.map(item => <button type="button" key={item.id} onClick={() => { setActivePage(item.id); setSearchOpen(false); }} className="flex items-center gap-3 w-full p-3 rounded-xl text-left text-sm hover:bg-brand-soft"><item.icon className="w-4 h-4 text-brand" /><span className="flex-1">{item.label}</span><ChevronRight className="w-4 h-4 text-muted" /></button>)}
+        <input type="search" role="combobox" aria-expanded="true" aria-controls="workspace-results" aria-autocomplete="list" aria-activedescendant={searchResults.length ? `workspace-result-${searchIndex}` : undefined} aria-label="Find a workspace tool" placeholder="Try finance, suppliers, or documents…" value={searchQuery} onChange={event => setSearchQuery(event.target.value)} onKeyDown={event => {
+          if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+            event.preventDefault();
+            setSearchIndex(index => searchResults.length ? (index + (event.key === 'ArrowDown' ? 1 : -1) + searchResults.length) % searchResults.length : 0);
+          }
+          if (event.key === 'Enter' && searchResults[searchIndex]) { event.preventDefault(); setActivePage(searchResults[searchIndex].id); setSearchOpen(false); }
+        }} className={inputClass} />
+        <div id="workspace-results" role="listbox" aria-label="Workspace tools" className="mt-3 space-y-1 max-h-[45vh] overflow-auto">
+          {searchResults.map((item, index) => <button type="button" role="option" aria-selected={index === searchIndex} id={`workspace-result-${index}`} key={item.id} onClick={() => { setActivePage(item.id); setSearchOpen(false); }} className={cx('flex items-center gap-3 w-full p-3 rounded-md text-left text-sm hover:bg-brand-soft', index === searchIndex && 'bg-brand-soft')}><item.icon className="w-4 h-4 text-brand" /><span className="flex-1">{item.label}</span><ChevronRight className="w-4 h-4 text-muted" /></button>)}
           {searchResults.length === 0 && <p className="text-sm text-muted text-center py-6">No tools found. Try cash, permits, or business plan.</p>}
         </div>
+        <p className="mt-4 border-t border-line pt-3 text-xs text-muted">Use ↑ ↓ to browse, Enter to open, and Esc to close.</p>
       </Modal>
 
       <BossNarraWidget hidden={activePage === 'boss-nana'} />

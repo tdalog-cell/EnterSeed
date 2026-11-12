@@ -32,3 +32,10 @@ Build for production:
 npm run build
 npm start
 ```
+
+## Verification
+
+Run `npm run lint`, `npm test`, and `npm run build` for type, regression, and production checks.
+With Python Playwright and Microsoft Edge installed, `npm run test:browser` exercises owner
+and staff workflows against a fresh local test database. Build first. See
+[the interface review](docs/interface-review.md) for coverage, screenshots, and limitations.

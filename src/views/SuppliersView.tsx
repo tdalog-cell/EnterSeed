@@ -140,6 +140,7 @@ export const SuppliersView: React.FC = () => {
       if (!res.ok) throw new Error();
       const data = await res.json();
       setSuppliers(data.suppliers || []);
+      setReviewSupplier(current => current ? (data.suppliers || []).find((supplier: SupplierListing) => supplier.id === current.id) || current : null);
     } catch {
       setLoadError(true);
     } finally {
@@ -692,6 +693,8 @@ export const SuppliersView: React.FC = () => {
                     <button
                       key={star}
                       type="button"
+                      aria-label={`Rate ${star} ${star === 1 ? 'star' : 'stars'}`}
+                      aria-pressed={newRating === star}
                       onClick={() => setNewRating(star)}
                       className="p-1 text-amber-400 hover:scale-110 transition-transform"
                     >
@@ -705,6 +708,7 @@ export const SuppliersView: React.FC = () => {
                 rows={2}
                 required
                 placeholder="Share your experience regarding product quality, delivery, and punctuality..."
+                aria-label="Your supplier review"
                 value={newReviewText}
                 onChange={(e) => setNewReviewText(e.target.value)}
                 className={textareaClass}

@@ -68,22 +68,18 @@ const freshChecks = (): Record<CheckKey, boolean> & { reviewNotes: string } => (
   contactConfirmed: false,
   locationConfirmed: false,
   listingConsentConfirmed: false,
-  reviewNotes: 'Identity, commercial documents, and publication consent reviewed and confirmed valid.'
+  reviewNotes: ''
 });
 
-const KEY_STORAGE = 'enterseed_admin_key';
-
 export const AdminView: React.FC = () => {
-  const [apiKey, setApiKey] = useState(() => {
-    try {
-      return localStorage.getItem(KEY_STORAGE) || '';
-    } catch {
-      return '';
-    }
-  });
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>('applications');
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [query, setQuery] = useState('');
+  const [sortOrder, setSortOrder] = useState('oldest');
+  const [supplierStatus, setSupplierStatus] = useState('all');
+  const [actionBusy, setActionBusy] = useState(false);
+  const [success, setSuccess] = useState('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -96,40 +92,33 @@ export const AdminView: React.FC = () => {
   const [approvalError, setApprovalError] = useState<string | null>(null);
 
   const [rejectingApp, setRejectingApp] = useState<SupplierApplication | null>(null);
-  const [rejectReason, setRejectReason] = useState('Insufficient commercial proof of business registration in Region 12.');
+  const [rejectReason, setRejectReason] = useState('');
   const [rejectError, setRejectError] = useState<string | null>(null);
 
   const [pending, setPending] = useState<PendingAction>(null);
 
-  const authHeaders = (extra: Record<string, string> = {}) => ({ Authorization: `Bearer ${apiKey}`, ...extra });
+  const authHeaders = (extra: Record<string, string> = {}) => ({ ...extra });
 
-  const fetchData = async (keyToUse = apiKey) => {
-    if (!keyToUse) return;
+  const fetchData = async () => {
     setLoading(true);
     setErrorMsg(null);
     try {
-      const headers = { Authorization: `Bearer ${keyToUse}`, Accept: 'application/json' };
+      const headers = { Accept: 'application/json' };
       const [appsRes, supsRes, inqsRes] = await Promise.all([
         apiFetch('/api/admin/supplier-applications', { headers }),
         apiFetch('/api/admin/suppliers', { headers }),
         apiFetch('/api/admin/inquiries', { headers })
       ]);
-      if ([appsRes, supsRes, inqsRes].some((r) => r.status === 401)) {
-        throw new Error('That admin key was not accepted. Check it and try again.');
-      }
-      if (appsRes.status === 503 || supsRes.status === 503) {
-        throw new Error('The admin key is not configured on the server. Set ADMIN_API_KEY in .env.');
+      const failed = [appsRes, supsRes, inqsRes].find(response => !response.ok);
+      if (failed) {
+        const data = await failed.json().catch(() => ({}));
+        throw new Error(data.error || 'The review queue could not load. Please try again.');
       }
       const [appsData, supsData, inqsData] = await Promise.all([appsRes.json(), supsRes.json(), inqsRes.json()]);
       setApplications(appsData.applications || []);
       setSuppliers(supsData.suppliers || []);
       setInquiries(inqsData.inquiries || []);
       setIsAuthenticated(true);
-      try {
-        localStorage.setItem(KEY_STORAGE, keyToUse);
-      } catch {
-        /* session only */
-      }
     } catch (err: any) {
       setErrorMsg(err.message || 'Could not reach the server.');
       setIsAuthenticated(false);
@@ -139,18 +128,19 @@ export const AdminView: React.FC = () => {
   };
 
   useEffect(() => {
-    if (apiKey) fetchData(apiKey);
+    void fetchData();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const allChecked = CHECKS.every((c) => approvalChecks[c.key]);
   const notesOk = approvalChecks.reviewNotes.trim().length >= 20;
 
   const handleApprove = async () => {
-    if (!approvingApp) return;
+    if (!approvingApp || actionBusy) return;
     if (!allChecked || !notesOk) {
       setApprovalError('Confirm all five checks and write a review note of at least 20 characters.');
       return;
     }
+    setActionBusy(true);
     try {
       const res = await apiFetch(`/api/admin/supplier-applications/${approvingApp.id}/approve`, {
         method: 'POST',
@@ -169,18 +159,20 @@ export const AdminView: React.FC = () => {
         throw new Error(d.error || 'Approval failed.');
       }
       setApprovingApp(null);
-      fetchData();
+      setSuccess('Application approved and published.');
+      await fetchData();
     } catch (err: any) {
       setApprovalError(err.message);
-    }
+    } finally { setActionBusy(false); }
   };
 
   const handleReject = async () => {
-    if (!rejectingApp) return;
+    if (!rejectingApp || actionBusy) return;
     if (rejectReason.trim().length < 10) {
       setRejectError('Write a reason of at least 10 characters.');
       return;
     }
+    setActionBusy(true);
     try {
       const res = await apiFetch(`/api/admin/supplier-applications/${rejectingApp.id}/reject`, {
         method: 'POST',
@@ -192,14 +184,16 @@ export const AdminView: React.FC = () => {
         throw new Error(d.error || 'Rejection failed.');
       }
       setRejectingApp(null);
-      fetchData();
+      setSuccess('Application rejected.');
+      await fetchData();
     } catch (err: any) {
       setRejectError(err.message);
-    }
+    } finally { setActionBusy(false); }
   };
 
   const runPending = async () => {
-    if (!pending) return;
+    if (!pending || actionBusy) return;
+    setActionBusy(true);
     const { kind, id } = pending;
     setPending(null);
     setActionError(null);
@@ -212,10 +206,11 @@ export const AdminView: React.FC = () => {
     try {
       const res = await apiFetch(req.url, { method: req.method, headers: authHeaders() });
       if (!res.ok) throw new Error();
-      fetchData();
+      setSuccess(kind === 'withdraw' ? 'Supplier withdrawn.' : 'Record deleted.');
+      await fetchData();
     } catch {
       setActionError(req.fail);
-    }
+    } finally { setActionBusy(false); }
   };
 
   const confirmInline = (kind: NonNullable<PendingAction>['kind'], id: number, label: string, prompt: string) =>
@@ -241,6 +236,13 @@ export const AdminView: React.FC = () => {
     { id: 'inquiries', label: 'Inquiries', count: inquiries.length }
   ];
 
+  const match = (values: string[]) => values.join(' ').toLowerCase().includes(query.trim().toLowerCase());
+  const sortRecords = <T,>(records: T[], name: (row: T) => string, date: (row: T) => string) => [...records].sort((a, b) => sortOrder === 'name' ? name(a).localeCompare(name(b)) : (Date.parse(date(a)) - Date.parse(date(b))) * (sortOrder === 'oldest' ? 1 : -1));
+  const filteredApplications = sortRecords(applications.filter(app => match([app.businessName, app.contactName, app.contactEmail, app.category, app.location])), app => app.businessName, app => app.createdAt);
+  const filteredSuppliers = sortRecords(suppliers.filter(supplier => match([supplier.businessName, supplier.category, supplier.location]) && (supplierStatus === 'all' || supplier.status === supplierStatus)), supplier => supplier.businessName, supplier => supplier.verifiedAt);
+  const filteredInquiries = sortRecords(inquiries.filter(inquiry => match([inquiry.name, inquiry.email, inquiry.topic, inquiry.message])), inquiry => inquiry.name, inquiry => inquiry.createdAt);
+  const visibleCount = activeTab === 'applications' ? filteredApplications.length : activeTab === 'suppliers' ? filteredSuppliers.length : filteredInquiries.length;
+
   return (
     <div className="space-y-6 sm:space-y-8">
       <PageHeader
@@ -253,21 +255,6 @@ export const AdminView: React.FC = () => {
                 <RefreshCw className={loading ? 'animate-spin' : undefined} />
                 Refresh
               </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setIsAuthenticated(false);
-                  setApiKey('');
-                  try {
-                    localStorage.removeItem(KEY_STORAGE);
-                  } catch {
-                    /* ignore */
-                  }
-                }}
-              >
-                Lock console
-              </Button>
             </>
           )
         }
@@ -275,32 +262,14 @@ export const AdminView: React.FC = () => {
 
       {!isAuthenticated ? (
         <Panel className="max-w-md">
-          <h2 className="text-lg font-bold text-ink">Staff access</h2>
-          <p className="mt-1 mb-5 text-sm text-muted">Enter the server’s admin key to open the review queue.</p>
-          {errorMsg && (
-            <Notice tone="error" className="mb-4">
-              {errorMsg}
-            </Notice>
-          )}
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              fetchData();
-            }}
-            className="space-y-4"
-          >
-            <Field label="Admin key">
-              {(id) => (
-                <input id={id} type="password" required autoComplete="off" value={apiKey} onChange={(e) => setApiKey(e.target.value)} className={inputClass} />
-              )}
-            </Field>
-            <Button type="submit" className="w-full" disabled={loading || !apiKey.trim()}>
-              {loading ? 'Checking…' : 'Open console'}
-            </Button>
-          </form>
+          <h2 className="text-lg font-semibold">{loading ? 'Opening your review desk…' : 'The review queue is unavailable'}</h2>
+          <p className="mt-2 text-sm text-muted">Use your signed-in staff account to review applications.</p>
+          {errorMsg && <Notice tone="error" className="mt-4">{errorMsg}</Notice>}
+          <Button className="mt-4" onClick={() => fetchData()} busy={loading} busyLabel="Loading review queue…">Retry loading</Button>
         </Panel>
       ) : (
         <div className="space-y-5">
+          {success && <Notice tone="success">{success}</Notice>}
           {actionError && <Notice tone="error">{actionError}</Notice>}
 
           <div role="tablist" aria-label="Review queues" className="flex gap-1 border-b border-line overflow-x-auto">
@@ -312,7 +281,13 @@ export const AdminView: React.FC = () => {
                   type="button"
                   role="tab"
                   aria-selected={active}
-                  onClick={() => setActiveTab(t.id)}
+                  id={`queue-tab-${t.id}`} aria-controls={`queue-panel-${t.id}`} tabIndex={active ? 0 : -1}
+                  onKeyDown={event => {
+                    const index = tabs.findIndex(tab => tab.id === activeTab);
+                    const next = event.key === 'ArrowRight' ? (index + 1) % tabs.length : event.key === 'ArrowLeft' ? (index + tabs.length - 1) % tabs.length : event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 : -1;
+                    if (next >= 0) { event.preventDefault(); setActiveTab(tabs[next].id); setQuery(''); document.getElementById(`queue-tab-${tabs[next].id}`)?.focus(); }
+                  }}
+                  onClick={() => { setActiveTab(t.id); setQuery(''); }}
                   className={cx(
                     'relative h-11 px-3.5 text-sm font-semibold whitespace-nowrap transition-colors',
                     active ? 'text-brand' : 'text-muted hover:text-ink'
@@ -326,19 +301,28 @@ export const AdminView: React.FC = () => {
             })}
           </div>
 
+          <div className="flex flex-wrap gap-3 items-end">
+            <Field label="Search queue" className="flex-1 min-w-48">{id => <input id={id} type="search" placeholder="Search name, location, or contact…" value={query} onChange={event => setQuery(event.target.value)} className={inputClass} />}</Field>
+            <Field label="Sort by">{id => <select id={id} value={sortOrder} onChange={event => setSortOrder(event.target.value)} className={inputClass}><option value="oldest">Oldest first</option><option value="newest">Newest first</option><option value="name">Name A–Z</option></select>}</Field>
+            {activeTab === 'suppliers' && <Field label="Listing status">{id => <select id={id} value={supplierStatus} onChange={event => setSupplierStatus(event.target.value)} className={inputClass}><option value="all">All statuses</option><option value="active">Active</option><option value="withdrawn">Withdrawn</option></select>}</Field>}
+            {(query || supplierStatus !== 'all') && <Button variant="ghost" onClick={() => { setQuery(''); setSupplierStatus('all'); }}>Clear filters</Button>}
+          </div>
+          <p role="status" className="text-xs text-muted">{visibleCount} of {tabs.find(tab => tab.id === activeTab)?.count} records shown{activeTab === 'applications' ? '. Review the oldest applications first to keep the queue moving.' : '.'}</p>
+          <div role="tabpanel" id={`queue-panel-${activeTab}`} aria-labelledby={`queue-tab-${activeTab}`}>
+          <fieldset disabled={actionBusy || loading} className="min-w-0">
           {activeTab === 'applications' &&
-            (applications.length === 0 ? (
-              <p className="py-12 text-center text-sm text-muted">No applications waiting for review.</p>
+            (filteredApplications.length === 0 ? (
+              <p className="py-12 text-center text-sm text-muted">{query ? 'No applications match your search. Clear the search to view the queue.' : 'No applications waiting for review.'}</p>
             ) : (
               <ul className="space-y-3">
-                {applications.map((app) => (
-                  <li key={app.id} className="bg-surface rounded-2xl border border-line p-5 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                {filteredApplications.map((app) => (
+                  <li key={app.id} className="bg-surface rounded-xl border border-line p-5 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                     <div className="min-w-0">
                       <h3 className="font-bold text-ink">{app.businessName}</h3>
                       <p className="mt-0.5 text-[13px] text-muted capitalize">
                         {app.category.replace('-', ' ')} · {app.location}
                       </p>
-                      <p className="mt-3 text-sm text-ink">{app.products}</p>
+                      <p className="mt-3 text-sm text-ink">{app.products}</p><p className="mt-2 text-xs text-muted">Received {new Date(app.createdAt).toLocaleDateString('en-PH')}</p>
                       <p className="mt-2 text-[13px] text-muted break-words">
                         {app.contactName} · {app.contactEmail}
                       </p>
@@ -359,6 +343,7 @@ export const AdminView: React.FC = () => {
                         size="sm"
                         onClick={() => {
                           setRejectError(null);
+                          setRejectReason('');
                           setRejectingApp(app);
                         }}
                       >
@@ -371,12 +356,12 @@ export const AdminView: React.FC = () => {
             ))}
 
           {activeTab === 'suppliers' &&
-            (suppliers.length === 0 ? (
-              <p className="py-12 text-center text-sm text-muted">No suppliers in the directory yet.</p>
+            (filteredSuppliers.length === 0 ? (
+              <p className="py-12 text-center text-sm text-muted">{query || supplierStatus !== 'all' ? 'No suppliers match these filters.' : 'No suppliers in the directory yet.'}</p>
             ) : (
-              <Panel className="p-0 sm:p-0 overflow-hidden">
+              <Panel className="!p-0 overflow-hidden">
                 <div className="overflow-x-auto">
-                  <table className="w-full min-w-[640px] text-left text-sm">
+                  <table className="staff-table w-full min-w-[640px] text-left text-sm">
                     <thead className="bg-sunken text-[13px] text-muted">
                       <tr>
                         <th className="px-5 py-3 font-semibold">Business</th>
@@ -387,19 +372,19 @@ export const AdminView: React.FC = () => {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-line">
-                      {suppliers.map((s) => (
+                      {filteredSuppliers.map((s) => (
                         <tr key={s.id}>
                           <td className="px-5 py-3">
                             <span className="block font-semibold text-ink">{s.businessName}</span>
                             <span className="block text-[13px] text-muted capitalize">{s.category.replace('-', ' ')}</span>
                           </td>
-                          <td className="px-3 py-3 text-muted">{s.location}</td>
-                          <td className="px-3 py-3">
+                          <td data-label="Location" className="px-3 py-3 text-muted">{s.location}</td>
+                          <td data-label="Status" className="px-3 py-3">
                             <span className={cx('rounded-full px-2 py-0.5 text-xs font-semibold capitalize', s.status === 'active' ? 'bg-good-soft text-good' : 'bg-sunken text-muted')}>
                               {s.status}
                             </span>
                           </td>
-                          <td className="px-3 py-3 text-muted tnum">{new Date(s.verifiedAt).toLocaleDateString('en-PH')}</td>
+                          <td data-label="Verified" className="px-3 py-3 text-muted tnum">{new Date(s.verifiedAt).toLocaleDateString('en-PH')}</td>
                           <td className="px-5 py-3">
                             <div className="flex justify-end gap-1">
                               {s.status === 'active' && confirmInline('withdraw', s.id, 'Withdraw', 'Withdraw?')}
@@ -415,12 +400,12 @@ export const AdminView: React.FC = () => {
             ))}
 
           {activeTab === 'inquiries' &&
-            (inquiries.length === 0 ? (
-              <p className="py-12 text-center text-sm text-muted">No inquiries yet.</p>
+            (filteredInquiries.length === 0 ? (
+              <p className="py-12 text-center text-sm text-muted">{query ? 'No inquiries match your search.' : 'No inquiries yet.'}</p>
             ) : (
               <ul className="space-y-3">
-                {inquiries.map((inq) => (
-                  <li key={inq.id} className="bg-surface rounded-2xl border border-line p-5">
+                {filteredInquiries.map((inq) => (
+                  <li key={inq.id} className="bg-surface rounded-xl border border-line p-5">
                     <div className="flex flex-wrap items-baseline justify-between gap-2">
                       <h3 className="font-bold text-ink">{inq.topic}</h3>
                       <span className="text-xs text-muted tnum">{new Date(inq.createdAt).toLocaleString('en-PH')}</span>
@@ -443,12 +428,15 @@ export const AdminView: React.FC = () => {
                 ))}
               </ul>
             ))}
+          </fieldset>
+          </div>
         </div>
       )}
 
       <Modal
         open={!!approvingApp}
-        onClose={() => setApprovingApp(null)}
+        dismissable={!actionBusy}
+        onClose={() => { if (!actionBusy) setApprovingApp(null); }}
         title={approvingApp ? `Approve ${approvingApp.businessName}` : ''}
         description="Publishing requires all five checks."
       >
@@ -468,27 +456,27 @@ export const AdminView: React.FC = () => {
             )}
           </Field>
           <div className="flex gap-2 pt-1">
-            <Button variant="secondary" className="flex-1" onClick={() => setApprovingApp(null)}>
+            <Button variant="secondary" className="flex-1" disabled={actionBusy} onClick={() => setApprovingApp(null)}>
               Cancel
             </Button>
-            <Button className="flex-1" onClick={handleApprove} disabled={!allChecked || !notesOk}>
+            <Button className="flex-1" onClick={handleApprove} busy={actionBusy} busyLabel="Publishing…" disabled={!allChecked || !notesOk}>
               Approve and publish
             </Button>
           </div>
         </div>
       </Modal>
 
-      <Modal open={!!rejectingApp} onClose={() => setRejectingApp(null)} title={rejectingApp ? `Reject ${rejectingApp.businessName}` : ''}>
+      <Modal open={!!rejectingApp} dismissable={!actionBusy} onClose={() => { if (!actionBusy) setRejectingApp(null); }} title={rejectingApp ? `Reject ${rejectingApp.businessName}` : ''}>
         <div className="space-y-4">
           {rejectError && <Notice tone="error">{rejectError}</Notice>}
           <Field label="Reason" hint="At least 10 characters.">
             {(id) => <textarea id={id} rows={3} value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} className={textareaClass} />}
           </Field>
           <div className="flex gap-2 pt-1">
-            <Button variant="secondary" className="flex-1" onClick={() => setRejectingApp(null)}>
+            <Button variant="secondary" className="flex-1" disabled={actionBusy} onClick={() => setRejectingApp(null)}>
               Cancel
             </Button>
-            <Button className="flex-1 !bg-danger hover:!bg-[#912018] !text-white" onClick={handleReject}>
+            <Button className="flex-1 !bg-danger hover:!bg-[#912018] !text-white" onClick={handleReject} busy={actionBusy} busyLabel="Rejecting…" disabled={rejectReason.trim().length < 10}>
               Reject application
             </Button>
           </div>

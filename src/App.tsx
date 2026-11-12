@@ -44,6 +44,7 @@ const MainRouter: React.FC = () => {
     }
     return 'login';
   });
+  const [requestedDocument, setRequestedDocument] = useState<number | undefined>();
   const setActivePage = useCallback((page: ActivePage) => {
     if (!validPages.includes(page) || page === activePage) return;
     const event = new Event('enterseed:before-navigate', { cancelable: true });
@@ -150,7 +151,7 @@ const MainRouter: React.FC = () => {
   const renderWorkspaceContent = () => {
     switch (activePage) {
       case 'dashboard':
-        return <DashboardView setActivePage={setActivePage} />;
+        return <DashboardView setActivePage={setActivePage} openDocument={id => { setRequestedDocument(id); setActivePage('documents'); }} />;
       case 'finance':
         return <FinanceView />;
       case 'marketing':
@@ -158,7 +159,7 @@ const MainRouter: React.FC = () => {
       case 'suppliers':
         return <SuppliersView />;
       case 'documents':
-        return <DocumentsView />;
+        return <DocumentsView requestedDocumentId={requestedDocument} onDocumentOpened={() => setRequestedDocument(undefined)} />;
       case 'boss-nana':
         return <BossNanaView />;
       case 'efiling':

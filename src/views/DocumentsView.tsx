@@ -83,7 +83,7 @@ const SAMPLE_OUTLINES: Record<DocType, { title: string; sections: { name: string
   }
 };
 
-export const DocumentsView: React.FC = () => {
+export const DocumentsView: React.FC<{ requestedDocumentId?: number; onDocumentOpened?: () => void }> = ({ requestedDocumentId, onDocumentOpened }) => {
   const { user, isDemo } = useAuth();
 
   const [activeTab, setActiveTab] = useState<'create' | 'library'>('create');
@@ -122,10 +122,13 @@ export const DocumentsView: React.FC = () => {
       setLibraryError('');
       const docs = await fetchGeneratedDocs();
       setSavedDocs(docs);
-      if (docs.length > 0 && !currentDoc) {
-        setCurrentDoc(docs[0]);
-        setEditableHtml(docs[0].contentHtml);
+      const requested = docs.find(doc => doc.id === requestedDocumentId);
+      if (requested || (docs.length > 0 && !currentDoc)) {
+        const selected = requested || docs[0];
+        setCurrentDoc(selected);
+        setEditableHtml(selected.contentHtml);
       }
+      onDocumentOpened?.();
     } catch (err) {
       setLibraryError(err instanceof Error ? err.message : 'Your document library could not load.');
     } finally {

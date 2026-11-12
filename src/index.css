@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 /*
- * Enterseed tokens. Plum + marigold identity from the logo, on a warm paper canvas.
+ * Enterseed tokens. Plum + orange identity with shadcn-inspired neutral surfaces.
  * Text-bearing tones are darkened variants so small copy clears 4.5:1.
  */
 @theme {
@@ -14,7 +14,7 @@
   --color-line-strong: #D4D4D8;
 
   --color-ink: #18181B;
-  --color-muted: #71717A;
+  --color-muted: #62626C;
 
   --color-brand: #4A1D8F;
   --color-brand-deep: #2C154F;
@@ -93,8 +93,8 @@
   button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
 }
 
-.surface-panel { box-shadow: 0 1px 2px rgb(0 0 0 / 3%); }
-.section-label { font-size: 10px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; color: var(--color-muted); }
+.surface-panel { box-shadow: 0 1px 2px rgb(0 0 0 / 2%); }
+.section-label { font-size: 12px; font-weight: 500; letter-spacing: 0; color: var(--color-muted); }
 .page-heading { padding-bottom: 4px; }
 .button-motion { transition: background-color 180ms, box-shadow 180ms, transform 180ms var(--ease-out-expo), border-color 180ms; }
 .button-motion:not(:disabled):active { transform: scale(.97); }
@@ -104,9 +104,9 @@
 @media (hover: hover) {
   .interactive-card:hover { border-color: var(--color-line-strong); box-shadow: 0 2px 6px rgb(0 0 0 / 5%); }
 }
-.workspace-sidebar { background: var(--color-canvas); border-right: 1px solid var(--color-line); }
+.workspace-sidebar { background: var(--color-sunken); border-right: 1px solid var(--color-line); }
 .nav-link { position: relative; transition: background-color 180ms, color 180ms, transform 180ms; }
-.nav-link[aria-current="page"] { background: var(--color-brand-soft); color: var(--color-brand); }
+.nav-link[aria-current="page"] { background: var(--color-surface); color: var(--color-brand); box-shadow: 0 1px 3px rgb(0 0 0 / 6%); }
 .dashboard-hero { background: #30203F; isolation: isolate; }
 .dashboard-hero::before { content: ''; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse at 10% 10%, rgb(128 76 179 / 26%), transparent 70%); z-index: -1; }
 .hero-orbit { position: absolute; width: 360px; height: 360px; border: 1px solid rgb(255 255 255 / 8%); border-radius: 50%; pointer-events: none; }
@@ -115,11 +115,17 @@
 .stat-accent::before { content: ''; position: absolute; top: 0; left: 24px; right: 24px; height: 2px; background: var(--stat-color, var(--color-brand)); opacity: .65; border-radius: 0 0 3px 3px; }
 .skeleton { background: linear-gradient(100deg, #F0EBF1 30%, #FAF7FA 50%, #F0EBF1 70%); background-size: 200% 100%; animation: shimmer 1.8s ease-in-out infinite; }
 @keyframes shimmer { to { background-position: -200% 0; } }
-.stagger-children > * { animation: settle 500ms var(--ease-out-expo) both; }
-.stagger-children > :nth-child(2) { animation-delay: 45ms; }
-.stagger-children > :nth-child(3) { animation-delay: 90ms; }
-.stagger-children > :nth-child(4) { animation-delay: 135ms; }
-.stagger-children > :nth-child(5) { animation-delay: 180ms; }
+.dashboard-intro { border-left: 3px solid var(--color-accent); }
+@media (max-width: 639px) {
+  .staff-table { min-width: 0; }
+  .staff-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .staff-table tbody, .staff-table tr, .staff-table td { display: block; }
+  .staff-table tbody tr { display: grid; grid-template-columns: 1fr 1fr; padding: 12px; }
+  .staff-table td { padding: 8px; }
+  .staff-table td:first-child, .staff-table td:last-child { grid-column: 1 / -1; }
+  .staff-table td[data-label]::before { content: attr(data-label); display: block; margin-bottom: 5px; font-size: 11px; color: var(--color-muted); }
+  .staff-table td:last-child > div { justify-content: flex-start; flex-wrap: wrap; }
+}
 .skip-link { position: fixed; top: 10px; left: 12px; padding: 10px 16px; background: white; color: var(--color-brand); border-radius: 10px; z-index: 100; transform: translateY(-200%); }
 .skip-link:focus { transform: translateY(0); }
 .document-prose { color: var(--color-ink); font-size: 14px; line-height: 1.8; }

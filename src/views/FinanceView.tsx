@@ -383,8 +383,8 @@ export const FinanceView: React.FC = () => {
   return (
     <div className="space-y-6 sm:space-y-8">
       <PageHeader
-        eyebrow="YOUR BUSINESS, BY THE NUMBERS"
-        title="A clearer view of your finances."
+        eyebrow="Finance workspace"
+        title="Business finances"
         lead="Keep your cash, commitments, and next investment in one place. Save your workspace to keep your records and dashboard together."
         actions={<Button onClick={handleSaveWorkspace} busy={savingWorkspace} busyLabel="Saving workspace…" disabled={loadingWorkspace || !!workspaceError}><CheckCircle2 />Save workspace</Button>}
       />
@@ -400,9 +400,8 @@ export const FinanceView: React.FC = () => {
       {loadingWorkspace && <div className="grid grid-cols-3 gap-4" aria-label="Loading finance workspace">{[1, 2, 3].map((key) => <div key={key} className="skeleton h-28 rounded-2xl" />)}</div>}
       <fieldset disabled={loadingWorkspace || savingWorkspace || !!workspaceError} className="min-w-0 space-y-6 disabled:opacity-60">
       <section aria-labelledby="finance-tools-title" className="rounded-xl border border-line bg-surface overflow-hidden">
-        <div className="border-b border-line px-5 py-4"><h2 id="finance-tools-title" className="font-semibold">Choose a finance tool</h2><p className="text-sm text-muted mt-1">Select a row below to open its workspace.</p></div>
-        <div className="hidden sm:grid grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_100px] gap-4 px-5 py-2.5 bg-sunken text-xs font-semibold text-muted" aria-hidden="true"><span>Tool</span><span>What you can do</span><span className="text-right">Workspace</span></div>
-        <div className="divide-y divide-line">
+        <h2 id="finance-tools-title" className="sr-only">Choose a finance tool</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-1 p-1.5">
           {([
             { id: 'cash', title: 'Cash Management', description: 'Record sales and expenses. Track available cash.', icon: Wallet },
             { id: 'debt', title: 'Debt Management', description: 'Organize loans and plan your repayments.', icon: CreditCard },
@@ -418,10 +417,8 @@ export const FinanceView: React.FC = () => {
                 content?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'start' });
               });
             }}
-            className={cx('finance-tool-row w-full grid grid-cols-[minmax(0,1fr)_auto] sm:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_100px] items-center gap-x-4 gap-y-1 px-4 sm:px-5 py-4 sm:py-5 text-left transition-colors', activeTab === id ? 'bg-brand-soft' : 'hover:bg-sunken')}>
-            <span className="flex items-center gap-3"><span className={cx('w-10 h-10 rounded-lg flex items-center justify-center shrink-0', activeTab === id ? 'finance-tool-icon bg-brand text-white' : 'bg-sunken text-brand')}><Icon className="w-5 h-5" /></span><span className="font-semibold text-sm sm:text-base">{title}</span></span>
-            <span className="text-xs sm:text-sm text-muted col-start-1 sm:col-start-auto pl-[52px] sm:pl-0">{description}</span>
-            <span className={cx('row-start-1 col-start-2 sm:row-auto sm:col-auto text-right text-xs font-semibold', activeTab === id ? 'text-brand' : 'text-muted')}>{activeTab === id ? <span className="inline-flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-accent" />Selected</span> : 'Open →'}</span>
+            className={cx('finance-tool-row flex items-center gap-2.5 rounded-md px-3 py-3 text-left text-sm transition-colors', activeTab === id ? 'bg-brand-soft text-brand font-semibold' : 'text-muted hover:bg-sunken')} title={description}>
+            <Icon className="w-4 h-4 shrink-0" /><span>{title}</span>
           </button>)}
         </div>
       </section>
@@ -930,22 +927,19 @@ export const FinanceView: React.FC = () => {
                 ].map((item) => {
                   const checked = Boolean(taxChecklist[item.key]);
                   return (
-                    <div
+                    <label
                       key={item.key}
-                      onClick={() => toggleChecklist(item.key)}
                       className={cx(
                         'p-3.5 rounded-xl border transition-all cursor-pointer flex items-start gap-3',
                         checked ? 'bg-emerald-50/50 border-emerald-300' : 'bg-surface border-line hover:border-brand/40'
                       )}
                     >
-                      <button type="button" className="mt-0.5 text-brand shrink-0">
-                        {checked ? <CheckSquare className="w-5 h-5 text-emerald-700" /> : <Square className="w-5 h-5 text-muted" />}
-                      </button>
+                      <input type="checkbox" checked={checked} onChange={() => toggleChecklist(item.key)} aria-label={item.title} className="mt-0.5 h-5 w-5 shrink-0 accent-brand" />
                       <div>
                         <h4 className={cx('text-sm font-bold', checked ? 'text-emerald-950 line-through' : 'text-ink')}>{item.title}</h4>
                         <p className="text-xs text-muted mt-0.5 leading-relaxed">{item.desc}</p>
                       </div>
-                    </div>
+                    </label>
                   );
                 })}
               </div>
@@ -1281,8 +1275,8 @@ export const FinanceView: React.FC = () => {
                     required
                     value={editAmount}
                     onChange={(e) => {
-                      const raw = e.target.value.replace(/[^0-9]/g, '');
-                      setEditAmount(raw ? parseInt(raw, 10).toLocaleString('en-PH') : '');
+                      const raw = e.target.value.replace(/,/g, '');
+                      if (/^\d*(\.\d{0,2})?$/.test(raw)) setEditAmount(raw);
                     }}
                     className={cx(inputClass, 'pl-7 font-semibold')}
                   />

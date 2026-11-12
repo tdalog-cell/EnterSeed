@@ -92,7 +92,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ initialMode, setActivePage }
   return (
     <div className="min-h-screen bg-canvas lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(480px,560px)] xl:grid-cols-[minmax(0,1fr)_600px]">
       {/* Photo side */}
-      <aside className="relative h-[21rem] sm:h-[27rem] lg:h-screen lg:sticky lg:top-0 overflow-hidden bg-night">
+      <aside className="relative h-[13rem] sm:h-[20rem] lg:h-screen lg:sticky lg:top-0 overflow-hidden bg-night">
         <PhotoImg photo={PHOTOS.carabao} sizes="(min-width: 1024px) 60vw, 100vw" fill eager credit="none" />
         <div className="absolute inset-0 bg-gradient-to-t from-[#1F102E]/95 via-[#24172B]/40 to-[#24172B]/35 pointer-events-none" />
         <div className="relative h-full flex flex-col justify-between p-6 sm:p-9 lg:p-12 xl:p-16 pointer-events-none">
@@ -103,7 +103,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ initialMode, setActivePage }
             </span>
           </div>
           <div className="max-w-xl pb-3 lg:pb-6 view-enter">
-            <p className="mb-4 flex items-center gap-2 text-[11px] sm:text-xs font-semibold uppercase tracking-[0.18em] text-white/80"><span className="h-px w-8 bg-accent" /> Your next chapter starts here</p>
+            <p className="hidden sm:block mb-4 text-sm text-white/80">For the businesses that keep our communities growing</p>
             <h1 className="text-[2rem] sm:text-[2.75rem] xl:text-[3.5rem] font-extrabold tracking-[-0.04em] text-white leading-[1.08] max-w-[16ch]">
               {t('auth.headline')}
             </h1>
@@ -155,7 +155,6 @@ export const AuthView: React.FC<AuthViewProps> = ({ initialMode, setActivePage }
               </>
             ) : (
               <>
-                <p className="section-label mb-2">Your business, with room to grow</p>
                 <h2 className="text-[1.8rem] font-extrabold tracking-tight text-ink">
                   {t(isRegister ? 'auth.registerTitle' : 'auth.signInTitle')}
                 </h2>

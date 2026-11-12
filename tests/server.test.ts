@@ -96,6 +96,12 @@ test('unknown API routes return an explicit JSON error', async () => {
   expect(response.status).toBe(404);
   expect(response.headers.get('Content-Type')).toContain('application/json');
 });
+
+test('program search supports a solo owner with no employees and rejects negative counts', async () => {
+  const input = { businessSector: 'Coffee processing', annualSales: 0, employeeCount: 0, yearsOperating: 0, municipality: 'Tupi' };
+  expect((await request('/api/referrals/subsidy-check', tokenA, 'POST', input)).status).toBe(200);
+  expect((await request('/api/referrals/subsidy-check', tokenA, 'POST', { ...input, employeeCount: -1 })).status).toBe(400);
+});
 test('unknown suppliers return a useful error rather than a failed database insert', async () => {
   expect((await request('/api/suppliers/99999/messages', tokenA, 'POST', { subject: 'Quotation', message: 'Please share a quotation.' })).status).toBe(404);
 });

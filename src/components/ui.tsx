@@ -81,7 +81,7 @@ export const PanelHeader: React.FC<{
 }> = ({ title, description, action, as: Tag = 'h2' }) => (
   <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
     <div>
-      <Tag className="text-lg font-bold text-ink leading-snug">{title}</Tag>
+      <Tag className="text-base font-semibold text-ink leading-snug">{title}</Tag>
       {description && <p className="mt-1 text-sm leading-relaxed text-muted max-w-prose">{description}</p>}
     </div>
     {action && <div className="shrink-0">{action}</div>}
@@ -96,13 +96,13 @@ type ButtonSize = 'sm' | 'md' | 'lg';
 const buttonVariants: Record<ButtonVariant, string> = {
   primary: 'bg-brand text-white hover:bg-brand-deep shadow-xs',
   accent: 'bg-accent text-[#2B1C33] hover:bg-[#F7772A] shadow-[0_3px_8px_-3px_rgb(255_138_61/0.3)]',
-  secondary: 'bg-surface text-brand border border-line-strong hover:bg-brand-soft',
-  ghost: 'text-brand hover:bg-brand-soft',
+  secondary: 'bg-surface text-ink border border-line hover:bg-sunken shadow-xs',
+  ghost: 'text-ink hover:bg-sunken',
   danger: 'text-danger hover:bg-danger-soft'
 };
 
 const buttonSizes: Record<ButtonSize, string> = {
-  sm: 'min-h-8 py-1 px-3 text-[13px] gap-1.5 rounded-lg',
+  sm: 'min-h-9 py-1 px-3 text-[13px] gap-1.5 rounded-md',
   md: 'min-h-10 py-2 px-4 text-sm gap-2 rounded-md',
   lg: 'min-h-11 py-2.5 px-5 text-sm gap-2 rounded-md'
 };

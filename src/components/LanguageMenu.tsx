@@ -2,9 +2,11 @@ import React, { useCallback, useState } from 'react';
 import { Check, ChevronDown, Globe } from 'lucide-react';
 import { useLanguage, ENABLED_LANGUAGES as LANGUAGES } from '../context/LanguageContext';
 import { cx, useDismiss } from './ui';
+import { useAuth } from '../context/AuthContext';
 
 export const LanguageMenu: React.FC = () => {
   const { language, setLanguage } = useLanguage();
+  const { user, updateLanguagePreference } = useAuth();
   const [open, setOpen] = useState(false);
   const close = useCallback(() => setOpen(false), []);
   const ref = useDismiss(open, close);
@@ -37,7 +39,8 @@ export const LanguageMenu: React.FC = () => {
                 role="menuitemradio"
                 aria-checked={active}
                 onClick={() => {
-                  setLanguage(l.code);
+                  if (user) void updateLanguagePreference(l.code);
+                  else setLanguage(l.code);
                   close();
                 }}
                 className={cx(

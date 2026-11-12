@@ -73,7 +73,7 @@ export const PricingView: React.FC = () => {
             onChange={setCadence}
             options={[
               { value: 'monthly', label: 'Monthly' },
-              { value: 'yearly', label: 'Yearly · Save 17%' }
+              { value: 'yearly', label: 'Yearly' }
             ]}
           />
         }

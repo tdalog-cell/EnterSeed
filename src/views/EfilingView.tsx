@@ -183,6 +183,7 @@ export const EfilingView: React.FC = () => {
 
   const handleRunSubsidy = async (e: React.FormEvent) => {
     e.preventDefault();
+    setConsolidatedNotice(null);
     setEvaluatingSubsidy(true);
     try {
       const matches = await runSubsidyCheck(subsidyForm);
@@ -196,6 +197,7 @@ export const EfilingView: React.FC = () => {
 
   const handleRunCredit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setConsolidatedNotice(null);
     setEvaluatingCredit(true);
     try {
       const matches = await runCreditMatch(creditForm);
@@ -957,13 +959,14 @@ export const EfilingView: React.FC = () => {
                         />
                       )}
                     </Field>
-                    <Field label="Employee Count">
+                  <Field label="Employee Count" hint="Enter 0 if you work on your own without employees.">
                       {(id) => (
                         <input
                           id={id}
                           type="number"
                           required
                           value={subsidyForm.employeeCount}
+                          min="0" max="500" step="1"
                           onChange={(e) => setSubsidyForm({ ...subsidyForm, employeeCount: Number(e.target.value) })}
                           className={inputClass}
                         />
