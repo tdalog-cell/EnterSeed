@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ImageOff } from 'lucide-react';
+import { ImageOff } from './icons';
 import { Photo, photoSrc, photoSrcSet } from '../photos';
 import { cx } from './ui';
 

@@ -20,7 +20,7 @@ import {
   ShieldCheck,
   Download,
   FileText
-} from 'lucide-react';
+} from '../components/icons';
 import {
   Button,
   Field,
@@ -276,7 +276,7 @@ export const EfilingView: React.FC = () => {
       {activeTab === 'all-in-one' && !loadingDraft && !draftLoadError && (
         <div className="space-y-6">
           {/* Statutory Registration Banner */}
-          <div className="bg-gradient-to-r from-purple-950 via-purple-900 to-indigo-950 text-white rounded-2xl p-6 sm:p-7 shadow-sm border border-purple-800/40">
+          <div className="bg-gradient-to-r from-purple-950 via-purple-900 to-indigo-950 text-white rounded-2xl p-6 sm:p-7 shadow-sm border border-line/40">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
               <div>
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-400/20 text-amber-300 border border-amber-400/30 mb-2">
@@ -286,7 +286,7 @@ export const EfilingView: React.FC = () => {
                 <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight">
                   MSME Registration Preparation Dossier
                 </h2>
-                <p className="mt-1 text-sm text-purple-200 max-w-2xl leading-relaxed">
+                <p className="mt-1 text-sm text-brand max-w-2xl leading-relaxed">
                   Consolidated preparation workflow. Organize your requirements for DTI Business Name, Barangay Clearance, Mayor’s Permit (BPLO), BIR Form 1901, and Location & Zoning all on one screen before visiting official portals.
                 </p>
               </div>
@@ -316,31 +316,31 @@ export const EfilingView: React.FC = () => {
             </div>
 
             {/* 5-Stage Checklist Pill Bar */}
-            <div className="mt-6 pt-5 border-t border-purple-800/50 grid grid-cols-2 sm:grid-cols-5 gap-2.5 text-xs">
+            <div className="mt-6 pt-5 border-t border-line/50 grid grid-cols-2 sm:grid-cols-5 gap-2.5 text-xs">
               <div className="bg-white/10 rounded-xl p-3 border border-white/10">
                 <span className="text-amber-300 font-bold block mb-0.5">Section 01</span>
                 <span className="font-semibold text-white block">DTI Business Name</span>
-                <span className="text-[11px] text-purple-200">BNRS & Scope</span>
+                <span className="text-[11px] text-brand">BNRS & Scope</span>
               </div>
               <div className="bg-white/10 rounded-xl p-3 border border-white/10">
                 <span className="text-amber-300 font-bold block mb-0.5">Section 02</span>
                 <span className="font-semibold text-white block">Barangay Clearance</span>
-                <span className="text-[11px] text-purple-200">Commercial Endorsement</span>
+                <span className="text-[11px] text-brand">Commercial Endorsement</span>
               </div>
               <div className="bg-white/10 rounded-xl p-3 border border-white/10">
                 <span className="text-amber-300 font-bold block mb-0.5">Section 03</span>
                 <span className="font-semibold text-white block">Mayor’s Permit</span>
-                <span className="text-[11px] text-purple-200">BPLO & Sanitary/FSIC</span>
+                <span className="text-[11px] text-brand">BPLO & Sanitary/FSIC</span>
               </div>
               <div className="bg-white/10 rounded-xl p-3 border border-white/10">
                 <span className="text-amber-300 font-bold block mb-0.5">Section 04</span>
                 <span className="font-semibold text-white block">BIR Form 1901</span>
-                <span className="text-[11px] text-purple-200">TIN & 8% Regime</span>
+                <span className="text-[11px] text-brand">TIN & 8% Regime</span>
               </div>
               <div className="bg-white/10 rounded-xl p-3 border border-white/10">
                 <span className="text-amber-300 font-bold block mb-0.5">Section 05</span>
                 <span className="font-semibold text-white block">Location & Zoning</span>
-                <span className="text-[11px] text-purple-200">Landmark Sketch & C-1</span>
+                <span className="text-[11px] text-brand">Landmark Sketch & C-1</span>
               </div>
             </div>
           </div>
@@ -435,15 +435,15 @@ export const EfilingView: React.FC = () => {
             <Panel>
               <div className="flex items-center justify-between pb-3 mb-4 border-b border-line">
                 <div className="flex items-center gap-2.5">
-                  <span className="w-7 h-7 rounded-lg bg-purple-100 text-purple-900 font-extrabold text-xs flex items-center justify-center">
+                  <span className="w-7 h-7 rounded-lg bg-brand-soft text-brand font-extrabold text-xs flex items-center justify-center">
                     01
                   </span>
                   <div>
                     <h3 className="font-bold text-ink text-base">Section 1: Business Name Registration (DTI-BNRS)</h3>
-                    <p className="text-xs text-muted">Legal enterprise naming under Act 3883 and Philippine Department of Trade and Industry rules.</p>
+                    <p className="text-xs text-muted-foreground">Legal enterprise naming under Act 3883 and Philippine Department of Trade and Industry rules.</p>
                   </div>
                 </div>
-                <span className="text-[11px] font-bold uppercase tracking-wider text-purple-800 bg-purple-50 px-2 py-0.5 rounded border border-purple-200">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-brand bg-brand-soft px-2 py-0.5 rounded border border-line">
                   DTI BNRS
                 </span>
               </div>
@@ -497,13 +497,13 @@ export const EfilingView: React.FC = () => {
                 </Field>
               </div>
 
-              <div className="mt-4 pt-3 border-t border-line flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-purple-50/50 -mx-5 -mb-5 px-5 py-3 rounded-b-2xl">
-                <span className="text-xs text-muted">Ready to register your proposed business name?</span>
+              <div className="mt-4 pt-3 border-t border-line flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-brand-soft/50 -mx-5 -mb-5 px-5 py-3 rounded-b-2xl">
+                <span className="text-xs text-muted-foreground">Ready to register your proposed business name?</span>
                 <a
                   href="https://bnrs.dti.gov.ph/"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 text-xs font-bold text-purple-900 bg-surface hover:bg-purple-100 border border-purple-200 px-3 py-1.5 rounded-lg transition-colors shadow-xs"
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-brand bg-surface hover:bg-brand-soft border border-line px-3 py-1.5 rounded-lg transition-colors shadow-xs"
                 >
                   Go to official DTI BNRS portal <ArrowUpRight className="w-3.5 h-3.5" />
                 </a>
@@ -519,7 +519,7 @@ export const EfilingView: React.FC = () => {
                   </span>
                   <div>
                     <h3 className="font-bold text-ink text-base">Section 2: Barangay Commercial Clearance</h3>
-                    <p className="text-xs text-muted">Local jurisdiction clearance certified by the Barangay Council of your business premises.</p>
+                    <p className="text-xs text-muted-foreground">Local jurisdiction clearance certified by the Barangay Council of your business premises.</p>
                   </div>
                 </div>
                 <span className="text-[11px] font-bold uppercase tracking-wider text-blue-800 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
@@ -577,7 +577,7 @@ export const EfilingView: React.FC = () => {
               </div>
 
               <div className="mt-4 pt-3 border-t border-line flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-blue-50/50 -mx-5 -mb-5 px-5 py-3 rounded-b-2xl">
-                <span className="text-xs text-muted">Clearance must be obtained in person from your local Barangay Hall.</span>
+                <span className="text-xs text-muted-foreground">Clearance must be obtained in person from your local Barangay Hall.</span>
                 <a
                   href="https://southcotabato.gov.ph/services/"
                   target="_blank"
@@ -598,7 +598,7 @@ export const EfilingView: React.FC = () => {
                   </span>
                   <div>
                     <h3 className="font-bold text-ink text-base">Section 3: Mayor’s Permit & Municipal BPLO</h3>
-                    <p className="text-xs text-muted">Business Permit and Licensing Office requirements, sanitary inspection, and fire clearance.</p>
+                    <p className="text-xs text-muted-foreground">Business Permit and Licensing Office requirements, sanitary inspection, and fire clearance.</p>
                   </div>
                 </div>
                 <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
@@ -680,7 +680,7 @@ export const EfilingView: React.FC = () => {
               </div>
 
               <div className="mt-4 pt-3 border-t border-line flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-emerald-50/50 -mx-5 -mb-5 px-5 py-3 rounded-b-2xl">
-                <span className="text-xs text-muted">Ready to file for your Mayor’s Permit and zoning clearance?</span>
+                <span className="text-xs text-muted-foreground">Ready to file for your Mayor’s Permit and zoning clearance?</span>
                 <a
                   href="https://southcotabato.gov.ph/services/"
                   target="_blank"
@@ -696,15 +696,15 @@ export const EfilingView: React.FC = () => {
             <Panel>
               <div className="flex items-center justify-between pb-3 mb-4 border-b border-line">
                 <div className="flex items-center gap-2.5">
-                  <span className="w-7 h-7 rounded-lg bg-indigo-100 text-indigo-900 font-extrabold text-xs flex items-center justify-center">
+                  <span className="w-7 h-7 rounded-lg bg-brand-soft text-brand font-extrabold text-xs flex items-center justify-center">
                     04
                   </span>
                   <div>
                     <h3 className="font-bold text-ink text-base">Section 4: BIR Registration (Form 1901)</h3>
-                    <p className="text-xs text-muted">Taxpayer Identification Number, TRAIN law regime selection, and books of accounts.</p>
+                    <p className="text-xs text-muted-foreground">Taxpayer Identification Number, TRAIN law regime selection, and books of accounts.</p>
                   </div>
                 </div>
-                <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-800 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-brand bg-brand-soft px-2 py-0.5 rounded border border-line">
                   BIR RDO 110
                 </span>
               </div>
@@ -777,13 +777,13 @@ export const EfilingView: React.FC = () => {
                 </Field>
               </div>
 
-              <div className="mt-4 pt-3 border-t border-line flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-indigo-50/50 -mx-5 -mb-5 px-5 py-3 rounded-b-2xl">
-                <span className="text-xs text-muted">Ready to file your BIR Form 1901 or apply for TIN / ATP?</span>
+              <div className="mt-4 pt-3 border-t border-line flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-brand-soft/50 -mx-5 -mb-5 px-5 py-3 rounded-b-2xl">
+                <span className="text-xs text-muted-foreground">Ready to file your BIR Form 1901 or apply for TIN / ATP?</span>
                 <a
                   href="https://www.bir.gov.ph/"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-900 bg-surface hover:bg-indigo-100 border border-indigo-200 px-3 py-1.5 rounded-lg transition-colors shadow-xs"
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-brand bg-surface hover:bg-brand-soft border border-line px-3 py-1.5 rounded-lg transition-colors shadow-xs"
                 >
                   Go to official BIR eServices portal <ArrowUpRight className="w-3.5 h-3.5" />
                 </a>
@@ -799,7 +799,7 @@ export const EfilingView: React.FC = () => {
                   </span>
                   <div>
                     <h3 className="font-bold text-ink text-base">Section 5: Location Sketch & Zoning Clearance</h3>
-                    <p className="text-xs text-muted">Comprehensive location description, zoning classification, and landmark sketch narrative.</p>
+                    <p className="text-xs text-muted-foreground">Comprehensive location description, zoning classification, and landmark sketch narrative.</p>
                   </div>
                 </div>
                 <span className="text-[11px] font-bold uppercase tracking-wider text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
@@ -879,9 +879,9 @@ export const EfilingView: React.FC = () => {
                   <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300">
                     <CheckCircle2 className="w-3.5 h-3.5" /> 5/5 Statutory Sections Complete
                   </span>
-                  <span className="text-xs text-muted">Tracking Ref: {formData.trackingNumber}</span>
+                  <span className="text-xs text-muted-foreground">Tracking Ref: {formData.trackingNumber}</span>
                 </div>
-                <p className="text-xs text-muted">
+                <p className="text-xs text-muted-foreground">
                   Download your completed, formatted statutory application dossier strictly as a PDF file.
                 </p>
               </div>
@@ -909,7 +909,7 @@ export const EfilingView: React.FC = () => {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-surface p-4 rounded-2xl border border-line shadow-xs">
             <div>
               <h2 className="text-lg font-bold text-ink">Smart Referral Engine</h2>
-              <p className="text-xs text-muted">Automated qualification assessment for South Cotabato government grants and local bank credit windows.</p>
+              <p className="text-xs text-muted-foreground">Automated qualification assessment for South Cotabato government grants and local bank credit windows.</p>
             </div>
             <Segmented
               label="Referral Tool"
@@ -1055,7 +1055,7 @@ export const EfilingView: React.FC = () => {
                         <div key={match.id} className="p-4 rounded-xl border border-line bg-surface hover:border-brand transition-all">
                           <div className="flex items-start justify-between gap-3">
                             <div>
-                              <span className="text-[11px] font-bold uppercase tracking-wider text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-200">
+                              <span className="text-[11px] font-bold uppercase tracking-wider text-brand bg-brand-soft px-2 py-0.5 rounded border border-line">
                                 {match.agency}
                               </span>
                               <h3 className="text-base font-bold text-ink mt-1.5">{match.programName}</h3>
@@ -1072,7 +1072,7 @@ export const EfilingView: React.FC = () => {
 
                           <div className="mt-3 pt-3 border-t border-line text-xs space-y-1.5">
                             <p className="font-semibold text-ink">Qualification Factors:</p>
-                            <ul className="list-disc pl-4 space-y-0.5 text-muted">
+                            <ul className="list-disc pl-4 space-y-0.5 text-muted-foreground">
                               {match.matchReasons.map((r, i) => (
                                 <li key={i}>{r}</li>
                               ))}
@@ -1096,7 +1096,7 @@ export const EfilingView: React.FC = () => {
                       ))}
                     </div>
                   ) : (
-                    <div className="py-12 text-center text-muted text-sm">
+                    <div className="py-12 text-center text-muted-foreground text-sm">
                       Complete the questionnaire on the left and click "Evaluate Grants & Subsidies" to run the local matching engine.
                     </div>
                   )}
@@ -1207,7 +1207,7 @@ export const EfilingView: React.FC = () => {
                                 {match.institution}
                               </span>
                               <h3 className="text-base font-bold text-ink mt-1.5">{match.programTitle}</h3>
-                              <p className="text-xs font-semibold text-purple-700 mt-0.5">
+                              <p className="text-xs font-semibold text-brand mt-0.5">
                                 Interest: {match.interestRate} · {match.repaymentTerm}
                               </p>
                             </div>
@@ -1224,7 +1224,7 @@ export const EfilingView: React.FC = () => {
                               <span><strong>Max Credit:</strong> {match.maxLoanAmount}</span>
                             </div>
 
-                            <ul className="list-disc pl-4 space-y-0.5 text-muted mt-2">
+                            <ul className="list-disc pl-4 space-y-0.5 text-muted-foreground mt-2">
                               {match.highlights.map((h, i) => (
                                 <li key={i}>{h}</li>
                               ))}
@@ -1238,7 +1238,7 @@ export const EfilingView: React.FC = () => {
                       ))}
                     </div>
                   ) : (
-                    <div className="py-12 text-center text-muted text-sm">
+                    <div className="py-12 text-center text-muted-foreground text-sm">
                       Set your capital requirement and credit profile on the left to see matched local lenders in South Cotabato.
                     </div>
                   )}
@@ -1268,13 +1268,13 @@ export const EfilingView: React.FC = () => {
                 >
                   <div>
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-accent-ink uppercase tracking-wider">{portal.agency}</span>
-                      <ArrowUpRight className="w-4 h-4 text-muted group-hover:text-brand" />
+                      <span className="text-xs font-bold text-highlight-ink uppercase tracking-wider">{portal.agency}</span>
+                      <ArrowUpRight className="w-4 h-4 text-muted-foreground group-hover:text-brand" />
                     </div>
                     <h3 className="font-bold text-ink mt-1 group-hover:text-brand">{portal.title}</h3>
-                    <p className="mt-1 text-xs text-muted leading-relaxed">{portal.desc}</p>
+                    <p className="mt-1 text-xs text-muted-foreground leading-relaxed">{portal.desc}</p>
                   </div>
-                  <div className="mt-4 pt-2 border-t border-line/60 flex items-center justify-between text-[11px] text-muted">
+                  <div className="mt-4 pt-2 border-t border-line/60 flex items-center justify-between text-[11px] text-muted-foreground">
                     <span>Verified Government Domain</span>
                     <span className="font-semibold text-brand">Launch Portal →</span>
                   </div>

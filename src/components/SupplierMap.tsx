@@ -87,9 +87,9 @@ export const SupplierMap: React.FC<SupplierMapProps> = ({ suppliers, selectedSup
     suppliers.forEach((s) => {
       const marker = L.marker(coordsFor(s), { icon: pinIcon, title: s.name }).addTo(map);
       marker.bindPopup(
-        `<div style="font-size:13px;line-height:1.45;color:#2B1C33;max-width:220px">
-          <strong style="display:block;font-size:14px;color:#4A1D8F">${escapeHtml(s.name)}</strong>
-          <span style="color:#6A5672">${escapeHtml(s.category.replace('-', ' '))} · ${escapeHtml(s.location)}</span>
+        `<div style="font-size:13px;line-height:1.45;color:#191715;max-width:220px">
+          <strong style="display:block;font-size:14px;color:#2A211F">${escapeHtml(s.name)}</strong>
+          <span style="color:#756B66">${escapeHtml(s.category.replace('-', ' '))} · ${escapeHtml(s.location)}</span>
           <p style="margin:6px 0 0">${escapeHtml(s.products)}</p>
         </div>`
       );

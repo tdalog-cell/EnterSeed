@@ -27,7 +27,7 @@ import {
   Sprout,
   FlaskConical,
   Settings
-} from 'lucide-react';
+} from './icons';
 
 export type ActivePage =
   | 'dashboard'
@@ -168,7 +168,7 @@ export const AppShell: React.FC<AppShellProps> = ({ activePage, setActivePage, c
         aria-current={active ? 'page' : undefined}
         className={cx(
           'nav-link w-full flex items-center gap-3 min-h-11 px-3.5 rounded-md text-[13px] transition-colors',
-          active ? 'bg-brand-soft text-brand font-medium' : 'text-muted hover:text-ink hover:bg-sunken'
+          active ? 'bg-brand-soft text-brand font-medium' : 'text-muted-foreground hover:text-ink hover:bg-sunken'
         )}
       >
         {item.id === 'boss-nana' ? (
@@ -190,11 +190,11 @@ export const AppShell: React.FC<AppShellProps> = ({ activePage, setActivePage, c
       <aside className="workspace-sidebar hidden md:flex md:sticky md:top-0 md:h-screen w-60 lg:w-64 shrink-0 flex-col text-ink">
         <div className="px-5 pt-6 pb-5">
           <Logo onClick={() => setActivePage('dashboard')} />
-          <div className="mt-5 rounded-lg border border-line bg-surface px-3 py-2.5"><p className="text-xs font-semibold truncate">{user?.business || 'Your workspace'}</p><p className="mt-1 text-xs text-muted">{isStaff ? 'Staff & business workspace' : 'Business workspace'}</p></div>
+          <div className="mt-5 rounded-lg border border-line bg-surface px-3 py-2.5"><p className="text-xs font-semibold truncate">{user?.business || 'Your workspace'}</p><p className="mt-1 text-xs text-muted-foreground">{isStaff ? 'Staff & business workspace' : 'Business workspace'}</p></div>
         </div>
 
         <nav className="flex-1 overflow-y-auto px-3 pb-4" aria-label={t('appShell.primaryNavigation')}>
-          <p className="px-3 mb-2 text-xs font-medium text-muted">Workspace</p>
+          <p className="px-3 mb-2 text-xs font-medium text-muted-foreground">Workspace</p>
           <ul className="space-y-0.5">
             {workspace.map((item) => (
               <li key={item.id}>
@@ -204,7 +204,7 @@ export const AppShell: React.FC<AppShellProps> = ({ activePage, setActivePage, c
           </ul>
 
           {isStaff && <div className="mt-3 border-t border-line pt-3">{sideLink(staff)}</div>}
-          <p className="mt-6 mb-2 px-3 text-xs font-medium text-muted">{t('appShell.resources')}</p>
+          <p className="mt-6 mb-2 px-3 text-xs font-medium text-muted-foreground">{t('appShell.resources')}</p>
           <ul className="space-y-0.5">
             {resources.map((item) => (
               <li key={item.id}>
@@ -218,9 +218,9 @@ export const AppShell: React.FC<AppShellProps> = ({ activePage, setActivePage, c
           <button type="button" onClick={() => setActivePage('boss-nana')} className="group w-full text-left rounded-lg border border-line bg-surface p-3 transition-colors hover:bg-sunken">
             <img src="./logos/Narra.png" alt="" className="w-9 h-9 rounded-xl bg-white object-contain p-1" />
             <span className="block mt-3 text-[13px] font-semibold">Need a hand?</span>
-            <span className="block mt-1 text-xs leading-relaxed text-muted">Talk things through with Boss Narra.</span>
+            <span className="block mt-1 text-xs leading-relaxed text-muted-foreground">Talk things through with Boss Narra.</span>
           </button>
-          <p className="flex items-center gap-2 mt-5 px-2 text-[10px] text-muted"><Sprout className="w-4 h-4 text-accent/80" />Rooted in South Cotabato</p>
+          <p className="flex items-center gap-2 mt-5 px-2 text-[10px] text-muted-foreground"><Sprout className="w-4 h-4 text-highlight/80" />Rooted in South Cotabato</p>
         </div>
       </aside>
 
@@ -241,13 +241,13 @@ export const AppShell: React.FC<AppShellProps> = ({ activePage, setActivePage, c
               <Logo onClick={() => setActivePage('dashboard')} />
             </div>
 
-            <p className="hidden md:flex items-center gap-2 text-[13px] text-muted truncate">
+            <p className="hidden md:flex items-center gap-2 text-[13px] text-muted-foreground truncate">
               <span className="hidden lg:inline">Workspace</span><ChevronRight className="hidden lg:block w-3.5 h-3.5" />
               <span className="font-semibold text-ink">{[...workspace, ...resources, staff].find(item => item.id === activePage)?.label || 'Overview'}</span>
             </p>
 
             <div className="flex items-center gap-1">
-              <button type="button" onClick={() => setSearchOpen(true)} aria-label="Search workspace" className="flex items-center gap-2 h-9 px-2.5 rounded-lg text-muted hover:bg-brand-soft"><Search className="w-4 h-4" /><span className="hidden xl:inline text-xs">Find a tool</span><kbd className="hidden xl:inline text-[10px] border border-line rounded px-1.5 py-0.5">Ctrl K</kbd></button>
+              <button type="button" onClick={() => setSearchOpen(true)} aria-label="Search workspace" className="flex items-center gap-2 h-9 px-2.5 rounded-lg text-muted-foreground hover:bg-brand-soft"><Search className="w-4 h-4" /><span className="hidden xl:inline text-xs">Find a tool</span><kbd className="hidden xl:inline text-[10px] border border-line rounded px-1.5 py-0.5">Ctrl K</kbd></button>
               <LanguageMenu />
 
               <div className="relative" ref={profileRef}>
@@ -259,22 +259,22 @@ export const AppShell: React.FC<AppShellProps> = ({ activePage, setActivePage, c
                   aria-label="Account menu"
                   className="flex items-center gap-2 h-9 pl-1 pr-2 rounded-full hover:bg-brand-soft transition-colors"
                 >
-                  <span className="w-7 h-7 rounded-full bg-brand text-white flex items-center justify-center font-bold text-xs">
+                  <span className="w-7 h-7 rounded-full bg-brand text-primary-foreground flex items-center justify-center font-bold text-xs">
                     {initial}
                   </span>
                   <span className="hidden sm:inline text-[13px] font-semibold text-ink max-w-[120px] truncate">
                     {user?.firstName || user?.email}
                   </span>
-                  <ChevronDown className="w-3.5 h-3.5 text-muted" />
+                  <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
                 </button>
 
                 {profileOpen && user && (
-                  <div role="menu" className="pop-in absolute right-0 mt-1.5 w-64 bg-surface rounded-xl border border-line shadow-[0_12px_32px_-12px_rgb(43_28_51/0.35)] p-1.5 z-50">
+                  <div role="menu" className="preset-menu pop-in absolute right-0 mt-1.5 w-64 bg-surface rounded-xl border border-line shadow-[0_12px_32px_-12px_rgb(28_25_23/0.35)] p-1.5 z-50">
                     <div className="px-2.5 py-2">
                       <p className="font-semibold text-sm text-ink truncate">
                         {user.firstName ? `${user.firstName} ${user.lastName}` : 'Enterseed user'}
                       </p>
-                      <p className="text-[13px] text-muted truncate">{user.email}</p>
+                      <p className="text-[13px] text-muted-foreground truncate">{user.email}</p>
                     </div>
                     <div className="my-1 border-t border-line" />
                     <button type="button" role="menuitem" onClick={() => { setProfileOpen(false); setActivePage('settings'); }} className="w-full flex items-center gap-2 h-9 px-2.5 rounded-lg text-sm text-ink hover:bg-sunken">
@@ -313,7 +313,7 @@ export const AppShell: React.FC<AppShellProps> = ({ activePage, setActivePage, c
                 <button
                   type="button"
                   onClick={() => setDrawerOpen(false)}
-                  className="p-2 -mr-1 rounded-lg text-muted hover:text-ink hover:bg-sunken"
+                  className="p-2 -mr-1 rounded-lg text-muted-foreground hover:text-ink hover:bg-sunken"
                   aria-label={t('appShell.closeMenu')}
                 >
                   <X className="w-5 h-5" />
@@ -326,7 +326,7 @@ export const AppShell: React.FC<AppShellProps> = ({ activePage, setActivePage, c
                     <li key={item.id}>{sideLink(item)}</li>
                   ))}
                 </ul>
-                <p className="mt-6 mb-2 px-3 text-xs font-semibold text-muted">{t('appShell.resources')}</p>
+                <p className="mt-6 mb-2 px-3 text-xs font-semibold text-muted-foreground">{t('appShell.resources')}</p>
                 <ul className="space-y-0.5">
                   {[...resources, ...(isStaff ? [staff] : [])].map((item) => (
                     <li key={item.id}>{sideLink(item, true)}</li>
@@ -339,7 +339,7 @@ export const AppShell: React.FC<AppShellProps> = ({ activePage, setActivePage, c
                   <p className="text-sm font-semibold truncate">
                     {user.firstName ? `${user.firstName} ${user.lastName}` : user.email}
                   </p>
-                  {user.business && <p className="text-[13px] text-muted truncate">{user.business}</p>}
+                  {user.business && <p className="text-[13px] text-muted-foreground truncate">{user.business}</p>}
                   <button
                     type="button"
                     onClick={handleLogout}
@@ -361,7 +361,7 @@ export const AppShell: React.FC<AppShellProps> = ({ activePage, setActivePage, c
           </div>
         </main>
 
-        <footer className="w-full border-t border-line bg-surface py-4 px-4 sm:px-6 lg:px-8 text-center text-xs text-muted">
+        <footer className="w-full border-t border-line bg-surface py-4 px-4 sm:px-6 lg:px-8 text-center text-xs text-muted-foreground">
           <p>
             <strong className="font-semibold text-ink">Enterseed is an independent support tool.</strong> Always confirm requirements with DTI, your LGU, and BIR. Built for South Cotabato MSMEs.
           </p>
@@ -377,10 +377,10 @@ export const AppShell: React.FC<AppShellProps> = ({ activePage, setActivePage, c
           if (event.key === 'Enter' && searchResults[searchIndex]) { event.preventDefault(); setActivePage(searchResults[searchIndex].id); setSearchOpen(false); }
         }} className={inputClass} />
         <div id="workspace-results" role="listbox" aria-label="Workspace tools" className="mt-3 space-y-1 max-h-[45vh] overflow-auto">
-          {searchResults.map((item, index) => <button type="button" role="option" aria-selected={index === searchIndex} id={`workspace-result-${index}`} key={item.id} onClick={() => { setActivePage(item.id); setSearchOpen(false); }} className={cx('flex items-center gap-3 w-full p-3 rounded-md text-left text-sm hover:bg-brand-soft', index === searchIndex && 'bg-brand-soft')}><item.icon className="w-4 h-4 text-brand" /><span className="flex-1">{item.label}</span><ChevronRight className="w-4 h-4 text-muted" /></button>)}
-          {searchResults.length === 0 && <p className="text-sm text-muted text-center py-6">No tools found. Try cash, permits, or business plan.</p>}
+          {searchResults.map((item, index) => <button type="button" role="option" aria-selected={index === searchIndex} id={`workspace-result-${index}`} key={item.id} onClick={() => { setActivePage(item.id); setSearchOpen(false); }} className={cx('flex items-center gap-3 w-full p-3 rounded-md text-left text-sm hover:bg-brand-soft', index === searchIndex && 'bg-brand-soft')}><item.icon className="w-4 h-4 text-brand" /><span className="flex-1">{item.label}</span><ChevronRight className="w-4 h-4 text-muted-foreground" /></button>)}
+          {searchResults.length === 0 && <p className="text-sm text-muted-foreground text-center py-6">No tools found. Try cash, permits, or business plan.</p>}
         </div>
-        <p className="mt-4 border-t border-line pt-3 text-xs text-muted">Use ↑ ↓ to browse, Enter to open, and Esc to close.</p>
+        <p className="mt-4 border-t border-line pt-3 text-xs text-muted-foreground">Use ↑ ↓ to browse, Enter to open, and Esc to close.</p>
       </Modal>
 
       <BossNarraWidget hidden={activePage === 'boss-nana'} />

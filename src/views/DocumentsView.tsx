@@ -24,7 +24,7 @@ import {
   Info,
   ShieldAlert,
   ListChecks
-} from 'lucide-react';
+} from '../components/icons';
 import {
   Button,
   Field,
@@ -248,7 +248,7 @@ export const DocumentsView: React.FC<{ requestedDocumentId?: number; onDocumentO
     const w = window.open('', '_blank');
     if (!w) { setNotice({ tone: 'error', text: 'Allow pop-ups for this site to open the print preview.' }); return; }
     w.opener = null;
-    w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Enterseed document</title><style>body { font-family: sans-serif; padding: 24px; color: #1e293b; } h1, h2 { color: #4A1D8F; } table { width: 100%; border-collapse: collapse; } th, td { border: 1px solid #cbd5e1; padding: 8px; font-size: 12px; } th { background: #4A1D8F; color: white; }</style></head><body>${content}</body></html>`);
+    w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Enterseed document</title><style>body { font-family: sans-serif; padding: 24px; color: #1e293b; } h1, h2 { color: #2A211F; } table { width: 100%; border-collapse: collapse; } th, td { border: 1px solid #cbd5e1; padding: 8px; font-size: 12px; } th { background: #2A211F; color: white; }</style></head><body>${content}</body></html>`);
     w.document.close();
     w.focus();
     w.print();
@@ -474,7 +474,7 @@ export const DocumentsView: React.FC<{ requestedDocumentId?: number; onDocumentO
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 mb-4 border-b border-line">
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-2 mb-1">
-                            <span className="text-[11px] font-bold uppercase tracking-wider text-purple-800 bg-purple-50 px-2.5 py-0.5 rounded-full border border-purple-200">
+                            <span className="text-[11px] font-bold uppercase tracking-wider text-brand bg-brand-soft px-2.5 py-0.5 rounded-full border border-line">
                               {isSaved ? 'Saved Document' : 'Draft Preview'}
                             </span>
                             {isSaved ? (
@@ -495,7 +495,7 @@ export const DocumentsView: React.FC<{ requestedDocumentId?: number; onDocumentO
                             size="sm"
                             disabled={savingToLib || generating}
                             onClick={() => setIsEditing(!isEditing)}
-                            className={cx(isEditing && 'bg-brand text-white hover:bg-brand-dark')}
+                            className={cx(isEditing && 'bg-brand text-primary-foreground hover:bg-brand-deep')}
                           >
                             <Edit3 className="w-4 h-4 mr-1.5" />
                             {isEditing ? 'Done Editing' : 'Edit Text'}
@@ -543,7 +543,7 @@ export const DocumentsView: React.FC<{ requestedDocumentId?: number; onDocumentO
                             rows={18}
                             className={cx(textareaClass, 'font-mono text-xs leading-relaxed')}
                           />
-                          <p className="text-[11px] text-muted">
+                          <p className="text-[11px] text-muted-foreground">
                             Tip: You can edit headings, numbers, and paragraphs directly. Click "Done Editing" to return to preview mode.
                           </p>
                         </div>
@@ -560,25 +560,25 @@ export const DocumentsView: React.FC<{ requestedDocumentId?: number; onDocumentO
             ) : (
               /* Live Sample Outline Preview instead of blank box */
               <Panel>
-                <div className="p-4 rounded-xl bg-purple-50/70 border border-purple-200">
+                <div className="p-4 rounded-xl bg-brand-soft/70 border border-line">
                   <div className="flex items-center gap-2 mb-2">
-                    <ListChecks className="w-4 h-4 text-purple-700" />
-                    <h3 className="text-sm font-bold text-purple-950">
+                    <ListChecks className="w-4 h-4 text-brand" />
+                    <h3 className="text-sm font-bold text-brand">
                       {SAMPLE_OUTLINES[docType].title}
                     </h3>
                   </div>
-                  <p className="text-xs text-purple-800 leading-relaxed mb-4">
+                  <p className="text-xs text-brand leading-relaxed mb-4">
                     When you click "Create document draft", Enterseed will produce an editable draft incorporating the following sections:
                   </p>
                   <div className="space-y-3">
                     {SAMPLE_OUTLINES[docType].sections.map((sec, idx) => (
-                      <div key={idx} className="bg-surface p-3 rounded-lg border border-purple-100 shadow-2xs">
+                      <div key={idx} className="bg-surface p-3 rounded-lg border border-line shadow-2xs">
                         <strong className="text-xs font-bold text-ink block">{sec.name}</strong>
-                        <span className="text-[11px] text-muted leading-relaxed block mt-0.5">{sec.desc}</span>
+                        <span className="text-[11px] text-muted-foreground leading-relaxed block mt-0.5">{sec.desc}</span>
                       </div>
                     ))}
                   </div>
-                  <div className="mt-4 pt-3 border-t border-purple-200 flex items-center justify-between text-xs text-purple-900 font-semibold">
+                  <div className="mt-4 pt-3 border-t border-line flex items-center justify-between text-xs text-brand font-semibold">
                     <span>Fill in the parameters on the left to generate</span>
                     <span>Editable prior to PDF export →</span>
                   </div>
@@ -596,12 +596,12 @@ export const DocumentsView: React.FC<{ requestedDocumentId?: number; onDocumentO
           />
 
           {loadingSaved ? (
-            <div className="py-12 text-center text-sm text-muted">Loading documents...</div>
+            <div className="py-12 text-center text-sm text-muted-foreground">Loading documents...</div>
           ) : savedDocs.length === 0 ? (
-            <div className="py-12 text-center text-muted">
+            <div className="py-12 text-center text-muted-foreground">
               <FolderOpen className="w-10 h-10 mx-auto mb-2 opacity-50" />
               <p className="font-semibold text-ink">No saved documents yet.</p>
-              <p className="text-xs text-muted mt-1">Generate a proposal in the Generator Studio and click "Save to Library".</p>
+              <p className="text-xs text-muted-foreground mt-1">Generate a proposal in the Generator Studio and click "Save to Library".</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -615,7 +615,7 @@ export const DocumentsView: React.FC<{ requestedDocumentId?: number; onDocumentO
                       <span className="text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-brand-soft text-brand">
                         {doc.docType.replace(/_/g, ' ')}
                       </span>
-                      <span className="text-xs text-muted">
+                      <span className="text-xs text-muted-foreground">
                         {new Date(doc.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                       </span>
                       <span className="inline-flex items-center gap-1 text-[11px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
@@ -623,7 +623,7 @@ export const DocumentsView: React.FC<{ requestedDocumentId?: number; onDocumentO
                       </span>
                     </div>
                     <h3 className="font-bold text-ink text-base truncate">{doc.title}</h3>
-                    <p className="text-xs text-muted truncate">
+                    <p className="text-xs text-muted-foreground truncate">
                       {doc.municipality}, South Cotabato · Est. Turnover: {doc.summary?.projectedRevenue ? `₱${doc.summary.projectedRevenue.toLocaleString('en-PH')}` : '—'}
                     </p>
                   </div>

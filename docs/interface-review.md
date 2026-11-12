@@ -5,10 +5,18 @@ Reference: https://ui.shadcn.com/create
 
 ## Design direction
 
-White #FFFFFF surfaces, gray #F4F4F5 navigation, charcoal #18181B text,
-plum #4A1D8F primary actions, orange #FF8A3D emphasis, and #E4E4E7 borders.
-DM Sans serves both headings and body; tabular numerals align business figures.
-Headings use 24–32px, section titles 16px, body 14–15px, metadata 12px.
+Preset: [`b1x9M8ZeJW`](https://ui.shadcn.com/create?preset=b1x9M8ZeJW).
+The official generated source uses Maia, taupe base/theme, amber charts, Raleway
+headings, Outfit body text, HugeIcons, medium radius (0.625rem), subtle menu accents,
+and translucent menus. Its exact OKLCH light/dark tokens are preserved in
+`src/preset.css`; approximate light palette swatches: white #FFFFFF, canvas tint
+#FAF9F7, secondary #F3F1F1, border #E7E4E2, primary #2A211F, text #191715.
+Amber is reserved for chart series and the checkup prompt. Success/error colors
+remain semantic. Headings use 24–32px, sections 16px, body 14–15px, metadata 12px.
+
+The brief review replaces our earlier plum/orange proposal with the user's exact
+preset. Maia's pill controls and soft panels fit the requested reference; the
+business task layout remains specific to Enterseed instead of copying a demo page.
 
 The chosen layout keeps left-aligned navigation, a quiet toolbar, and a broad work area:
 
@@ -25,11 +33,26 @@ Staff review    | Queue tabs / search / sort / records
 ```
 
 An alternative large promotional hero would push tasks below the fold. The selected
-layout spends its emphasis on the orange rule at the financial checkup prompt and
+layout spends its emphasis on the amber rule at the financial checkup prompt and
 uses compact records for saved work. This revises the generic repeated-card pattern
 into a task-oriented workspace specific to business preparation and staff review.
 Sentence-case labels, restrained motion, visible focus, and mobile wrapping apply
 throughout. Existing account permissions and real/demo distinctions remain in place.
+
+## Preset integration
+
+- Exact official light/dark CSS values from
+  https://ui.shadcn.com/init/v0?preset=b1x9M8ZeJW&base=base are in `src/preset.css`.
+  The CLI `shadcn preset decode b1x9M8ZeJW --json` independently confirmed all settings.
+- Existing React components retain their behavior and use Maia's pill controls,
+  rounded panels, medium radius scale, and translucent menus with subtle selections.
+  Control heights remain 36–44px for the existing mobile workflows.
+- Raleway headings and Outfit body text load through Google Fonts. HugeIcons replaces
+  Lucide throughout the app; per-icon imports keep unused icons out of the bundle.
+- Cash-flow charts use amber series with revenue/expense labels. Existing semantic
+  success and error tones remain distinct in both themes.
+- Existing workspace token names map to the preset; `muted` and `accent` retain
+  shadcn's meanings. Enterseed's small amber emphasis uses a separate `highlight` token.
 
 ## Implemented improvements
 
@@ -53,7 +76,7 @@ throughout. Existing account permissions and real/demo distinctions remain in pl
 
 ## Verification — November 12, 2026
 
-`npm run lint` and `npm run build` pass. `npm test` passes 28 tests.
+Rechecked after applying preset `b1x9M8ZeJW`: `npm run lint` and `npm run build` pass. `npm test` passes 28 tests.
 `npm run test:browser` passes 25 workflow checks with zero JavaScript page errors.
 The browser suite runs the production build in headless Edge against a new SQLite
 database on a randomly selected local port. It creates only fictional test accounts.

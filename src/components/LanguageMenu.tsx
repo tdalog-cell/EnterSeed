@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { Check, ChevronDown, Globe } from 'lucide-react';
+import { Check, ChevronDown, Globe } from './icons';
 import { useLanguage, ENABLED_LANGUAGES as LANGUAGES } from '../context/LanguageContext';
 import { cx, useDismiss } from './ui';
 import { useAuth } from '../context/AuthContext';
@@ -23,13 +23,13 @@ export const LanguageMenu: React.FC = () => {
         aria-label={`Language: ${LANGUAGES.find((l) => l.code === language)?.label}`}
         className="flex items-center gap-1.5 h-9 px-2.5 rounded-lg text-[13px] font-semibold text-ink hover:bg-brand-soft transition-colors"
       >
-        <Globe className="w-4 h-4 text-muted" />
+        <Globe className="w-4 h-4 text-muted-foreground" />
         <span className="uppercase">{language}</span>
-        <ChevronDown className={cx('w-3.5 h-3.5 text-muted transition-transform', open && 'rotate-180')} />
+        <ChevronDown className={cx('w-3.5 h-3.5 text-muted-foreground transition-transform', open && 'rotate-180')} />
       </button>
 
       {open && (
-        <div role="menu" className="pop-in absolute right-0 mt-1.5 w-44 bg-surface rounded-xl border border-line shadow-[0_12px_32px_-12px_rgb(43_28_51/0.35)] p-1 z-50">
+        <div role="menu" className="preset-menu pop-in absolute right-0 mt-1.5 w-44 bg-surface rounded-xl border border-line shadow-[0_12px_32px_-12px_rgb(28_25_23/0.35)] p-1 z-50">
           {LANGUAGES.map((l) => {
             const active = language === l.code;
             return (

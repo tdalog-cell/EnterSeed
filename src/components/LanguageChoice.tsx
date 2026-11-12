@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight } from './icons';
 import { ENABLED_LANGUAGES, Language } from '../context/LanguageContext';
 
 /** Per-language greeting so each option reads in its own language. */
@@ -31,7 +31,7 @@ export const LanguageChoice: React.FC<{ onChoose: (lang: Language) => void; curr
           >
             <span>
               <span className="block text-xl font-bold text-ink">{copy.greeting}</span>
-              <span className="block text-sm text-muted">{copy.action}</span>
+              <span className="block text-sm text-muted-foreground">{copy.action}</span>
             </span>
             <span className="flex items-center gap-2 text-sm font-semibold text-brand">
               {l.label}

@@ -4,7 +4,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { apiFetch } from '../services/apiClient';
 import { useUnsavedChanges } from '../utils/useUnsavedChanges';
 import { Button, Field, Notice, PageHeader, Panel, PanelHeader, cx, inputClass, textareaClass } from '../components/ui';
-import { Copy, Check, Sparkles, Tag, FileSpreadsheet } from 'lucide-react';
+import { Copy, Check, Sparkles, Tag, FileSpreadsheet } from '../components/icons';
 
 const FacebookIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -107,16 +107,16 @@ export const MarketingView: React.FC = () => {
           { value: 'facebook_post', title: 'Facebook post', detail: 'A caption for your business page.', icon: FacebookIcon },
           { value: 'promo_text', title: 'Promotional message', detail: 'A short offer for SMS or Messenger.', icon: Tag },
           { value: 'price_list', title: 'Price list', detail: 'An easy-to-read list of products and prices.', icon: FileSpreadsheet }
-        ] as const).map(({ value, title, detail, icon: Icon }) => <button type="button" key={value} disabled={generating} aria-pressed={toolType === value} onClick={() => setToolType(value)} className={cx('flex items-start gap-3 p-4 text-left rounded-xl border transition-colors', toolType === value ? 'bg-brand-soft border-brand' : 'bg-surface border-line hover:bg-sunken')}><Icon className="w-5 h-5 text-brand shrink-0 mt-0.5" /><span><span className="block text-sm font-semibold">{title}</span><span className="block text-xs text-muted mt-1">{detail}</span></span></button>)}
+        ] as const).map(({ value, title, detail, icon: Icon }) => <button type="button" key={value} disabled={generating} aria-pressed={toolType === value} onClick={() => setToolType(value)} className={cx('flex items-start gap-3 p-4 text-left rounded-xl border transition-colors', toolType === value ? 'bg-brand-soft border-brand' : 'bg-surface border-line hover:bg-sunken')}><Icon className="w-5 h-5 text-brand shrink-0 mt-0.5" /><span><span className="block text-sm font-semibold">{title}</span><span className="block text-xs text-muted-foreground mt-1">{detail}</span></span></button>)}
       </div>
-      {storageError ? <Notice tone="error">This browser could not save your draft. Copy your text before leaving this page.</Notice> : <p className="text-xs text-muted" role="status">Your inputs and each format’s draft are saved automatically in this browser.</p>}
+      {storageError ? <Notice tone="error">This browser could not save your draft. Copy your text before leaving this page.</Notice> : <p className="text-xs text-muted-foreground" role="status">Your inputs and each format’s draft are saved automatically in this browser.</p>}
       {generated && <Notice tone="success">Draft created. Review the text, then select Copy text when you’re ready to use it.</Notice>}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Form Inputs */}
         <div className="lg:col-span-5 bg-surface border border-line rounded-2xl p-5 sm:p-6 space-y-4 shadow-xs">
           <div className="flex items-center justify-between pb-2 border-b border-line">
             <h2 className="font-bold text-ink text-base">Your offer</h2>
-            <span className="text-xs text-muted">All formats use these details</span>
+            <span className="text-xs text-muted-foreground">All formats use these details</span>
           </div>
 
           <form onSubmit={handleGenerate}><fieldset disabled={generating} className="space-y-4">
@@ -251,7 +251,7 @@ export const MarketingView: React.FC = () => {
                 )}
               />
 
-              <div className="flex flex-wrap gap-2 items-center justify-between text-xs text-muted">
+              <div className="flex flex-wrap gap-2 items-center justify-between text-xs text-muted-foreground">
                 <span>{generatedText.length} characters · {generatedText.split(/\s+/).filter(Boolean).length} words</span>
                 <span className="text-brand font-medium">Review your draft before sharing</span>
               </div>

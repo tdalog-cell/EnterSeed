@@ -23,7 +23,7 @@ import {
   Square,
   CheckCircle2,
   Calendar
-} from 'lucide-react';
+} from '../components/icons';
 import {
   Button,
   Field,
@@ -388,8 +388,8 @@ export const FinanceView: React.FC = () => {
         lead="Keep your cash, commitments, and next investment in one place. Save your workspace to keep your records and dashboard together."
         actions={<Button onClick={handleSaveWorkspace} busy={savingWorkspace} busyLabel="Saving workspace…" disabled={loadingWorkspace || !!workspaceError}><CheckCircle2 />Save workspace</Button>}
       />
-      <div className="flex flex-wrap items-center gap-3 text-xs text-muted">
-        <span className={cx('inline-flex items-center gap-2 rounded-full px-3 py-1.5 font-semibold', hasUnsavedChanges ? 'bg-accent-soft text-accent-ink' : 'bg-good-soft text-good')}>
+      <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+        <span className={cx('inline-flex items-center gap-2 rounded-full px-3 py-1.5 font-semibold', hasUnsavedChanges ? 'bg-highlight-soft text-highlight-ink' : 'bg-good-soft text-good')}>
           <span className="h-1.5 w-1.5 rounded-full bg-current" />
           {loadingWorkspace ? 'Loading your records…' : hasUnsavedChanges ? 'Unsaved changes' : 'Workspace up to date'}
         </span>
@@ -417,7 +417,7 @@ export const FinanceView: React.FC = () => {
                 content?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'start' });
               });
             }}
-            className={cx('finance-tool-row flex items-center gap-2.5 rounded-md px-3 py-3 text-left text-sm transition-colors', activeTab === id ? 'bg-brand-soft text-brand font-semibold' : 'text-muted hover:bg-sunken')} title={description}>
+            className={cx('finance-tool-row flex items-center gap-2.5 rounded-md px-3 py-3 text-left text-sm transition-colors', activeTab === id ? 'bg-brand-soft text-brand font-semibold' : 'text-muted-foreground hover:bg-sunken')} title={description}>
             <Icon className="w-4 h-4 shrink-0" /><span>{title}</span>
           </button>)}
         </div>
@@ -443,12 +443,12 @@ export const FinanceView: React.FC = () => {
               <p className="text-2xl font-extrabold text-rose-950 mt-1">₱{totalCashOut.toLocaleString('en-PH')}</p>
               <p className="text-xs text-rose-700 mt-0.5">Expenses recorded for the selected month</p>
             </Panel>
-            <Panel className="bg-purple-50/70 border-purple-200">
-              <span className="text-xs font-semibold text-purple-800 uppercase tracking-wider block">Net Cash Flow</span>
-              <p className={cx('text-2xl font-extrabold mt-1', netMonthlyCashFlow >= 0 ? 'text-purple-950' : 'text-rose-700')}>
+            <Panel className="bg-brand-soft/70 border-line">
+              <span className="text-xs font-semibold text-brand uppercase tracking-wider block">Net Cash Flow</span>
+              <p className={cx('text-2xl font-extrabold mt-1', netMonthlyCashFlow >= 0 ? 'text-brand' : 'text-rose-700')}>
                 {netMonthlyCashFlow >= 0 ? '+' : ''}₱{netMonthlyCashFlow.toLocaleString('en-PH')}
               </p>
-              <p className="text-xs text-purple-700 mt-0.5">Cash-in minus cash-out</p>
+              <p className="text-xs text-brand mt-0.5">Cash-in minus cash-out</p>
             </Panel>
           </div>
 
@@ -459,14 +459,14 @@ export const FinanceView: React.FC = () => {
                 <span className="text-xs font-bold uppercase tracking-wider text-brand bg-brand-soft px-2 py-0.5 rounded">
                   Cash Reconciliation
                 </span>
-                <span className="text-xs text-muted">How liquid cash is calculated</span>
+                <span className="text-xs text-muted-foreground">How liquid cash is calculated</span>
               </div>
               <p className="text-sm font-semibold text-ink">
                 Opening Balance (₱{openingBalance.toLocaleString('en-PH')}) + All recorded net cash (₱{(currentLiquidCash - openingBalance).toLocaleString('en-PH')}) = <span className="text-emerald-700 font-bold">Current Liquid Cash: ₱{currentLiquidCash.toLocaleString('en-PH')}</span>
               </p>
             </div>
             <div className="flex items-center gap-2 text-xs shrink-0">
-              <span className="text-muted">Target 3-Month Reserve:</span>
+              <span className="text-muted-foreground">Target 3-Month Reserve:</span>
               <span className="font-bold text-ink bg-sunken px-2.5 py-1 rounded-lg border border-line">
                 ₱{recommendedReserve.toLocaleString('en-PH')}
               </span>
@@ -490,30 +490,30 @@ export const FinanceView: React.FC = () => {
                       <div className="h-28 w-full flex items-end justify-center gap-1.5 bg-sunken/40 rounded-lg p-2 border border-line/60">
                         {/* Cash-in bar */}
                         <div
-                          className="w-4 bg-emerald-500 rounded-t transition-all hover:bg-emerald-600 relative group"
+                          className="w-4 bg-chart-2 rounded-t transition-all hover:bg-chart-3 relative group"
                           style={{ height: `${inPct}%` }}
                           title={`Cash In: ₱${item.inAmt.toLocaleString('en-PH')}`}
                         />
                         {/* Cash-out bar */}
                         <div
-                          className="w-4 bg-rose-400 rounded-t transition-all hover:bg-rose-500 relative group"
+                          className="w-4 bg-chart-4 rounded-t transition-all hover:bg-chart-5 relative group"
                           style={{ height: `${outPct}%` }}
                           title={`Cash Out: ₱${item.outAmt.toLocaleString('en-PH')}`}
                         />
                       </div>
                       <span className="text-xs font-bold text-ink mt-2">{item.month}</span>
-                      <span className="text-[11px] text-emerald-700 font-semibold">₱{(item.inAmt / 1000).toFixed(0)}k in</span>
-                      <span className="text-[10px] text-rose-600">₱{(item.outAmt / 1000).toFixed(0)}k out</span>
+                      <span className="text-[11px] text-ink font-semibold">₱{(item.inAmt / 1000).toFixed(0)}k in</span>
+                      <span className="text-[10px] text-muted-foreground">₱{(item.outAmt / 1000).toFixed(0)}k out</span>
                     </div>
                   );
                 })}
               </div>
-              <div className="flex items-center justify-center gap-6 mt-4 pt-3 border-t border-line text-xs text-muted">
+              <div className="flex items-center justify-center gap-6 mt-4 pt-3 border-t border-line text-xs text-muted-foreground">
                 <span className="flex items-center gap-1.5">
-                  <span className="w-3 h-3 rounded bg-emerald-500 inline-block" /> Cash In (Revenue)
+                  <span className="w-3 h-3 rounded bg-chart-2 inline-block" /> Cash In (Revenue)
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <span className="w-3 h-3 rounded bg-rose-400 inline-block" /> Cash Out (Expenses)
+                  <span className="w-3 h-3 rounded bg-chart-4 inline-block" /> Cash Out (Expenses)
                 </span>
               </div>
             </div>
@@ -579,7 +579,7 @@ export const FinanceView: React.FC = () => {
                 <Field label="Amount (PHP)">
                   {(id) => (
                     <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted font-bold">₱</span>
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-bold">₱</span>
                       <input
                         id={id}
                         type="text"
@@ -604,7 +604,7 @@ export const FinanceView: React.FC = () => {
               <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 mb-3 border-b border-line gap-2">
                 <div>
                   <h3 className="font-bold text-ink text-base">Recorded Cash Transactions Log</h3>
-                  <p className="text-xs text-muted">Owner entries sorted by date. Click edit to adjust.</p>
+                  <p className="text-xs text-muted-foreground">Owner entries sorted by date. Click edit to adjust.</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <Button variant="ghost" size="sm" onClick={handleExportCsv} title="Download CSV">
@@ -625,7 +625,7 @@ export const FinanceView: React.FC = () => {
 
               <div className="overflow-x-auto">
                 <table className="w-full text-xs text-left">
-                  <thead className="bg-sunken border-b border-line text-muted uppercase tracking-wider font-semibold">
+                  <thead className="bg-sunken border-b border-line text-muted-foreground uppercase tracking-wider font-semibold">
                     <tr>
                       <th className="py-2.5 px-3">Date</th>
                       <th className="py-2.5 px-3">Type</th>
@@ -635,10 +635,10 @@ export const FinanceView: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-line">
-                    {!monthlyTransactions.length && <tr><td colSpan={5} className="py-12 px-4 text-center"><p className="font-semibold text-ink">Your ledger starts here</p><p className="mt-1 text-muted">Record a transaction or import a CSV to see this month’s cash flow.</p></td></tr>}
+                    {!monthlyTransactions.length && <tr><td colSpan={5} className="py-12 px-4 text-center"><p className="font-semibold text-ink">Your ledger starts here</p><p className="mt-1 text-muted-foreground">Record a transaction or import a CSV to see this month’s cash flow.</p></td></tr>}
                     {[...monthlyTransactions].sort((a, b) => b.date.localeCompare(a.date)).map((tx) => (
                       <tr key={tx.id} className="hover:bg-sunken/50 transition-colors">
-                        <td className="py-2.5 px-3 text-muted whitespace-nowrap">{formatDatePH(tx.date)}</td>
+                        <td className="py-2.5 px-3 text-muted-foreground whitespace-nowrap">{formatDatePH(tx.date)}</td>
                         <td className="py-2.5 px-3">
                           <span
                             className={cx(
@@ -651,7 +651,7 @@ export const FinanceView: React.FC = () => {
                         </td>
                         <td className="py-2.5 px-3">
                           <strong className="text-ink block">{tx.category}</strong>
-                          <span className="text-muted">{tx.description}</span>
+                          <span className="text-muted-foreground">{tx.description}</span>
                         </td>
                         <td className={cx('py-2.5 px-3 text-right font-bold', tx.type === 'in' ? 'text-emerald-700' : 'text-rose-700')}>
                           {tx.type === 'in' ? '+' : '-'}₱{tx.amount.toLocaleString('en-PH')}
@@ -660,7 +660,7 @@ export const FinanceView: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => handleStartEdit(tx)}
-                            className="p-1 text-muted hover:text-brand rounded hover:bg-brand-soft mr-1 transition-colors"
+                            className="p-1 text-muted-foreground hover:text-brand rounded hover:bg-brand-soft mr-1 transition-colors"
                             aria-label="Edit entry"
                           >
                             <Edit2 className="w-3.5 h-3.5" />
@@ -668,7 +668,7 @@ export const FinanceView: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => handleDeleteTransaction(tx.id)}
-                            className="p-1 text-muted hover:text-danger rounded hover:bg-danger-soft transition-colors"
+                            className="p-1 text-muted-foreground hover:text-danger rounded hover:bg-danger-soft transition-colors"
                             aria-label="Delete entry"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -710,10 +710,10 @@ export const FinanceView: React.FC = () => {
               <p className="text-2xl font-extrabold text-blue-950 mt-1">₱{totalMonthlyDebtPayments.toLocaleString('en-PH')}/mo</p>
               <p className="text-xs text-blue-700 mt-0.5">Mandatory recurring debt outflows</p>
             </Panel>
-            <Panel className="bg-purple-50/60 border-purple-200">
-              <span className="text-xs font-semibold text-purple-800 uppercase tracking-wider block">Debt Coverage Ratio</span>
-              <p className="text-2xl font-extrabold text-purple-950 mt-1">{totalMonthlyDebtPayments > 0 ? `${debtCoverageRatio.toFixed(1)}x` : 'No payments'}</p>
-              <p className="text-xs text-purple-700 mt-0.5">Ratio of Net Operating Profit to Debt Service</p>
+            <Panel className="bg-brand-soft/60 border-line">
+              <span className="text-xs font-semibold text-brand uppercase tracking-wider block">Debt Coverage Ratio</span>
+              <p className="text-2xl font-extrabold text-brand mt-1">{totalMonthlyDebtPayments > 0 ? `${debtCoverageRatio.toFixed(1)}x` : 'No payments'}</p>
+              <p className="text-xs text-brand mt-0.5">Ratio of Net Operating Profit to Debt Service</p>
             </Panel>
           </div>
 
@@ -746,7 +746,7 @@ export const FinanceView: React.FC = () => {
                 />
               </div>
 
-              <div className="flex items-center justify-between text-[11px] text-muted">
+              <div className="flex items-center justify-between text-[11px] text-muted-foreground">
                 <span>Healthy Debt Burden (&lt;30% of profit)</span>
                 <span>Moderate Risk (30-50%)</span>
                 <span>High Risk (&gt;50%)</span>
@@ -837,7 +837,7 @@ export const FinanceView: React.FC = () => {
             <Panel>
               <PanelHeader title="Active Business Debt Obligations" description="Monitored loans, microfinance, and due dates." />
               <div className="space-y-3">
-                {debts.length === 0 && <p className="rounded-xl bg-sunken px-5 py-8 text-center text-sm text-muted">No debt recorded. Add a loan when you have an obligation to track.</p>}
+                {debts.length === 0 && <p className="rounded-xl bg-sunken px-5 py-8 text-center text-sm text-muted-foreground">No debt recorded. Add a loan when you have an obligation to track.</p>}
                 {debts.map((d) => (
                   <div key={d.id} className="p-4 rounded-xl border border-line bg-surface flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div className="space-y-1">
@@ -845,13 +845,13 @@ export const FinanceView: React.FC = () => {
                         <span className="text-[11px] font-bold uppercase tracking-wider text-blue-800 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
                           {d.lender}
                         </span>
-                        <span className="text-xs text-muted">Due: {d.dueDate}</span>
+                        <span className="text-xs text-muted-foreground">Due: {d.dueDate}</span>
                       </div>
                       <h4 className="font-bold text-ink text-base">₱{d.principal.toLocaleString('en-PH')} Principal</h4>
-                      <p className="text-xs text-muted">
+                      <p className="text-xs text-muted-foreground">
                         Monthly Amortization: <strong className="text-ink">₱{d.monthlyPayment.toLocaleString('en-PH')}/mo</strong> ({d.interestRate})
                       </p>
-                      {d.notes && <p className="text-xs text-muted italic">"{d.notes}"</p>}
+                      {d.notes && <p className="text-xs text-muted-foreground italic">"{d.notes}"</p>}
                     </div>
 
                     <Button
@@ -937,7 +937,7 @@ export const FinanceView: React.FC = () => {
                       <input type="checkbox" checked={checked} onChange={() => toggleChecklist(item.key)} aria-label={item.title} className="mt-0.5 h-5 w-5 shrink-0 accent-brand" />
                       <div>
                         <h4 className={cx('text-sm font-bold', checked ? 'text-emerald-950 line-through' : 'text-ink')}>{item.title}</h4>
-                        <p className="text-xs text-muted mt-0.5 leading-relaxed">{item.desc}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{item.desc}</p>
                       </div>
                     </label>
                   );
@@ -984,10 +984,10 @@ export const FinanceView: React.FC = () => {
                     <div className="flex items-center justify-between">
                       <h4 className="font-bold text-ink text-sm group-hover:text-brand flex items-center gap-1.5">
                         {res.title}
-                        <ArrowUpRight className="w-4 h-4 text-muted group-hover:text-brand" />
+                        <ArrowUpRight className="w-4 h-4 text-muted-foreground group-hover:text-brand" />
                       </h4>
                     </div>
-                    <p className="text-xs text-muted mt-1 leading-relaxed">{res.desc}</p>
+                    <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{res.desc}</p>
                     <span className="text-[11px] text-brand font-semibold mt-2 inline-block">Official Government Portal →</span>
                   </a>
                 ))}
@@ -1000,9 +1000,9 @@ export const FinanceView: React.FC = () => {
       {/* --- SUB-SECTION 4: INVESTMENT PLANNING --- */}
       {activeTab === 'investment' && (
         <div className="space-y-6 view-enter">
-          <Notice tone="info" className="border-purple-300 bg-purple-50 text-purple-950">
+          <Notice tone="info" className="border-line bg-brand-soft text-brand">
             <div className="flex items-start gap-2.5">
-              <ShieldAlert className="w-5 h-5 shrink-0 text-purple-700 mt-0.5" />
+              <ShieldAlert className="w-5 h-5 shrink-0 text-brand mt-0.5" />
               <div>
                 <strong className="text-sm block font-bold">Educational Business Planning Disclaimer:</strong>
                 <p className="text-xs mt-0.5 leading-relaxed">
@@ -1065,13 +1065,13 @@ export const FinanceView: React.FC = () => {
 
                 <div className="p-3.5 rounded-xl bg-sunken border border-line space-y-2 text-xs">
                   <div className="flex justify-between">
-                    <span className="text-muted">Payback Period:</span>
+                    <span className="text-muted-foreground">Payback Period:</span>
                     <strong className="text-ink">
                       {investA.monthlyBenefit > 0 ? `${(investA.cost / investA.monthlyBenefit).toFixed(1)} months` : 'N/A'}
                     </strong>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted">3-Year Net Projected Benefit:</span>
+                    <span className="text-muted-foreground">3-Year Net Projected Benefit:</span>
                     <strong className="text-emerald-700">
                       ₱{(investA.monthlyBenefit * 36 - investA.cost).toLocaleString('en-PH')}
                     </strong>
@@ -1082,7 +1082,7 @@ export const FinanceView: React.FC = () => {
               <div className="p-5 rounded-2xl border border-line bg-surface space-y-4">
                 <div className="flex items-center justify-between pb-2 border-b border-line">
                   <h3 className="font-bold text-ink text-base">Investment Option B</h3>
-                  <span className="text-xs font-bold text-indigo-800 bg-indigo-50 px-2.5 py-0.5 rounded-full">Option 2</span>
+                  <span className="text-xs font-bold text-brand bg-brand-soft px-2.5 py-0.5 rounded-full">Option 2</span>
                 </div>
 
                 <Field label="Equipment / Purchase Name">
@@ -1125,13 +1125,13 @@ export const FinanceView: React.FC = () => {
 
                 <div className="p-3.5 rounded-xl bg-sunken border border-line space-y-2 text-xs">
                   <div className="flex justify-between">
-                    <span className="text-muted">Payback Period:</span>
+                    <span className="text-muted-foreground">Payback Period:</span>
                     <strong className="text-ink">
                       {investB.monthlyBenefit > 0 ? `${(investB.cost / investB.monthlyBenefit).toFixed(1)} months` : 'N/A'}
                     </strong>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted">3-Year Net Projected Benefit:</span>
+                    <span className="text-muted-foreground">3-Year Net Projected Benefit:</span>
                     <strong className="text-emerald-700">
                       ₱{(investB.monthlyBenefit * 36 - investB.cost).toLocaleString('en-PH')}
                     </strong>
@@ -1171,7 +1171,7 @@ export const FinanceView: React.FC = () => {
                   <h3 className="font-extrabold text-lg text-ink">
                     {user?.business || 'Matutum Highlands Coffee Roasters'} — Draft Profit & Loss
                   </h3>
-                  <p className="text-xs text-muted">Reporting Period: Current Operating Month</p>
+                  <p className="text-xs text-muted-foreground">Reporting Period: Current Operating Month</p>
                 </div>
                 <span className="text-xs font-bold text-rose-800 bg-rose-100 border border-rose-300 px-3 py-1 rounded-full uppercase">
                   Draft Summary
@@ -1184,7 +1184,7 @@ export const FinanceView: React.FC = () => {
                   <strong className="text-emerald-700">₱{totalCashIn.toLocaleString('en-PH')}</strong>
                 </div>
                 <div className="flex justify-between py-1.5 border-b border-line/60">
-                  <span className="text-muted">Operating Expenses (Raw Materials, Packaging, Utilities):</span>
+                  <span className="text-muted-foreground">Operating Expenses (Raw Materials, Packaging, Utilities):</span>
                   <span className="text-rose-700">-₱{totalCashOut.toLocaleString('en-PH')}</span>
                 </div>
                 <div className="flex justify-between py-2 border-b border-line font-bold text-sm">
@@ -1194,7 +1194,7 @@ export const FinanceView: React.FC = () => {
                   </span>
                 </div>
                 <div className="flex justify-between py-1.5 border-b border-line/60">
-                  <span className="text-muted">Monthly Debt Obligations (Amortization):</span>
+                  <span className="text-muted-foreground">Monthly Debt Obligations (Amortization):</span>
                   <span className="text-rose-700">-₱{totalMonthlyDebtPayments.toLocaleString('en-PH')}</span>
                 </div>
                 <div className="flex justify-between py-2.5 pt-3 border-t-2 border-slate-900 font-extrabold text-base">
@@ -1205,7 +1205,7 @@ export const FinanceView: React.FC = () => {
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-line text-[11px] text-muted text-center italic">
+              <div className="pt-4 border-t border-line text-[11px] text-muted-foreground text-center italic">
                 Notice: Draft summaries only. Not audited or certified financial statements. Prepared for internal MSME planning.
               </div>
             </div>
@@ -1268,7 +1268,7 @@ export const FinanceView: React.FC = () => {
             <Field label="Amount (PHP)">
               {(id) => (
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted font-bold">₱</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-bold">₱</span>
                   <input
                     id={id}
                     type="text"

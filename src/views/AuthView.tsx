@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowRight, Eye, EyeOff, Leaf, MapPin, Play, Sprout, TrendingUp } from 'lucide-react';
+import { ArrowRight, Eye, EyeOff, Leaf, MapPin, Play, Sprout, TrendingUp } from '../components/icons';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { ActivePage } from '../components/AppShell';
@@ -94,7 +94,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ initialMode, setActivePage }
       {/* Photo side */}
       <aside className="relative h-[13rem] sm:h-[20rem] lg:h-screen lg:sticky lg:top-0 overflow-hidden bg-night">
         <PhotoImg photo={PHOTOS.carabao} sizes="(min-width: 1024px) 60vw, 100vw" fill eager credit="none" />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#1F102E]/95 via-[#24172B]/40 to-[#24172B]/35 pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#191715]/95 via-[#2A211F]/40 to-[#2A211F]/35 pointer-events-none" />
         <div className="relative h-full flex flex-col justify-between p-6 sm:p-9 lg:p-12 xl:p-16 pointer-events-none">
           <div className="flex items-start justify-between gap-3">
             <Logo tone="dark" caption="Rooted locally. Growing together." />
@@ -113,7 +113,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ initialMode, setActivePage }
             <div className="hidden lg:grid grid-cols-3 gap-3 mt-9 pt-6 border-t border-white/20">
               {[{ icon: TrendingUp, title: 'Clarity', text: 'Know your numbers' }, { icon: Sprout, title: 'Direction', text: 'Plan your next step' }, { icon: Leaf, title: 'Community', text: 'Build local connections' }].map(({ icon: Icon, title, text }) => (
                 <div key={title}>
-                  <Icon className="w-5 h-5 text-accent mb-3" strokeWidth={1.5} />
+                  <Icon className="w-5 h-5 text-highlight mb-3" strokeWidth={1.5} />
                   <p className="text-sm font-semibold text-white">{title}</p>
                   <p className="text-[11px] leading-relaxed mt-1 text-white/65">{text}</p>
                 </div>
@@ -126,7 +126,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ initialMode, setActivePage }
       {/* Form side */}
       <div className="flex flex-col min-h-[calc(100vh-16rem)] lg:min-h-screen">
         <header className="flex items-center justify-end gap-1 px-4 sm:px-8 min-h-16 py-2 border-b border-line/50">
-          <nav aria-label="Explore Enterseed" className="flex items-center text-[13px] font-medium text-muted mr-1">
+          <nav aria-label="Explore Enterseed" className="flex items-center text-[13px] font-medium text-muted-foreground mr-1">
             {(['about', 'efiling', 'pricing'] as const).map((p) => (
               <button
                 key={p}
@@ -148,7 +148,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ initialMode, setActivePage }
               <>
                 <p className="section-label mb-2">Make yourself at home</p>
                 <h2 className="text-[1.8rem] font-extrabold tracking-tight text-ink">Choose your language</h2>
-                <p className="mt-1 mb-6 text-[15px] text-muted" lang="fil">
+                <p className="mt-1 mb-6 text-[15px] text-muted-foreground" lang="fil">
                   Pumili ng wika. You can change it anytime.
                 </p>
                 <LanguageChoice onChoose={setLanguage} />
@@ -158,7 +158,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ initialMode, setActivePage }
                 <h2 className="text-[1.8rem] font-extrabold tracking-tight text-ink">
                   {t(isRegister ? 'auth.registerTitle' : 'auth.signInTitle')}
                 </h2>
-                <p className="mt-1 mb-6 text-[15px] text-muted">
+                <p className="mt-1 mb-6 text-[15px] text-muted-foreground">
                   {t(isRegister ? 'auth.registerLead' : 'auth.welcomeBack')}
                 </p>
 
@@ -225,7 +225,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ initialMode, setActivePage }
                         onChange={(e) => setPassword(e.target.value)}
                         className={`${inputClass} pr-12`}
                       />
-                      <button type="button" onClick={() => setShowPassword((shown) => !shown)} aria-label={showPassword ? 'Hide password' : 'Show password'} aria-pressed={showPassword} aria-controls={id} className="absolute right-1 top-1 bottom-1 w-10 rounded-lg flex items-center justify-center text-muted hover:text-brand hover:bg-brand-soft transition-colors">
+                      <button type="button" onClick={() => setShowPassword((shown) => !shown)} aria-label={showPassword ? 'Hide password' : 'Show password'} aria-pressed={showPassword} aria-controls={id} className="absolute right-1 top-1 bottom-1 w-10 rounded-lg flex items-center justify-center text-muted-foreground hover:text-brand hover:bg-brand-soft transition-colors">
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
                       </div>
@@ -289,14 +289,14 @@ export const AuthView: React.FC<AuthViewProps> = ({ initialMode, setActivePage }
                     <Play className="w-4 h-4" />
                     {t('auth.demo')}
                   </Button>
-                  <p className="mt-3 text-center text-xs leading-relaxed text-muted">Try the tools with sample data. No sign-up needed.<br />Demo changes stay in this browser.</p>
+                  <p className="mt-3 text-center text-xs leading-relaxed text-muted-foreground">Try the tools with sample data. No sign-up needed.<br />Demo changes stay in this browser.</p>
                 </div>
               </>
             )}
           </div>
         </main>
 
-        <footer className="px-4 sm:px-8 py-5 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-muted border-t border-line/60">
+        <footer className="px-4 sm:px-8 py-5 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-muted-foreground border-t border-line/60">
           <p className="text-center sm:text-left">
             Enterseed is an independent support tool. Always confirm requirements with DTI, your LGU, and BIR.
           </p>

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Button, Modal, Notice, PageHeader, Panel, PanelHeader } from '../components/ui';
-import { ShieldCheck, Download, Trash2, AlertTriangle, FileLock2, ExternalLink } from 'lucide-react';
+import { ShieldCheck, Download, Trash2, AlertTriangle, FileLock2, ExternalLink } from '../components/icons';
 
 export const PrivacyView: React.FC = () => {
   const { user, exportUserData, deleteUserData } = useAuth();
@@ -61,7 +61,7 @@ export const PrivacyView: React.FC = () => {
                   <Download className="w-4 h-4 text-brand" />
                   Export My Data (Portability)
                 </div>
-                <p className="text-xs text-muted mt-1 leading-relaxed">
+                <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
                   Download your profile, financial records, registration drafts, saved documents, supplier inquiries, reviews, and this browser’s marketing drafts as a JSON file.
                 </p>
               </div>
@@ -77,7 +77,7 @@ export const PrivacyView: React.FC = () => {
                   <Trash2 className="w-4 h-4 text-danger" />
                   Erase My Records (Right to Forget)
                 </div>
-                <p className="text-xs text-muted mt-1 leading-relaxed">
+                <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
                   Permanently delete your user account, login credentials, financial figures, document library drafts, and inquiry records from Enterseed.
                 </p>
               </div>
@@ -99,7 +99,7 @@ export const PrivacyView: React.FC = () => {
       <section className="bg-surface rounded-2xl border border-line p-6 space-y-6 text-sm text-ink leading-relaxed">
         <div>
           <h2 className="text-base font-bold text-ink">1. Information We Collect</h2>
-          <p className="mt-1 text-muted text-xs sm:text-sm">
+          <p className="mt-1 text-muted-foreground text-xs sm:text-sm">
             When you use Enterseed, you may voluntarily input:
           </p>
           <ul className="list-disc pl-5 mt-2 space-y-1 text-xs sm:text-sm text-slate-700">
@@ -112,7 +112,7 @@ export const PrivacyView: React.FC = () => {
 
         <div>
           <h2 className="text-base font-bold text-ink">2. Purpose of Data Processing</h2>
-          <p className="mt-1 text-muted text-xs sm:text-sm">
+          <p className="mt-1 text-muted-foreground text-xs sm:text-sm">
             Your data is processed strictly to provide:
           </p>
           <ul className="list-disc pl-5 mt-2 space-y-1 text-xs sm:text-sm text-slate-700">
@@ -125,7 +125,7 @@ export const PrivacyView: React.FC = () => {
 
         <div>
           <h2 className="text-base font-bold text-ink">3. Storage & Retention Periods</h2>
-          <p className="mt-1 text-muted text-xs sm:text-sm">
+          <p className="mt-1 text-muted-foreground text-xs sm:text-sm">
             Data is retained only as long as necessary:
           </p>
           <ul className="list-disc pl-5 mt-2 space-y-1 text-xs sm:text-sm text-slate-700">
@@ -137,12 +137,12 @@ export const PrivacyView: React.FC = () => {
 
         <div>
           <h2 className="text-base font-bold text-ink">4. Rights of the Data Subject</h2>
-          <p className="mt-1 text-muted text-xs sm:text-sm">
+          <p className="mt-1 text-muted-foreground text-xs sm:text-sm">
             Under Republic Act No. 10173, as a data subject you have the right to be informed, right of access, right to rectify inaccuracies, right to erasure or blocking, and right to damages. To submit a formal inquiry, email our support desk or use the contact form on the About page.
           </p>
         </div>
 
-        <div className="pt-4 border-t border-line text-xs text-muted flex flex-wrap items-center justify-between gap-3">
+        <div className="pt-4 border-t border-line text-xs text-muted-foreground flex flex-wrap items-center justify-between gap-3">
           <span>National Privacy Commission (NPC) Compliance Reference</span>
           <a
             href="https://privacy.gov.ph/"
@@ -169,7 +169,7 @@ export const PrivacyView: React.FC = () => {
               Warning: This action is irreversible. All your financial assessments, registration assistant packets, generated documents, and login credentials will be permanently erased.
             </p>
           </div>
-          <p className="text-xs text-muted">
+          <p className="text-xs text-muted-foreground">
             Are you sure you wish to delete your account ({user?.email}) and all stored business information?
           </p>
           <div className="flex justify-end gap-2 pt-2 border-t border-line">

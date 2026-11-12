@@ -4,7 +4,7 @@ import { apiFetch } from '../services/apiClient';
 import { PhotoImg } from '../components/PhotoImg';
 import { PHOTOS } from '../photos';
 import { Button, CheckField, Field, Notice, Panel, PanelHeader, inputClass, textareaClass } from '../components/ui';
-import { ArrowUpRight, BookOpen, HeartHandshake, LockKeyhole, MapPin, MessageCircle, Send } from 'lucide-react';
+import { ArrowUpRight, BookOpen, HeartHandshake, LockKeyhole, MapPin, MessageCircle, Send } from '../components/icons';
 
 const PRINCIPLES = [
   {
@@ -68,7 +68,7 @@ export const AboutView: React.FC = () => {
           <h1 className="text-[1.75rem] sm:text-4xl font-extrabold tracking-tight text-ink leading-tight">
             Small businesses.<br /><span className="text-brand">Room to grow.</span>
           </h1>
-          <p className="mt-4 text-[15px] sm:text-base leading-relaxed text-muted max-w-xl">
+          <p className="mt-4 text-[15px] sm:text-base leading-relaxed text-muted-foreground max-w-xl">
             Behind every small business is someone building a better tomorrow. Enterseed brings planning tools, local connections, and business guidance together for entrepreneurs across South Cotabato and SOCCSKSARGEN.
           </p>
           <a href="#contact" onClick={(event) => { event.preventDefault(); document.getElementById('contact')?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'start' }); }} className="mt-6 inline-flex items-center gap-2 font-semibold text-sm text-brand hover:underline">
@@ -76,7 +76,7 @@ export const AboutView: React.FC = () => {
           </a>
         </div>
         <div className="relative pb-5 pr-5">
-          <div className="absolute bottom-0 right-0 top-5 left-5 rounded-[1.75rem] bg-accent-soft" aria-hidden="true" />
+          <div className="absolute bottom-0 right-0 top-5 left-5 rounded-[1.75rem] bg-highlight-soft" aria-hidden="true" />
           <PhotoImg photo={PHOTOS.market} sizes="(min-width: 768px) 50vw, 100vw" className="h-64 sm:h-80 rounded-[1.75rem]" eager />
           <span className="absolute bottom-0 left-5 inline-flex items-center gap-2 rounded-xl border border-line bg-surface px-4 py-3 text-xs font-semibold text-ink shadow-sm"><MapPin className="w-4 h-4 text-brand" /> Local roots. Shared possibilities.</span>
         </div>
@@ -87,18 +87,18 @@ export const AboutView: React.FC = () => {
           <div key={p.title} className="interactive-card rounded-2xl border border-line bg-surface p-6">
             <span className="mb-5 flex h-10 w-10 items-center justify-center rounded-xl bg-brand-soft text-brand"><p.icon className="w-5 h-5" strokeWidth={1.5} /></span>
             <h2 className="font-bold text-ink">{p.title}</h2>
-            <p className="mt-2 text-sm leading-relaxed text-muted">{p.body}</p>
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{p.body}</p>
           </div>
         ))}
       </section>
 
       <section className="grid gap-8 lg:grid-cols-[0.7fr_1fr] lg:gap-12">
         <div className="lg:pt-5">
-          <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-accent-soft text-accent-ink"><MessageCircle className="w-5 h-5" /></span>
+          <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-highlight-soft text-highlight-ink"><MessageCircle className="w-5 h-5" /></span>
           <p className="section-label mt-5 mb-3">A conversation can help</p>
           <h2 className="text-2xl font-bold tracking-tight text-ink">We’re listening.</h2>
-          <p className="mt-3 text-sm leading-relaxed text-muted max-w-sm">Tell us what’s working, where you’re stuck, or what would make Enterseed more useful for your business.</p>
-          <div className="mt-6 rounded-xl border border-line bg-sunken/60 p-4 text-xs leading-relaxed text-muted max-w-sm">Please leave passwords, identification numbers, and payment details out of your message. Your email helps us follow up.</div>
+          <p className="mt-3 text-sm leading-relaxed text-muted-foreground max-w-sm">Tell us what’s working, where you’re stuck, or what would make Enterseed more useful for your business.</p>
+          <div className="mt-6 rounded-xl border border-line bg-sunken/60 p-4 text-xs leading-relaxed text-muted-foreground max-w-sm">Please leave passwords, identification numbers, and payment details out of your message. Your email helps us follow up.</div>
         </div>
       <Panel id="contact" className="scroll-mt-24">
         <PanelHeader

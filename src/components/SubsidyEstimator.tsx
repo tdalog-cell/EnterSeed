@@ -42,24 +42,24 @@ export const SubsidyEstimator: React.FC<{ initialSpend?: number }> = ({ initialS
             onChange={(e) => setSpend(Number(e.target.value))}
             className="w-full h-2 cursor-pointer"
           />
-          <div className="mt-1.5 flex justify-between text-xs text-muted tnum">
+          <div className="mt-1.5 flex justify-between text-xs text-muted-foreground tnum">
             <span>₱0</span>
             <span>₱5,000</span>
           </div>
         </div>
         <dl className="grid grid-cols-2 gap-6 md:min-w-[280px] md:pl-6 md:border-l md:border-line">
           <div>
-            <dt className="text-[13px] text-muted">Subsidy</dt>
+            <dt className="text-[13px] text-muted-foreground">Subsidy</dt>
             <dd className="mt-0.5 text-2xl font-bold text-good tnum">{formatPesos(subsidy)}</dd>
           </div>
           <div>
-            <dt className="text-[13px] text-muted">You pay</dt>
+            <dt className="text-[13px] text-muted-foreground">You pay</dt>
             <dd className="mt-0.5 text-2xl font-bold text-ink tnum">{formatPesos(net)}</dd>
           </div>
         </dl>
       </div>
 
-      <div className="mt-4 pt-3 border-t border-line text-[11px] text-muted flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+      <div className="mt-4 pt-3 border-t border-line text-[11px] text-muted-foreground flex flex-col sm:flex-row sm:items-center justify-between gap-1">
         <span>Terms: Example model only. Actual subsidy eligibility depends on provincial MSMEDC guidelines and accredited courier receipts.</span>
         <a
           href="https://southcotabato.gov.ph/services/"

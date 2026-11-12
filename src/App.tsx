@@ -89,7 +89,7 @@ const MainRouter: React.FC = () => {
     return (
       <div className="min-h-screen bg-canvas flex flex-col items-center justify-center gap-3" role="status">
         <img src="./logos/Icon.png" alt="" className="w-10 h-10 object-contain" />
-        <p className="text-sm text-muted">Loading Enterseed…</p>
+        <p className="text-sm text-muted-foreground">Loading Enterseed…</p>
       </div>
     );
   }
@@ -131,14 +131,14 @@ const MainRouter: React.FC = () => {
             {activePage === 'admin' && (
               <div className="text-center py-12">
                 <h2 className="text-lg font-semibold text-ink">Staff Console Restricted</h2>
-                <p className="text-sm text-muted mt-1">Please sign in with a verified staff account to continue.</p>
+                <p className="text-sm text-muted-foreground mt-1">Please sign in with a verified staff account to continue.</p>
                 <Button className="mt-4" onClick={() => setActivePage('login')}>Sign in</Button>
               </div>
             )}
           </div></Suspense></ViewBoundary>
         </main>
 
-        <footer className="w-full border-t border-line bg-surface py-4 px-4 sm:px-8 text-center text-xs text-muted">
+        <footer className="w-full border-t border-line bg-surface py-4 px-4 sm:px-8 text-center text-xs text-muted-foreground">
           <p>
             <strong className="font-semibold text-ink">Enterseed is an independent support tool.</strong> Always confirm requirements with DTI, your LGU, and BIR. Built for South Cotabato MSMEs.
           </p>
@@ -177,7 +177,7 @@ const MainRouter: React.FC = () => {
           return (
             <div className="bg-surface rounded-2xl border border-line p-8 text-center max-w-md mx-auto my-12">
               <h2 className="text-lg font-semibold text-ink">Staff Console Restricted</h2>
-              <p className="text-sm text-muted mt-2">
+              <p className="text-sm text-muted-foreground mt-2">
                 Your account does not have staff or administrator privileges. Only DTI / Negosyo Center partner staff may access this view.
               </p>
               <Button className="mt-5" onClick={() => setActivePage('dashboard')}>

@@ -2,7 +2,7 @@ import React from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { ChatComposer, ChatThread, useBossNarraChat } from '../components/BossNarraChat';
 import { PageHeader, Button } from '../components/ui';
-import { Download } from 'lucide-react';
+import { Download } from '../components/icons';
 
 const PROMPTS = [
   'How do I register a business name with DTI BNRS?',
@@ -62,7 +62,7 @@ export const BossNanaView: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => send(prompt)}
-                        className="text-left text-xs leading-snug text-brand bg-brand-soft hover:bg-purple-100 px-3 py-2 rounded-xl transition-colors font-medium border border-brand/20"
+                        className="text-left text-xs leading-snug text-brand bg-brand-soft hover:bg-brand-soft px-3 py-2 rounded-xl transition-colors font-medium border border-brand/20"
                       >
                         {prompt}
                       </button>
@@ -73,7 +73,7 @@ export const BossNanaView: React.FC = () => {
             )
           }
         />
-        <div className="px-4 py-2 border-t border-line/60 bg-sunken/40 text-[11px] text-muted text-center">
+        <div className="px-4 py-2 border-t border-line/60 bg-sunken/40 text-[11px] text-muted-foreground text-center">
           Informational support only · Always verify requirements directly with DTI, DOST, LGU, or BIR.
         </div>
         <ChatComposer onSend={send} loading={loading} />

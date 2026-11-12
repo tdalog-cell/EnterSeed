@@ -1,6 +1,6 @@
 import React, { useEffect, useId, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { AlertTriangle, CheckCircle2, Info, LoaderCircle, X } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Info, LoaderCircle, X } from './icons';
 
 export const cx = (...parts: Array<string | false | null | undefined>) => parts.filter(Boolean).join(' ');
 
@@ -30,7 +30,7 @@ export const Logo: React.FC<{ tone?: 'light' | 'dark'; caption?: string; onClick
           Enterseed
         </span>
         {caption && (
-          <span className={cx('block text-xs', tone === 'dark' ? 'text-white/60' : 'text-muted')}>{caption}</span>
+          <span className={cx('block text-xs', tone === 'dark' ? 'text-white/60' : 'text-muted-foreground')}>{caption}</span>
         )}
       </span>
     </>
@@ -56,7 +56,7 @@ export const PageHeader: React.FC<{ title: React.ReactNode; lead?: React.ReactNo
     <div className="max-w-2xl">
       {eyebrow && <p className="section-label mb-2">{eyebrow}</p>}
       <h1 className="text-2xl sm:text-[1.8rem] font-semibold tracking-tight text-ink leading-tight">{title}</h1>
-      {lead && <p className="mt-2 text-[15px] leading-relaxed text-muted">{lead}</p>}
+      {lead && <p className="mt-2 text-[15px] leading-relaxed text-muted-foreground">{lead}</p>}
     </div>
     {actions && <div className="flex flex-wrap gap-2 shrink-0">{actions}</div>}
   </header>
@@ -68,7 +68,7 @@ export const Panel: React.FC<React.HTMLAttributes<HTMLElement> & { as?: 'section
   children,
   ...rest
 }) => (
-  <Tag className={cx('surface-panel bg-surface rounded-xl border border-line p-5 sm:p-6', className)} {...rest}>
+  <Tag className={cx('surface-panel bg-surface rounded-2xl border border-line p-5 sm:p-6', className)} {...rest}>
     {children}
   </Tag>
 );
@@ -82,7 +82,7 @@ export const PanelHeader: React.FC<{
   <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
     <div>
       <Tag className="text-base font-semibold text-ink leading-snug">{title}</Tag>
-      {description && <p className="mt-1 text-sm leading-relaxed text-muted max-w-prose">{description}</p>}
+      {description && <p className="mt-1 text-sm leading-relaxed text-muted-foreground max-w-prose">{description}</p>}
     </div>
     {action && <div className="shrink-0">{action}</div>}
   </div>
@@ -94,22 +94,22 @@ type ButtonVariant = 'primary' | 'accent' | 'secondary' | 'ghost' | 'danger';
 type ButtonSize = 'sm' | 'md' | 'lg';
 
 const buttonVariants: Record<ButtonVariant, string> = {
-  primary: 'bg-brand text-white hover:bg-brand-deep shadow-xs',
-  accent: 'bg-accent text-[#2B1C33] hover:bg-[#F7772A] shadow-[0_3px_8px_-3px_rgb(255_138_61/0.3)]',
-  secondary: 'bg-surface text-ink border border-line hover:bg-sunken shadow-xs',
+  primary: 'bg-brand text-primary-foreground hover:bg-brand-deep',
+  accent: 'bg-highlight text-[#191715] hover:bg-chart-1',
+  secondary: 'bg-input/30 text-ink border border-line hover:bg-input/50',
   ghost: 'text-ink hover:bg-sunken',
   danger: 'text-danger hover:bg-danger-soft'
 };
 
 const buttonSizes: Record<ButtonSize, string> = {
-  sm: 'min-h-9 py-1 px-3 text-[13px] gap-1.5 rounded-md',
-  md: 'min-h-10 py-2 px-4 text-sm gap-2 rounded-md',
-  lg: 'min-h-11 py-2.5 px-5 text-sm gap-2 rounded-md'
+  sm: 'min-h-9 py-1 px-3 text-[13px] gap-1.5 rounded-4xl',
+  md: 'min-h-10 py-2 px-4 text-sm gap-2 rounded-4xl',
+  lg: 'min-h-11 py-2.5 px-5 text-sm gap-2 rounded-4xl'
 };
 
 export const buttonClass = (variant: ButtonVariant = 'primary', size: ButtonSize = 'md', extra?: string) =>
   cx(
-    'button-motion inline-flex items-center justify-center text-center leading-tight font-semibold disabled:opacity-50 [&_svg]:w-4 [&_svg]:h-4 [&_svg]:shrink-0',
+    'button-motion inline-flex items-center justify-center text-center leading-tight font-medium disabled:opacity-50 [&_svg]:w-4 [&_svg]:h-4 [&_svg]:shrink-0',
     buttonVariants[variant],
     buttonSizes[size],
     extra
@@ -125,9 +125,9 @@ export const Button: React.FC<
 );
 
 export const inputClass =
-  'field-control w-full h-10 bg-surface border border-line-strong rounded-md px-3 text-sm text-ink placeholder:text-muted/70 hover:border-muted/50 focus:border-brand focus:outline-none focus-visible:outline-2 focus-visible:outline-brand/30 focus-visible:outline-offset-0 disabled:bg-sunken';
+  'field-control w-full h-10 bg-input/30 border border-line-strong rounded-4xl px-3 text-sm text-ink placeholder:text-muted-foreground/70 hover:border-muted-foreground/50 focus:border-brand focus:outline-none focus-visible:outline-2 focus-visible:outline-brand/30 focus-visible:outline-offset-0 disabled:bg-sunken';
 
-export const textareaClass = cx(inputClass, 'h-auto py-2.5 leading-relaxed resize-y');
+export const textareaClass = cx(inputClass, 'h-auto py-2.5 leading-relaxed resize-y rounded-2xl');
 
 export const Field: React.FC<{
   label: React.ReactNode;
@@ -142,7 +142,7 @@ export const Field: React.FC<{
         {label}
       </label>
       {children(id)}
-      {hint && <p className="mt-1.5 text-xs text-muted">{hint}</p>}
+      {hint && <p className="mt-1.5 text-xs text-muted-foreground">{hint}</p>}
     </div>
   );
 };
@@ -161,7 +161,7 @@ export const CheckField: React.FC<{
       onChange={(e) => onChange(e.target.checked)}
       className="mt-0.5 w-4 h-4 shrink-0 rounded border-line-strong"
     />
-    <span className="text-[13px] leading-relaxed text-muted">{children}</span>
+    <span className="text-[13px] leading-relaxed text-muted-foreground">{children}</span>
   </label>
 );
 
@@ -201,7 +201,7 @@ export function Segmented<T extends string>({
             onClick={() => onChange(o.value)}
             className={cx(
               'min-h-8 px-3 py-1 rounded-lg text-[13px] leading-tight font-semibold transition-colors',
-              active ? 'bg-surface text-brand shadow-[0_1px_2px_rgb(43_28_51/0.12)]' : 'text-muted hover:text-ink'
+              active ? 'bg-surface text-brand shadow-[0_1px_2px_rgb(28_25_23/0.12)]' : 'text-muted-foreground hover:text-ink'
             )}
           >
             {o.label}
@@ -240,7 +240,7 @@ export const Stat: React.FC<{ label: React.ReactNode; value: React.ReactNode; to
   tone = 'ink'
 }) => (
   <div>
-    <dt className="text-[13px] text-muted">{label}</dt>
+    <dt className="text-[13px] text-muted-foreground">{label}</dt>
     <dd
       className={cx(
         'mt-1 text-xl sm:text-2xl font-bold tracking-tight tnum',
@@ -346,7 +346,7 @@ export const Modal: React.FC<{
             <h2 id={titleId} className="text-lg font-bold text-ink leading-snug">
               {title}
             </h2>
-            {description && <p id={descriptionId} className="mt-1 text-sm text-muted leading-relaxed">{description}</p>}
+            {description && <p id={descriptionId} className="mt-1 text-sm text-muted-foreground leading-relaxed">{description}</p>}
           </div>
           {dismissable && (
             <button
@@ -354,7 +354,7 @@ export const Modal: React.FC<{
               data-close
               onClick={onClose}
               aria-label="Close"
-              className="-mr-1.5 -mt-1 p-1.5 rounded-lg text-muted hover:text-ink hover:bg-sunken"
+              className="-mr-1.5 -mt-1 p-1.5 rounded-lg text-muted-foreground hover:text-ink hover:bg-sunken"
             >
               <X className="w-5 h-5" />
             </button>

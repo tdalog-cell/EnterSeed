@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ArrowUp, ExternalLink } from 'lucide-react';
+import { ArrowUp, ExternalLink } from './icons';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch } from '../services/apiClient';
@@ -113,7 +113,7 @@ export const ChatThread: React.FC<{
       {messages.map((msg, idx) =>
         msg.role === 'user' ? (
           <div key={idx} className="flex justify-end">
-            <p className="max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-md bg-brand text-white px-4 py-2.5 text-sm leading-relaxed">
+            <p className="max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-md bg-brand text-primary-foreground px-4 py-2.5 text-sm leading-relaxed">
               {msg.text}
             </p>
           </div>
@@ -137,7 +137,7 @@ export const ChatThread: React.FC<{
                                 const targetPage = src.url.replace('#', '') || 'documents';
                                 window.dispatchEvent(new CustomEvent('navigate-tab', { detail: targetPage }));
                               }}
-                              className="inline-flex items-center gap-1 h-7 px-2.5 rounded-full border border-purple-300 bg-purple-50 text-xs font-semibold text-purple-900 hover:bg-purple-100 transition-colors cursor-pointer"
+                              className="inline-flex items-center gap-1 h-7 px-2.5 rounded-full border border-line bg-brand-soft text-xs font-semibold text-brand hover:bg-brand-soft transition-colors cursor-pointer"
                             >
                               {src.label}
                             </button>
@@ -160,7 +160,7 @@ export const ChatThread: React.FC<{
               )}
               {/* Helpful feedback buttons */}
               {idx > 0 && (
-                <div className="mt-2 flex items-center gap-2 text-[11px] text-muted">
+                <div className="mt-2 flex items-center gap-2 text-[11px] text-muted-foreground">
                   <span>Was this helpful?</span>
                   <button
                     type="button"
@@ -197,7 +197,7 @@ export const ChatThread: React.FC<{
             <span className="typing-dot w-1.5 h-1.5 rounded-full bg-brand [animation-delay:0.15s]" />
             <span className="typing-dot w-1.5 h-1.5 rounded-full bg-brand [animation-delay:0.3s]" />
           </span>
-          <span className="text-[13px] text-muted">{t('chatbot.waiting')}</span>
+          <span className="text-[13px] text-muted-foreground">{t('chatbot.waiting')}</span>
         </div>
       )}
       {after}
@@ -233,13 +233,13 @@ export const ChatComposer: React.FC<{
           aria-label={t('chatbot.placeholder')}
           maxLength={1200}
           autoFocus={autoFocus}
-          className="flex-1 min-w-0 h-11 bg-transparent text-sm text-ink placeholder:text-muted/70 focus:outline-none"
+          className="flex-1 min-w-0 h-11 bg-transparent text-sm text-ink placeholder:text-muted-foreground/70 focus:outline-none"
         />
         <button
           type="submit"
           disabled={!input.trim() || loading}
           aria-label={t('chatbot.send')}
-          className="w-8 h-8 shrink-0 rounded-lg bg-brand text-white flex items-center justify-center hover:bg-brand-deep disabled:bg-line-strong transition-colors"
+          className="w-8 h-8 shrink-0 rounded-lg bg-brand text-primary-foreground flex items-center justify-center hover:bg-brand-deep disabled:bg-line-strong transition-colors"
         >
           <ArrowUp className="w-4 h-4" />
         </button>

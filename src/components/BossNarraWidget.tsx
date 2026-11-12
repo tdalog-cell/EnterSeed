@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { X } from 'lucide-react';
+import { X } from './icons';
 import { useLanguage } from '../context/LanguageContext';
 import { BossNarraAvatar, ChatComposer, ChatThread, useBossNarraChat } from './BossNarraChat';
 
@@ -36,7 +36,7 @@ export const BossNarraWidget: React.FC<{ hidden?: boolean }> = ({ hidden }) => {
           ref={launcherRef}
           type="button"
           onClick={() => setIsOpen(true)}
-          className="flex items-center justify-center gap-2.5 w-12 h-12 sm:w-auto sm:pl-2 sm:pr-5 rounded-full bg-brand text-white font-semibold text-sm shadow-[0_10px_30px_-10px_rgb(74_29_143/0.7)] hover:bg-brand-deep transition-all hover:scale-105 active:scale-95"
+          className="flex items-center justify-center gap-2.5 w-12 h-12 sm:w-auto sm:pl-2 sm:pr-5 rounded-full bg-brand text-primary-foreground font-semibold text-sm shadow-[0_10px_30px_-10px_rgb(28_25_23/0.7)] hover:bg-brand-deep transition-all hover:scale-105 active:scale-95"
           aria-label={t('chatbot.label')}
           aria-expanded={false}
           aria-controls="boss-narra-quick-chat"
@@ -61,13 +61,13 @@ export const BossNarraWidget: React.FC<{ hidden?: boolean }> = ({ hidden }) => {
               <BossNarraAvatar size="md" />
               <div>
                 <h2 className="font-bold text-sm text-ink leading-tight">{t('chatbot.name')}</h2>
-                <p className="text-xs text-muted">{t('chatbot.status')}</p>
+                <p className="text-xs text-muted-foreground">{t('chatbot.status')}</p>
               </div>
             </div>
             <button
               type="button"
               onClick={close}
-              className="p-1.5 rounded-lg text-muted hover:text-ink hover:bg-sunken"
+              className="p-1.5 rounded-lg text-muted-foreground hover:text-ink hover:bg-sunken"
               aria-label={t('chatbot.close')}
             >
               <X className="w-5 h-5" />
@@ -75,7 +75,7 @@ export const BossNarraWidget: React.FC<{ hidden?: boolean }> = ({ hidden }) => {
           </header>
 
           <ChatThread messages={messages} loading={loading} dense>
-            <p className="text-xs leading-relaxed text-muted bg-sunken rounded-lg px-3 py-2">{t('chatbot.disclaimer')}</p>
+            <p className="text-xs leading-relaxed text-muted-foreground bg-sunken rounded-lg px-3 py-2">{t('chatbot.disclaimer')}</p>
           </ChatThread>
           <ChatComposer onSend={send} loading={loading} autoFocus />
         </section>

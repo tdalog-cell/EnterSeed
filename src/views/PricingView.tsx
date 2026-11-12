@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowRight, Check, CircleHelp, Leaf, Sprout, Users } from 'lucide-react';
+import { ArrowRight, Check, CircleHelp, Leaf, Sprout, Users } from '../components/icons';
 import { useAuth } from '../context/AuthContext';
 import { Button, Notice, PageHeader, Segmented, cx } from '../components/ui';
 
@@ -92,29 +92,29 @@ export const PricingView: React.FC = () => {
             >
               {p.highlight && <div className="pointer-events-none absolute -right-12 -top-12 h-36 w-36 rounded-full bg-brand/40 blur-3xl" aria-hidden="true" />}
               <div className="mb-5 flex items-center justify-between gap-2">
-                <span className={cx('flex h-11 w-11 items-center justify-center rounded-xl', p.highlight ? 'bg-white/10 text-accent' : 'bg-brand-soft text-brand')}><p.icon className="w-5 h-5" strokeWidth={1.5} /></span>
-                <span className={cx('text-[10px] uppercase tracking-[0.14em] font-semibold', p.highlight ? 'text-white/65' : 'text-muted')}>{p.priceMonthly === 0 ? 'Available now' : 'In development'}</span>
+                <span className={cx('flex h-11 w-11 items-center justify-center rounded-xl', p.highlight ? 'bg-white/10 text-highlight' : 'bg-brand-soft text-brand')}><p.icon className="w-5 h-5" strokeWidth={1.5} /></span>
+                <span className={cx('text-[10px] uppercase tracking-[0.14em] font-semibold', p.highlight ? 'text-white/65' : 'text-muted-foreground')}>{p.priceMonthly === 0 ? 'Available now' : 'In development'}</span>
               </div>
               <div className="flex items-center justify-between gap-2">
                 <h2 className={cx('text-lg font-bold', p.highlight ? 'text-white' : 'text-ink')}>{p.name}</h2>
               </div>
-              <p className={cx('mt-1.5 text-sm leading-relaxed', p.highlight ? 'text-white/70' : 'text-muted')}>{p.desc}</p>
+              <p className={cx('mt-1.5 text-sm leading-relaxed', p.highlight ? 'text-white/70' : 'text-muted-foreground')}>{p.desc}</p>
 
               <p className="mt-7 flex items-baseline gap-1" aria-live="polite" aria-atomic="true">
                 <span className="text-4xl font-extrabold tracking-tight tnum">₱{monthly.toLocaleString('en-PH')}</span>
-                <span className={cx('text-sm', p.highlight ? 'text-white/70' : 'text-muted')}>/ month</span>
+                <span className={cx('text-sm', p.highlight ? 'text-white/70' : 'text-muted-foreground')}>/ month</span>
               </p>
-              <p className={cx('mt-1 h-5 text-[13px]', p.highlight ? 'text-white/70' : 'text-muted')}>
+              <p className={cx('mt-1 h-5 text-[13px]', p.highlight ? 'text-white/70' : 'text-muted-foreground')}>
                 {p.priceMonthly === 0 ? 'No payment details needed' : yearly ? `Proposed ₱${p.priceYearly.toLocaleString('en-PH')} / year` : 'Proposed pricing · not yet available'}
               </p>
 
               <div className={cx('mt-7 border-t pt-5', p.highlight ? 'border-white/15' : 'border-line')}>
-                <p className={cx('text-xs font-semibold mb-4', p.highlight ? 'text-white/70' : 'text-muted')}>{p.priceMonthly === 0 ? 'Inside your workspace' : 'Planned capabilities'}</p>
+                <p className={cx('text-xs font-semibold mb-4', p.highlight ? 'text-white/70' : 'text-muted-foreground')}>{p.priceMonthly === 0 ? 'Inside your workspace' : 'Planned capabilities'}</p>
               </div>
               <ul className="space-y-3 flex-1">
                 {p.features.map((f) => (
                   <li key={f} className="flex items-start gap-2.5 text-sm">
-                    <Check className={cx('w-4 h-4 mt-0.5 shrink-0', p.highlight ? 'text-accent' : 'text-good')} />
+                    <Check className={cx('w-4 h-4 mt-0.5 shrink-0', p.highlight ? 'text-highlight' : 'text-good')} />
                     <span className={p.highlight ? 'text-white/90' : 'text-ink'}>{f}</span>
                   </li>
                 ))}
@@ -143,8 +143,8 @@ export const PricingView: React.FC = () => {
       <section className="rounded-2xl border border-line bg-surface p-6 sm:p-8">
         <div className="flex items-center gap-3 mb-6"><CircleHelp className="w-5 h-5 text-brand" /><h2 className="text-lg font-bold text-ink">A few helpful answers</h2></div>
         <div className="grid gap-6 sm:grid-cols-2">
-          <div><h3 className="font-semibold text-sm text-ink">Can I try it before creating an account?</h3><p className="mt-2 text-sm leading-relaxed text-muted">Yes. Use the sample workspace from the sign-in screen. Demo changes stay in your browser and messages are not sent.</p></div>
-          <div><h3 className="font-semibold text-sm text-ink">Does Enterseed provide loans or subsidies?</h3><p className="mt-2 text-sm leading-relaxed text-muted">Enterseed offers planning tools and reference links. Eligibility, funding, and approval are determined by the relevant provider.</p></div>
+          <div><h3 className="font-semibold text-sm text-ink">Can I try it before creating an account?</h3><p className="mt-2 text-sm leading-relaxed text-muted-foreground">Yes. Use the sample workspace from the sign-in screen. Demo changes stay in your browser and messages are not sent.</p></div>
+          <div><h3 className="font-semibold text-sm text-ink">Does Enterseed provide loans or subsidies?</h3><p className="mt-2 text-sm leading-relaxed text-muted-foreground">Enterseed offers planning tools and reference links. Eligibility, funding, and approval are determined by the relevant provider.</p></div>
         </div>
       </section>
     </div>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { apiFetch } from '../services/apiClient';
-import { Mail, RefreshCw } from 'lucide-react';
+import { Mail, RefreshCw } from '../components/icons';
 import {
   Button,
   CheckField,
@@ -216,7 +216,7 @@ export const AdminView: React.FC = () => {
   const confirmInline = (kind: NonNullable<PendingAction>['kind'], id: number, label: string, prompt: string) =>
     pending?.kind === kind && pending.id === id ? (
       <span className="inline-flex items-center gap-1.5" role="group" aria-label={prompt}>
-        <span className="text-[13px] text-muted">{prompt}</span>
+        <span className="text-[13px] text-muted-foreground">{prompt}</span>
         <Button variant="danger" size="sm" onClick={runPending}>
           Yes
         </Button>
@@ -263,7 +263,7 @@ export const AdminView: React.FC = () => {
       {!isAuthenticated ? (
         <Panel className="max-w-md">
           <h2 className="text-lg font-semibold">{loading ? 'Opening your review desk…' : 'The review queue is unavailable'}</h2>
-          <p className="mt-2 text-sm text-muted">Use your signed-in staff account to review applications.</p>
+          <p className="mt-2 text-sm text-muted-foreground">Use your signed-in staff account to review applications.</p>
           {errorMsg && <Notice tone="error" className="mt-4">{errorMsg}</Notice>}
           <Button className="mt-4" onClick={() => fetchData()} busy={loading} busyLabel="Loading review queue…">Retry loading</Button>
         </Panel>
@@ -290,7 +290,7 @@ export const AdminView: React.FC = () => {
                   onClick={() => { setActiveTab(t.id); setQuery(''); }}
                   className={cx(
                     'relative h-11 px-3.5 text-sm font-semibold whitespace-nowrap transition-colors',
-                    active ? 'text-brand' : 'text-muted hover:text-ink'
+                    active ? 'text-brand' : 'text-muted-foreground hover:text-ink'
                   )}
                 >
                   {t.label}
@@ -307,23 +307,23 @@ export const AdminView: React.FC = () => {
             {activeTab === 'suppliers' && <Field label="Listing status">{id => <select id={id} value={supplierStatus} onChange={event => setSupplierStatus(event.target.value)} className={inputClass}><option value="all">All statuses</option><option value="active">Active</option><option value="withdrawn">Withdrawn</option></select>}</Field>}
             {(query || supplierStatus !== 'all') && <Button variant="ghost" onClick={() => { setQuery(''); setSupplierStatus('all'); }}>Clear filters</Button>}
           </div>
-          <p role="status" className="text-xs text-muted">{visibleCount} of {tabs.find(tab => tab.id === activeTab)?.count} records shown{activeTab === 'applications' ? '. Review the oldest applications first to keep the queue moving.' : '.'}</p>
+          <p role="status" className="text-xs text-muted-foreground">{visibleCount} of {tabs.find(tab => tab.id === activeTab)?.count} records shown{activeTab === 'applications' ? '. Review the oldest applications first to keep the queue moving.' : '.'}</p>
           <div role="tabpanel" id={`queue-panel-${activeTab}`} aria-labelledby={`queue-tab-${activeTab}`}>
           <fieldset disabled={actionBusy || loading} className="min-w-0">
           {activeTab === 'applications' &&
             (filteredApplications.length === 0 ? (
-              <p className="py-12 text-center text-sm text-muted">{query ? 'No applications match your search. Clear the search to view the queue.' : 'No applications waiting for review.'}</p>
+              <p className="py-12 text-center text-sm text-muted-foreground">{query ? 'No applications match your search. Clear the search to view the queue.' : 'No applications waiting for review.'}</p>
             ) : (
               <ul className="space-y-3">
                 {filteredApplications.map((app) => (
                   <li key={app.id} className="bg-surface rounded-xl border border-line p-5 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                     <div className="min-w-0">
                       <h3 className="font-bold text-ink">{app.businessName}</h3>
-                      <p className="mt-0.5 text-[13px] text-muted capitalize">
+                      <p className="mt-0.5 text-[13px] text-muted-foreground capitalize">
                         {app.category.replace('-', ' ')} · {app.location}
                       </p>
-                      <p className="mt-3 text-sm text-ink">{app.products}</p><p className="mt-2 text-xs text-muted">Received {new Date(app.createdAt).toLocaleDateString('en-PH')}</p>
-                      <p className="mt-2 text-[13px] text-muted break-words">
+                      <p className="mt-3 text-sm text-ink">{app.products}</p><p className="mt-2 text-xs text-muted-foreground">Received {new Date(app.createdAt).toLocaleDateString('en-PH')}</p>
+                      <p className="mt-2 text-[13px] text-muted-foreground break-words">
                         {app.contactName} · {app.contactEmail}
                       </p>
                     </div>
@@ -357,12 +357,12 @@ export const AdminView: React.FC = () => {
 
           {activeTab === 'suppliers' &&
             (filteredSuppliers.length === 0 ? (
-              <p className="py-12 text-center text-sm text-muted">{query || supplierStatus !== 'all' ? 'No suppliers match these filters.' : 'No suppliers in the directory yet.'}</p>
+              <p className="py-12 text-center text-sm text-muted-foreground">{query || supplierStatus !== 'all' ? 'No suppliers match these filters.' : 'No suppliers in the directory yet.'}</p>
             ) : (
               <Panel className="!p-0 overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="staff-table w-full min-w-[640px] text-left text-sm">
-                    <thead className="bg-sunken text-[13px] text-muted">
+                    <thead className="bg-sunken text-[13px] text-muted-foreground">
                       <tr>
                         <th className="px-5 py-3 font-semibold">Business</th>
                         <th className="px-3 py-3 font-semibold">Location</th>
@@ -376,15 +376,15 @@ export const AdminView: React.FC = () => {
                         <tr key={s.id}>
                           <td className="px-5 py-3">
                             <span className="block font-semibold text-ink">{s.businessName}</span>
-                            <span className="block text-[13px] text-muted capitalize">{s.category.replace('-', ' ')}</span>
+                            <span className="block text-[13px] text-muted-foreground capitalize">{s.category.replace('-', ' ')}</span>
                           </td>
-                          <td data-label="Location" className="px-3 py-3 text-muted">{s.location}</td>
+                          <td data-label="Location" className="px-3 py-3 text-muted-foreground">{s.location}</td>
                           <td data-label="Status" className="px-3 py-3">
-                            <span className={cx('rounded-full px-2 py-0.5 text-xs font-semibold capitalize', s.status === 'active' ? 'bg-good-soft text-good' : 'bg-sunken text-muted')}>
+                            <span className={cx('rounded-full px-2 py-0.5 text-xs font-semibold capitalize', s.status === 'active' ? 'bg-good-soft text-good' : 'bg-sunken text-muted-foreground')}>
                               {s.status}
                             </span>
                           </td>
-                          <td data-label="Verified" className="px-3 py-3 text-muted tnum">{new Date(s.verifiedAt).toLocaleDateString('en-PH')}</td>
+                          <td data-label="Verified" className="px-3 py-3 text-muted-foreground tnum">{new Date(s.verifiedAt).toLocaleDateString('en-PH')}</td>
                           <td className="px-5 py-3">
                             <div className="flex justify-end gap-1">
                               {s.status === 'active' && confirmInline('withdraw', s.id, 'Withdraw', 'Withdraw?')}
@@ -401,16 +401,16 @@ export const AdminView: React.FC = () => {
 
           {activeTab === 'inquiries' &&
             (filteredInquiries.length === 0 ? (
-              <p className="py-12 text-center text-sm text-muted">{query ? 'No inquiries match your search.' : 'No inquiries yet.'}</p>
+              <p className="py-12 text-center text-sm text-muted-foreground">{query ? 'No inquiries match your search.' : 'No inquiries yet.'}</p>
             ) : (
               <ul className="space-y-3">
                 {filteredInquiries.map((inq) => (
                   <li key={inq.id} className="bg-surface rounded-xl border border-line p-5">
                     <div className="flex flex-wrap items-baseline justify-between gap-2">
                       <h3 className="font-bold text-ink">{inq.topic}</h3>
-                      <span className="text-xs text-muted tnum">{new Date(inq.createdAt).toLocaleString('en-PH')}</span>
+                      <span className="text-xs text-muted-foreground tnum">{new Date(inq.createdAt).toLocaleString('en-PH')}</span>
                     </div>
-                    <p className="mt-0.5 text-[13px] text-muted break-words">
+                    <p className="mt-0.5 text-[13px] text-muted-foreground break-words">
                       {inq.name} · {inq.email}
                     </p>
                     <p className="mt-3 text-sm leading-relaxed text-ink whitespace-pre-wrap">{inq.message}</p>
