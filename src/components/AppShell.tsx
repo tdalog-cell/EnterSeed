@@ -1,3 +1,4 @@
+import { useCopy } from '../features/guidance/shared';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
@@ -30,6 +31,7 @@ import {
 } from './icons';
 
 export type ActivePage =
+  'plan' | 'calendar' | 'support' | 'opportunities' | 'costing' | 'quotations' | 'guides' | 'staff-support' | 'staff-opportunities' | 'staff-metrics'
   | 'dashboard'
   | 'finance'
   | 'marketing'
@@ -55,12 +57,14 @@ type NavItem = { id: ActivePage; label: string; icon: React.ComponentType<{ clas
 
 export const AppShell: React.FC<AppShellProps> = ({ activePage, setActivePage, children }) => {
   const { t } = useLanguage();
+  const c = useCopy();
   const { user, logout, isDemo } = useAuth();
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchIndex, setSearchIndex] = useState(0);
   const [profileOpen, setProfileOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
   const drawerRef = useRef<HTMLElement>(null);
   const closeProfile = useCallback(() => setProfileOpen(false), []);
   const profileRef = useDismiss(profileOpen, closeProfile);
@@ -100,7 +104,7 @@ export const AppShell: React.FC<AppShellProps> = ({ activePage, setActivePage, c
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setDrawerOpen(false);
       if (e.key !== 'Tab') return;
-      const buttons = Array.from(drawerRef.current?.querySelectorAll<HTMLButtonElement>('button:not([disabled])') || []);
+      const buttons = Array.from(drawerRef.current?.querySelectorAll<HTMLButtonElement>('button:not([disabled])') || []).filter(button => button.getClientRects().length > 0);
       const first = buttons[0], last = buttons[buttons.length - 1];
       if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last?.focus(); }
       else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first?.focus(); }
@@ -125,6 +129,10 @@ export const AppShell: React.FC<AppShellProps> = ({ activePage, setActivePage, c
     { id: 'boss-nana', label: 'Boss Narra AI', icon: MessageCircle }
   ];
 
+  workspace.splice(1, 0, { id: 'plan', label: c('My business plan'), icon: Sprout }, { id: 'calendar', label: c('Business calendar'), icon: FileCheck2 }, { id: 'opportunities', label: c('Business opportunities'), icon: Store }, { id: 'support', label: c('Support requests'), icon: MessageCircle });
+  workspace.push({ id: 'costing', label: c('Product costing'), icon: Coins }, { id: 'quotations', label: c('Supplier quotation comparison'), icon: Store }, { id: 'guides', label: c('Learning guides'), icon: FileText });
+  if (user?.role === 'admin' || user?.role === 'staff') workspace.push({ id: 'staff-support', label: c('Staff follow-up desk'), icon: ShieldCheck }, { id: 'staff-opportunities', label: c('Opportunity publishing'), icon: ShieldCheck }, { id: 'staff-metrics', label: c('Business impact'), icon: ShieldCheck });
+
   const resources: NavItem[] = [
     { id: 'settings', label: 'Settings', icon: Settings },
     { id: 'pricing', label: t('appShell.pricing'), icon: Tag },
@@ -134,6 +142,19 @@ export const AppShell: React.FC<AppShellProps> = ({ activePage, setActivePage, c
 
   const isStaff = user?.role === 'admin' || user?.role === 'staff';
   const staff: NavItem = { id: 'admin', label: t('appShell.staff'), icon: ShieldCheck };
+  const allItems = [...workspace, ...resources, ...(isStaff ? [staff] : [])];
+  const groupItems = (ids: ActivePage[]) => ids.map(id => allItems.find(item => item.id === id)!);
+  const groups = [
+    { id: 'business', label: c('Business management'), icon: Sprout, items: groupItems(['plan', 'calendar', 'documents', 'efiling']) },
+    { id: 'finance', label: c('Finance'), icon: Coins, items: groupItems(['finance', 'costing']) },
+    { id: 'market', label: c('Markets & suppliers'), icon: Store, items: groupItems(['marketing', 'suppliers', 'quotations', 'opportunities']) },
+    { id: 'help', label: c('Help & learning'), icon: MessageCircle, items: groupItems(['boss-nana', 'support', 'guides']) },
+    { id: 'account', label: c('Account & resources'), icon: Settings, items: resources },
+    ...(isStaff ? [{ id: 'staff', label: c('Staff tools'), icon: ShieldCheck, items: groupItems(['admin', 'staff-support', 'staff-opportunities', 'staff-metrics']) }] : [])
+  ];
+  const activeGroup = groups.find(group => group.items.some(item => item.id === activePage))?.id;
+  useEffect(() => { setExpandedGroup(activeGroup || null); }, [activePage, activeGroup]);
+
   const searchTerms: Partial<Record<ActivePage, string>> = {
     finance: 'cash sales expenses ledger debt loans tax equipment roi reports money',
     marketing: 'facebook post promotion message price list catalog customers',
@@ -144,7 +165,7 @@ export const AppShell: React.FC<AppShellProps> = ({ activePage, setActivePage, c
     privacy: 'export delete account data',
     'boss-nana': 'help assistant advice chat questions'
   };
-  const searchResults = [...workspace, ...resources, ...(isStaff ? [staff] : [])].filter(item => `${item.label} ${searchTerms[item.id] || ''}`.toLowerCase().includes(searchQuery.trim().toLowerCase()));
+  const searchResults = allItems.filter(item => `${item.label} ${searchTerms[item.id] || ''}`.toLowerCase().includes(searchQuery.trim().toLowerCase()));
 
   const initial = (user?.firstName || user?.email || '?')[0].toUpperCase();
   useEffect(() => { setSearchIndex(0); }, [searchQuery, searchOpen]);
@@ -158,7 +179,7 @@ export const AppShell: React.FC<AppShellProps> = ({ activePage, setActivePage, c
     setActivePage('login');
   };
 
-  const sideLink = (item: NavItem, quiet?: boolean) => {
+  const sideLink = (item: NavItem, nested = false) => {
     const Icon = item.icon;
     const active = activePage === item.id;
     return (
@@ -167,7 +188,8 @@ export const AppShell: React.FC<AppShellProps> = ({ activePage, setActivePage, c
         onClick={() => setActivePage(item.id)}
         aria-current={active ? 'page' : undefined}
         className={cx(
-          'nav-link w-full flex items-center gap-3 min-h-11 px-3.5 rounded-md text-[13px] transition-colors',
+          'nav-link w-full flex items-center justify-start gap-3 min-h-11 py-2 px-3 rounded-md text-left text-[13px] transition-colors',
+          nested && 'pl-3',
           active ? 'bg-brand-soft text-brand font-medium' : 'text-muted-foreground hover:text-ink hover:bg-sunken'
         )}
       >
@@ -176,10 +198,34 @@ export const AppShell: React.FC<AppShellProps> = ({ activePage, setActivePage, c
         ) : (
           <Icon className={cx('w-[18px] h-[18px] shrink-0', active ? 'text-brand' : 'opacity-80')} />
         )}
-        <span>{item.label}</span>
+        <span className="min-w-0 flex-1 text-left leading-5">{item.label}</span>
       </button>
     );
   };
+
+  const groupedNavigation = (surface: 'desktop' | 'mobile') => (
+    <ul className="space-y-1">
+      <li>{sideLink(workspace[0])}</li>
+      {groups.map(group => {
+        const open = expandedGroup === group.id;
+        const containsActive = activeGroup === group.id;
+        const Icon = group.icon;
+        const panelId = `${surface}-nav-${group.id}`;
+        return <li key={group.id}>
+          <button type="button" aria-expanded={open} aria-controls={panelId}
+            onClick={() => setExpandedGroup(open ? null : group.id)}
+            className={cx('flex w-full min-h-11 items-center gap-3 rounded-md px-3 py-2 text-left text-[13px] hover:bg-sunken transition-colors', containsActive ? 'font-semibold text-brand' : 'text-muted-foreground')}>
+            <Icon className="h-[18px] w-[18px] shrink-0" />
+            <span className="min-w-0 flex-1 leading-5">{group.label}</span>
+            <ChevronDown aria-hidden="true" className={cx('h-3.5 w-3.5 shrink-0 transition-transform', open && 'rotate-180')} />
+          </button>
+          <ul id={panelId} hidden={!open} className="ml-5 my-1 space-y-0.5 border-l border-line pl-2">
+            {group.items.map(item => <li key={item.id}>{sideLink(item, true)}</li>)}
+          </ul>
+        </li>;
+      })}
+    </ul>
+  );
 
   return (
     <div className="min-h-screen bg-canvas md:flex">
@@ -194,24 +240,7 @@ export const AppShell: React.FC<AppShellProps> = ({ activePage, setActivePage, c
         </div>
 
         <nav className="flex-1 overflow-y-auto px-3 pb-4" aria-label={t('appShell.primaryNavigation')}>
-          <p className="px-3 mb-2 text-xs font-medium text-muted-foreground">Workspace</p>
-          <ul className="space-y-0.5">
-            {workspace.map((item) => (
-              <li key={item.id}>
-                {sideLink(item)}
-              </li>
-            ))}
-          </ul>
-
-          {isStaff && <div className="mt-3 border-t border-line pt-3">{sideLink(staff)}</div>}
-          <p className="mt-6 mb-2 px-3 text-xs font-medium text-muted-foreground">{t('appShell.resources')}</p>
-          <ul className="space-y-0.5">
-            {resources.map((item) => (
-              <li key={item.id}>
-                {sideLink(item, true)}
-              </li>
-            ))}
-          </ul>
+          {groupedNavigation('desktop')}
         </nav>
 
         <div className="p-4">
@@ -243,7 +272,7 @@ export const AppShell: React.FC<AppShellProps> = ({ activePage, setActivePage, c
 
             <p className="hidden md:flex items-center gap-2 text-[13px] text-muted-foreground truncate">
               <span className="hidden lg:inline">Workspace</span><ChevronRight className="hidden lg:block w-3.5 h-3.5" />
-              <span className="font-semibold text-ink">{[...workspace, ...resources, staff].find(item => item.id === activePage)?.label || 'Overview'}</span>
+              <span className="font-semibold text-ink">{allItems.find(item => item.id === activePage)?.label || 'Overview'}</span>
             </p>
 
             <div className="flex items-center gap-1">
@@ -321,17 +350,7 @@ export const AppShell: React.FC<AppShellProps> = ({ activePage, setActivePage, c
               </div>
 
               <nav className="flex-1 overflow-y-auto px-3 pb-4" aria-label="Menu navigation">
-                <ul className="space-y-0.5">
-                  {workspace.map((item) => (
-                    <li key={item.id}>{sideLink(item)}</li>
-                  ))}
-                </ul>
-                <p className="mt-6 mb-2 px-3 text-xs font-semibold text-muted-foreground">{t('appShell.resources')}</p>
-                <ul className="space-y-0.5">
-                  {[...resources, ...(isStaff ? [staff] : [])].map((item) => (
-                    <li key={item.id}>{sideLink(item, true)}</li>
-                  ))}
-                </ul>
+                {groupedNavigation('mobile')}
               </nav>
 
               {user && (

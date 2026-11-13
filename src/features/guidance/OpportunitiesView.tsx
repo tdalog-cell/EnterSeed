@@ -1,0 +1,30 @@
+import React, { useState } from 'react';
+import { Button, Panel, PanelHeader, PageHeader, inputClass } from '../../components/ui';
+import { Fields, SaveForm, Command, LoadState, useResource, useCopy, guidance, navigate } from './shared';
+import { manilaDay } from '../../domain/guidance';
+
+const empty = { name:'',provider:'',description:'',sourceUrl:'',eligibility:'',location:'',sector:'',stage:'all',deadline:'',procedure:'',verifiedDate:'',verification:'draft',published:false };
+export function OpportunitiesView({staffMode=false}:{staffMode?:boolean}) {
+  const c=useCopy(),r=useResource(staffMode?'/staff/opportunities':'/opportunities'),overview=useResource('/overview');
+  const [form,setForm]=useState<any>(empty),[search,setSearch]=useState(''),[location,setLocation]=useState(''),[sector,setSector]=useState(''),[stage,setStage]=useState('all'),[savedOnly,setSavedOnly]=useState(false);
+  const saved = overview.data?.saved || [], profile=overview.data?.profile;
+  const entries = (savedOnly?saved:r.data?.entries||[]).filter((o:any)=>`${o.name} ${o.provider} ${o.description}`.toLowerCase().includes(search.toLowerCase())&&o.location.toLowerCase().includes(location.toLowerCase())&&o.sector.toLowerCase().includes(sector.toLowerCase())&&(stage==='all'||o.stage==='all'||o.stage===stage));
+  return <div className="space-y-6"><PageHeader title={c(staffMode?'Opportunity publishing':'Business opportunities')} lead={c('Potential matches are not confirmation of eligibility. Check the official source before applying.')} /><LoadState resource={r}/>
+    {staffMode&&<Panel><PanelHeader title={c(form.id?'Edit opportunity':'Add opportunity')} /><SaveForm label="Save opportunity" onSave={async()=>{await guidance(`/staff/opportunities${form.id?`/${form.id}`:''}`,form.id?'PUT':'POST',form);setForm(empty);await r.reload();}}><Fields fields={[
+      {key:'name',label:'Opportunity name'},{key:'provider',label:'Provider'},{key:'description',label:'Description',type:'textarea'},{key:'sourceUrl',label:'Official source URL',type:'url'},
+      {key:'eligibility',label:'Eligibility requirements',type:'textarea'},{key:'location',label:'Geographic coverage'},{key:'sector',label:'Sector coverage'},{key:'stage',label:'Business stage',options:['all','idea','starting','operating','growing']},
+      {key:'deadline',label:'Application deadline',type:'date',optional:true},{key:'procedure',label:'Application procedure',type:'textarea'},{key:'verifiedDate',label:'Date last verified',type:'date',optional:true},{key:'verification',label:'Verification status',options:['draft','reviewed','needs_review','expired']}
+    ]} value={form} setValue={setForm}/><label className="flex gap-2"><input type="checkbox" checked={form.published} onChange={e=>setForm({...form,published:e.target.checked})}/>{c('Publish reviewed listing')}</label>{form.id&&<Button variant="ghost" onClick={()=>setForm(empty)}>{c('Cancel editing')}</Button>}</SaveForm></Panel>}
+    <Panel><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{[['Search opportunities',search,setSearch],['Location filter',location,setLocation],['Sector filter',sector,setSector]].map(([label,value,setter]:any)=><label key={label}>{c(label)}<input className={inputClass} value={value} onChange={e=>setter(e.target.value)}/></label>)}<label>{c('Business stage')}<select className={inputClass} value={stage} onChange={e=>setStage(e.target.value)}>{['all','idea','starting','operating','growing'].map(s=><option key={s} value={s}>{c(s)}</option>)}</select></label></div>
+    {!staffMode&&<label className="flex gap-2 mt-4"><input type="checkbox" checked={savedOnly} onChange={e=>setSavedOnly(e.target.checked)}/>{c('Saved opportunities')}</label>}</Panel>
+    {r.data&&!entries.length&&<Panel><p>{c('No reviewed opportunities match your filters. Staff will publish entries after reviewing official sources.')}</p><Button className="mt-3" variant="secondary" onClick={()=>navigate('efiling')}>{c('Open registration tools')}</Button></Panel>}
+    <div className="grid gap-4 lg:grid-cols-2">{entries.map((o:any)=>{const isSaved=saved.some((s:any)=>s.id===o.id),expired=o.deadline&&o.deadline<manilaDay(),available=o.published&&o.verification==='reviewed'&&!expired;return <Panel key={o.id}><h2 className="text-lg font-semibold">{o.name}</h2><p className="text-sm text-muted-foreground">{o.provider} · {o.location} · {o.sector}</p><p className="my-3">{o.description}</p>
+      <p className="text-sm">{c('Verification status')}: {c(expired?'expired':o.verification)} · {o.verifiedDate||c('Not reviewed')}{!o.published&&` · ${c('Unpublished')}`}</p>
+      {profile&&(o.stage==='all'||o.stage===profile.stage)&&<p className="text-sm text-brand my-2">{c('Potential match for your business stage. Confirm all requirements.')}</p>}
+      <dl className="text-sm space-y-2 my-4"><dt className="font-semibold">{c('Eligibility requirements')}</dt><dd className="whitespace-pre-wrap">{o.eligibility}</dd><dt className="font-semibold">{c('Application procedure')}</dt><dd className="whitespace-pre-wrap">{o.procedure}</dd><dt>{c('Application deadline')}: {o.deadline||c('Not specified')}</dt></dl>
+      <a className="text-brand underline" href={o.sourceUrl} target="_blank" rel="noopener noreferrer">{c('Open official source')}</a><div className="flex flex-wrap gap-2 mt-4">
+      {staffMode?<Button onClick={()=>{setForm(o);window.scrollTo({top:0});}}>{c('Edit listing')}</Button>:<>
+      {(available||isSaved)&&<Command run={async()=>{await guidance(`/opportunities/${o.id}/save`,isSaved?'DELETE':'POST');await overview.reload();}}>{c(isSaved?'Unsave':'Save opportunity')}</Command>}
+      {isSaved&&available&&o.deadline&&<Command run={async()=>{const existing=overview.data.reminders.some((r:any)=>r.opportunityId===o.id&&r.date===o.deadline);if(!existing)await guidance('/reminders','POST',{title:o.name,date:o.deadline,category:'opportunity',opportunityId:o.id});navigate('calendar');}}>{c('Create application reminder')}</Command>}</>}
+      </div></Panel>;})}</div></div>;
+}

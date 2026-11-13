@@ -6,6 +6,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { AppShell, ActivePage } from './components/AppShell';
 
 import { DashboardView } from './views/DashboardView';
+const GuidanceView = lazy(() => import('./features/guidance/GuidanceView').then(module => ({ default: module.GuidanceView })));
 const FinanceView = lazy(() => import('./views/FinanceView').then(module => ({ default: module.FinanceView })));
 const MarketingView = lazy(() => import('./views/MarketingView').then(module => ({ default: module.MarketingView })));
 const SuppliersView = lazy(() => import('./views/SuppliersView').then(module => ({ default: module.SuppliersView })));
@@ -22,6 +23,7 @@ import { LanguageMenu } from './components/LanguageMenu';
 import { Button, Logo } from './components/ui';
 
 const protectedPages: ActivePage[] = [
+  'plan', 'calendar', 'support', 'opportunities', 'costing', 'quotations', 'guides', 'staff-support', 'staff-opportunities', 'staff-metrics',
   'dashboard',
   'finance',
   'marketing',
@@ -38,7 +40,7 @@ const MainRouter: React.FC = () => {
     const hash = window.location.hash.replace('#', '') as ActivePage;
     if (hash && [
       'dashboard', 'finance', 'marketing', 'suppliers', 'documents', 'boss-nana',
-      'efiling', 'pricing', 'about', 'privacy', 'settings', 'admin', 'login', 'register'
+      'efiling', 'pricing', 'about', 'privacy', 'settings', 'admin', 'login', 'register', 'plan', 'calendar', 'support', 'opportunities', 'costing', 'quotations', 'guides', 'staff-support', 'staff-opportunities', 'staff-metrics'
     ].includes(hash)) {
       return hash;
     }
@@ -149,6 +151,7 @@ const MainRouter: React.FC = () => {
 
   // 3. Authenticated Workspace (Wrapped in AppShell with Sidebar, Topbar, and Dashboard)
   const renderWorkspaceContent = () => {
+    if (['plan', 'calendar', 'support', 'opportunities', 'costing', 'quotations', 'guides', 'staff-support', 'staff-opportunities', 'staff-metrics'].includes(activePage)) return <GuidanceView page={activePage} />;
     switch (activePage) {
       case 'dashboard':
         return <DashboardView setActivePage={setActivePage} openDocument={id => { setRequestedDocument(id); setActivePage('documents'); }} />;

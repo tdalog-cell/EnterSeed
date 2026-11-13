@@ -1,3 +1,4 @@
+import { navigate as navigateGuidance } from '../features/guidance/shared';
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -278,33 +279,34 @@ export const SuppliersView: React.FC = () => {
   return (
     <div className="space-y-6 sm:space-y-8">
       {/* Header */}
-      <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_minmax(0,320px)] md:items-end">
-        <PageHeader
-          eyebrow="Better business, built locally"
-          title="Local Suppliers"
-          lead={isDemo ? 'Explore sample partners and see how the directory works. These demonstration businesses are not real verified listings.' : 'Find reviewed producers, packaging specialists, and logistics partners across South Cotabato.'}
-          actions={
-            <div className="flex items-center gap-2">
-              <Button
-                variant={activeMainTab === 'directory' ? 'primary' : 'secondary'}
-                size="md"
-                onClick={() => setActiveMainTab('directory')}
-              >
-                <Building className="w-4 h-4 mr-1.5" />
-                Directory ({suppliers.length})
-              </Button>
-              <Button
-                variant={activeMainTab === 'messages' ? 'primary' : 'secondary'}
-                size="md"
-                onClick={() => setActiveMainTab('messages')}
-              >
-                <Inbox className="w-4 h-4 mr-1.5" />
-                Saved Inquiries ({myMessages.length})
-              </Button>
-            </div>
-          }
-        />
-        <PhotoImg photo={PHOTOS.fruitStand} sizes="(min-width: 768px) 320px, 100vw" className="h-40 md:h-36 rounded-2xl" eager />
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px] items-start">
+        <div className="min-w-0 space-y-4">
+          <PageHeader
+            eyebrow="Better business, built locally"
+            title="Local Suppliers"
+            lead={isDemo ? 'Explore sample partners and see how the directory works. These demonstration businesses are not real verified listings.' : 'Find reviewed producers, packaging specialists, and logistics partners across South Cotabato.'}
+          />
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant={activeMainTab === 'directory' ? 'primary' : 'secondary'}
+              size="md"
+              onClick={() => setActiveMainTab('directory')}
+            >
+              <Building className="w-4 h-4 mr-1.5" />
+              Directory ({suppliers.length})
+            </Button>
+            <Button
+              variant={activeMainTab === 'messages' ? 'primary' : 'secondary'}
+              size="md"
+              onClick={() => setActiveMainTab('messages')}
+            >
+              <Inbox className="w-4 h-4 mr-1.5" />
+              Saved Inquiries ({myMessages.length})
+            </Button>
+            <Button variant="secondary" onClick={()=>navigateGuidance('quotations')}>Compare supplier quotations</Button>
+          </div>
+        </div>
+        <PhotoImg photo={PHOTOS.fruitStand} sizes="(min-width: 1280px) 320px, 100vw" className="h-40 xl:h-44 rounded-2xl" eager />
       </div>
 
       {activeMainTab === 'directory' ? (

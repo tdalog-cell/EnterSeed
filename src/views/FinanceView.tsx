@@ -1,3 +1,4 @@
+import { navigate as navigateGuidance } from '../features/guidance/shared';
 import React, { useState, useRef, useEffect } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
@@ -382,6 +383,7 @@ export const FinanceView: React.FC = () => {
 
   return (
     <div className="space-y-6 sm:space-y-8">
+      <div className="mb-4"><Button variant="secondary" onClick={()=>navigateGuidance('costing')}>Calculate product costs</Button></div>
       <PageHeader
         eyebrow="Finance workspace"
         title="Business finances"

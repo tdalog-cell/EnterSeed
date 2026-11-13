@@ -41,7 +41,7 @@ with (fixture / 'server.log').open('w', encoding='utf-8') as log:
                 time.sleep(.1)
         else:
             raise RuntimeError('Test server did not become ready.')
-        result = subprocess.run([sys.executable, 'tests/browser_flows.py'], cwd=root, env=env)
+        result = subprocess.run([sys.executable, sys.argv[1] if len(sys.argv) > 1 else 'tests/browser_flows.py'], cwd=root, env=env)
     finally:
         server.terminate()
         try: server.wait(timeout=5)

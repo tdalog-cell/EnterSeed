@@ -27,6 +27,7 @@ interface AuthContextType {
   exportUserData: () => Promise<void>;
   deleteUserData: () => Promise<boolean>;
   setQuickDemoUser: (user: User) => void;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -255,7 +256,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         updateLanguagePreference,
         exportUserData,
         deleteUserData,
-        setQuickDemoUser
+        setQuickDemoUser,
+        refreshUser: () => fetchCurrentUser()
       }}
     >
       {children}

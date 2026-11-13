@@ -1,3 +1,4 @@
+import { migrateGuidance, guidanceRouter, exportGuidance } from './server/guidance';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -1061,6 +1062,9 @@ function requireAdmin(request: any, response: Response, next: NextFunction) {
   response.status(403).json({ error: 'Staff access restricted. You do not have permissions for the staff console.' });
 }
 
+migrateGuidance(database);
+app.use('/api/guidance', guidanceRouter(database, requireAuthentication));
+
 // API Routes
 app.get('/api/health', (_req, res) => {
   res.json({
@@ -1163,6 +1167,7 @@ app.get('/api/user/export-data', requireAuthentication, (req: any, res) => {
   res.json({
     compliance: 'Republic Act No. 10173 (Philippine Data Privacy Act of 2012)',
     exportTimestamp: new Date().toISOString(),
+    guidance: exportGuidance(database, userId),
     profile,
     assessments,
     tickets,

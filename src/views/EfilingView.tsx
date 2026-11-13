@@ -1,3 +1,4 @@
+import { navigate as navigateGuidance } from '../features/guidance/shared';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useUnsavedChanges } from '../utils/useUnsavedChanges';
@@ -212,6 +213,7 @@ export const EfilingView: React.FC = () => {
   return (
     <div className="space-y-6 sm:space-y-8">
       {/* Page Header */}
+      <div className="mb-4"><Button variant="secondary" onClick={()=>navigateGuidance('opportunities')}>Browse reviewed opportunities</Button></div>
       <PageHeader
         eyebrow="Prepare with confidence"
         title="Your next step toward registration"
@@ -909,7 +911,7 @@ export const EfilingView: React.FC = () => {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-surface p-4 rounded-2xl border border-line shadow-xs">
             <div>
               <h2 className="text-lg font-bold text-ink">Smart Referral Engine</h2>
-              <p className="text-xs text-muted-foreground">Automated qualification assessment for South Cotabato government grants and local bank credit windows.</p>
+              <p className="text-xs text-muted-foreground">Legacy discovery examples. Program terms below have not been reverified. Use the reviewed opportunities catalog for dated source reviews and confirm current terms with the provider.</p>
             </div>
             <Segmented
               label="Referral Tool"
@@ -1046,7 +1048,7 @@ export const EfilingView: React.FC = () => {
                 <Panel>
                   <PanelHeader
                     title="Matched Grant & Subsidy Programs"
-                    description="Scored by sector alignment, municipal jurisdiction, and equipment eligibility."
+                    description="Illustrative suggestions based on your inputs; not an eligibility assessment."
                   />
 
                   {subsidyResults ? (
@@ -1065,13 +1067,13 @@ export const EfilingView: React.FC = () => {
                             </div>
                             <div className="text-right shrink-0">
                               <span className="inline-block px-2.5 py-1 rounded-full text-xs font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300">
-                                {match.eligibilityScore}% Match
+                                Needs review
                               </span>
                             </div>
                           </div>
 
                           <div className="mt-3 pt-3 border-t border-line text-xs space-y-1.5">
-                            <p className="font-semibold text-ink">Qualification Factors:</p>
+                            <p className="font-semibold text-ink">Illustrative relevance factors:</p>
                             <ul className="list-disc pl-4 space-y-0.5 text-muted-foreground">
                               {match.matchReasons.map((r, i) => (
                                 <li key={i}>{r}</li>
@@ -1194,7 +1196,7 @@ export const EfilingView: React.FC = () => {
                 <Panel>
                   <PanelHeader
                     title="Matched Lending Facilities"
-                    description="South Cotabato accredited banks, DTI SBCorp windows, and community micro-finance."
+                    description="Legacy financing examples. Accreditation and current availability are not confirmed."
                   />
 
                   {creditResults ? (
@@ -1213,7 +1215,7 @@ export const EfilingView: React.FC = () => {
                             </div>
                             <div className="text-right shrink-0">
                               <span className="inline-block px-2.5 py-1 rounded-full text-xs font-extrabold bg-blue-100 text-blue-900 border border-blue-300">
-                                {match.matchScore}% Match
+                                Needs review
                               </span>
                             </div>
                           </div>

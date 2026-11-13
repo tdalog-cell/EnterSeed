@@ -12,7 +12,8 @@
     "start": "tsx server.ts",
     "lint": "tsc --noEmit",
     "test": "vitest run",
-    "test:browser": "python tests/run_browser_flows.py"
+    "test:browser": "python tests/run_browser_flows.py",
+    "test:guidance-browser": "python tests/run_browser_flows.py tests/guidance_browser.py"
   },
   "dependencies": {
     "@google/genai": "^3.0.0",

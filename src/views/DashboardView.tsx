@@ -1,3 +1,4 @@
+import { GuidanceSummary } from '../features/guidance/PlanView';
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch, GeneratedDocument } from '../services/apiClient';
@@ -114,6 +115,7 @@ export const DashboardView: React.FC<{ setActivePage: (page: ActivePage) => void
       <div><h1 className="text-[1.8rem] sm:text-[2.1rem] font-semibold tracking-tight text-ink">Mabuhay{user?.firstName ? `, ${user.firstName}` : ''}.</h1><p className="mt-1 text-sm text-muted-foreground">Here’s where your business stands. Choose your next step.</p></div>
       <span className="inline-flex items-center gap-1.5 rounded-full bg-surface border border-line px-3 py-1.5 text-[11px] text-muted-foreground"><MapPin className="w-3.5 h-3.5 text-brand" />{user?.municipality || 'South Cotabato'}</span>
     </header>
+    <GuidanceSummary />
     {loadError && <Notice tone="error"><span>{loadError}</span><button type="button" onClick={() => setReload(value => value + 1)} className="ml-2 underline font-bold">Retry</button></Notice>}
     {saved && <Notice tone="success">Your checkup is saved{isDemo ? ' in this browser' : ' to your account'}. Your snapshot is up to date.</Notice>}
     {isStaff && <section className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-line bg-surface px-5 py-4"><div><h2 className="font-semibold text-sm">Your review desk</h2><p className="text-sm text-muted-foreground mt-1">Review applications, maintain listings, and follow up on inquiries.</p></div><Button variant="secondary" onClick={() => setActivePage('admin')}>Open staff review</Button></section>}
